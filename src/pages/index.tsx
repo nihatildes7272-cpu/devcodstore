@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+
 const products = [
   {
     title: "Modern E-Ticaret Sitesi",
@@ -20,10 +24,29 @@ const products = [
 ];
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function getSession() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    }
+
+    getSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <nav className="flex items-center justify-between">
+        <nav className="flex items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl font-bold">devcodstore</h1>
             <p className="text-sm text-gray-400">Kod, proje ve web sistemleri pazarı</p>
@@ -46,13 +69,24 @@ export default function Home() {
               İletişim
             </a>
 
-            <a href="/login" className="text-sm text-gray-300 hover:text-white">
-              Giriş Yap
-            </a>
+            {user ? (
+              <a
+                href="/account"
+                className="rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-500"
+              >
+                Hesabım
+              </a>
+            ) : (
+              <>
+                <a href="/login" className="text-sm text-gray-300 hover:text-white">
+                  Giriş Yap
+                </a>
 
-            <a href="/register" className="text-sm text-gray-300 hover:text-white">
-              Kayıt Ol
-            </a>
+                <a href="/register" className="text-sm text-gray-300 hover:text-white">
+                  Kayıt Ol
+                </a>
+              </>
+            )}
 
             <a
               href="/admin"
@@ -81,13 +115,14 @@ export default function Home() {
             <div className="mt-8 flex gap-4">
               <a
                 href="/products"
-                className="rounded-2xl bg-blue-600 px-7 py-3 font-semibold"
+                className="rounded-2xl bg-blue-600 px-7 py-3 font-semibold hover:bg-blue-500"
               >
                 Ürünleri Keşfet
               </a>
+
               <a
                 href="/seller"
-                className="rounded-2xl border border-white/15 px-7 py-3 font-semibold"
+                className="rounded-2xl border border-white/15 px-7 py-3 font-semibold hover:bg-white/10"
               >
                 Satıcı Ol
               </a>
@@ -137,9 +172,12 @@ export default function Home() {
 
                 <div className="mt-6 flex items-center justify-between">
                   <p className="text-2xl font-bold">{product.price}</p>
-                  <button className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black">
+                  <a
+                    href="/products"
+                    className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black"
+                  >
                     İncele
-                  </button>
+                  </a>
                 </div>
               </div>
             ))}
