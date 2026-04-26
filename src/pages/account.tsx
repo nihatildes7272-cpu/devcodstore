@@ -1,3 +1,8 @@
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+
 const purchasedProducts = [
   {
     title: "Modern E-Ticaret Sitesi",
@@ -12,6 +17,43 @@ const purchasedProducts = [
 ];
 
 export default function AccountPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function getUser() {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        router.push("/login");
+        return;
+      }
+
+      setUser(data.user);
+      setLoading(false);
+    }
+
+    getUser();
+  }, [router]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
+        <p>Hesap bilgileri yükleniyor...</p>
+      </main>
+    );
+  }
+
+  const fullName = user?.user_metadata?.full_name || "İsimsiz Kullanıcı";
+  const accountType = user?.user_metadata?.account_type === "seller" ? "Satıcı hesabı" : "Alıcı hesabı";
+  const email = user?.email || "E-posta yok";
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
@@ -43,18 +85,25 @@ export default function AccountPage() {
         <section className="grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Kullanıcı</p>
-            <h2 className="mt-3 text-2xl font-bold">Nihat İldeş</h2>
-            <p className="mt-2 text-sm text-gray-400">Alıcı hesabı</p>
+            <h2 className="mt-3 text-2xl font-bold">{fullName}</h2>
+            <p className="mt-2 text-sm text-gray-400">{accountType}</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Satın Alınan Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold">2</h2>
+            <p className="text-sm text-gray-400">E-posta</p>
+            <h2 className="mt-3 break-all text-xl font-bold">{email}</h2>
+            <p className="mt-2 text-sm text-green-300">Giriş yapıldı</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Hesap Durumu</p>
             <h2 className="mt-3 text-4xl font-bold text-green-300">Aktif</h2>
+            <button
+              onClick={handleLogout}
+              className="mt-5 rounded-2xl bg-red-600 px-5 py-2 text-sm font-semibold hover:bg-red-500"
+            >
+              Çıkış Yap
+            </button>
           </div>
         </section>
 
