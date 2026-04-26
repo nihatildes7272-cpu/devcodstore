@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 const products = [
   {
@@ -40,6 +42,16 @@ const categories = ["Tümü", "Web Site", "Dashboard", "Frontend", "Mobile UI"];
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function getSession() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    }
+
+    getSession();
+  }, []);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -72,12 +84,21 @@ export default function ProductsPage() {
               Ana Sayfa
             </a>
 
-            <a
-              href="/admin"
-              className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-            >
-              Admin
-            </a>
+            {user ? (
+              <a
+                href="/account"
+                className="rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white"
+              >
+                Hesabım
+              </a>
+            ) : (
+              <a
+                href="/login"
+                className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
+              >
+                Giriş Yap
+              </a>
+            )}
           </div>
         </nav>
 

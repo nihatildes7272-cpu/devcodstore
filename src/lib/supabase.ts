@@ -11,4 +11,10 @@ if (!supabaseKey) {
   throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY bulunamadı.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
