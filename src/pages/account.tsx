@@ -3,6 +3,15 @@ import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  account_type: "buyer" | "seller" | "admin";
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 const purchasedProducts = [
   {
     title: "Modern E-Ticaret Sitesi",
@@ -18,23 +27,69 @@ const purchasedProducts = [
 
 export default function AccountPage() {
   const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    async function getUser() {
-      const { data, error } = await supabase.auth.getUser();
+    async function loadAccount() {
+      setLoading(true);
+      setMessage("");
 
-      if (error || !data.user) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !userData.user) {
         router.push("/login");
         return;
       }
 
-      setUser(data.user);
+      const currentUser = userData.user;
+      setUser(currentUser);
+
+      const { data: existingProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (existingProfile && !profileError) {
+        setProfile(existingProfile);
+        setLoading(false);
+        return;
+      }
+
+      if (profileError) {
+        console.error("Profil okuma hatası:", profileError);
+      }
+
+      const fallbackProfile = {
+        id: currentUser.id,
+        email: currentUser.email || "",
+        full_name:
+          currentUser.user_metadata?.full_name || "İsimsiz Kullanıcı",
+        account_type:
+          currentUser.user_metadata?.account_type || "buyer",
+      };
+
+      const { data: createdProfile, error: createError } = await supabase
+        .from("profiles")
+        .upsert(fallbackProfile)
+        .select("*")
+        .single();
+
+      if (createError) {
+        setMessage("");
+        console.error("Profil oluşturma hatası:", createError);
+      } else {
+        setProfile(createdProfile);
+      }
+
       setLoading(false);
     }
 
-    getUser();
+    loadAccount();
   }, [router]);
 
   async function handleLogout() {
@@ -50,9 +105,27 @@ export default function AccountPage() {
     );
   }
 
-  const fullName = user?.user_metadata?.full_name || "İsimsiz Kullanıcı";
-  const accountType = user?.user_metadata?.account_type === "seller" ? "Satıcı hesabı" : "Alıcı hesabı";
-  const email = user?.email || "E-posta yok";
+  const fullName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    "İsimsiz Kullanıcı";
+
+  const email =
+    profile?.email ||
+    user?.email ||
+    "E-posta yok";
+
+  const accountTypeValue =
+    profile?.account_type ||
+    user?.user_metadata?.account_type ||
+    "buyer";
+
+  const accountType =
+    accountTypeValue === "seller"
+      ? "Satıcı hesabı"
+      : accountTypeValue === "admin"
+      ? "Admin hesabı"
+      : "Alıcı hesabı";
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -66,6 +139,13 @@ export default function AccountPage() {
           </div>
 
           <div className="flex gap-3">
+            <a
+              href="/"
+              className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold"
+            >
+              Ana Sayfa
+            </a>
+
             <a
               href="/products"
               className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold"
@@ -81,6 +161,12 @@ export default function AccountPage() {
             </a>
           </div>
         </nav>
+
+        {message && (
+          <div className="mb-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+            {message}
+          </div>
+        )}
 
         <section className="grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
