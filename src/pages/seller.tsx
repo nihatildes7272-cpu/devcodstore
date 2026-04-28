@@ -12,10 +12,26 @@ type Product = {
   seller_id: string | null;
   status: string;
   description: string | null;
+  file_path: string | null;
   created_at?: string;
 };
 
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
+
+function safeFileName(fileName: string) {
+  const cleaned = fileName
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
+}
 
 export default function SellerPage() {
   const router = useRouter();
@@ -28,6 +44,7 @@ export default function SellerPage() {
   const [category, setCategory] = useState("Web Site");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [zipFile, setZipFile] = useState<File | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -84,13 +101,36 @@ export default function SellerPage() {
       return;
     }
 
+    if (!zipFile) {
+      setMessage("Lütfen ürün ZIP dosyasını seç.");
+      setSaving(false);
+      return;
+    }
+
+    const productId = String(Date.now());
+
     const sellerName =
       user.user_metadata?.full_name ||
       user.email ||
       "Bilinmeyen Satıcı";
 
+    const filePath = `${user.id}/${productId}/${safeFileName(zipFile.name)}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("product-files")
+      .upload(filePath, zipFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      setMessage("ZIP dosyası yüklenirken hata oluştu: " + uploadError.message);
+      setSaving(false);
+      return;
+    }
+
     const newProduct = {
-      id: String(Date.now()),
+      id: productId,
       title,
       category,
       price,
@@ -98,6 +138,7 @@ export default function SellerPage() {
       seller_id: user.id,
       status: "Onay Bekliyor",
       description,
+      file_path: filePath,
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -113,9 +154,10 @@ export default function SellerPage() {
     setCategory("Web Site");
     setPrice("");
     setDescription("");
+    setZipFile(null);
 
     await loadMyProducts(user);
-    setMessage("Ürün başarıyla gönderildi. Admin onayı bekliyor.");
+    setMessage("Ürün ve ZIP dosyası başarıyla gönderildi. Admin onayı bekliyor.");
   }
 
   async function unpublishProduct(productId: string) {
@@ -232,7 +274,7 @@ export default function SellerPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-bold">Yeni Proje Yükle</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Gönderilen ürün admin onayına düşer.
+              Ürün ve ZIP dosyası admin onayına gönderilir.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
@@ -269,6 +311,17 @@ export default function SellerPage() {
                 required
                 className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
               />
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">ZIP dosyası</p>
+                <input
+                  type="file"
+                  accept=".zip,application/zip,application/x-zip-compressed"
+                  onChange={(event) => setZipFile(event.target.files?.[0] || null)}
+                  required
+                  className="w-full text-sm text-gray-300"
+                />
+              </label>
 
               <button
                 type="submit"
@@ -307,6 +360,10 @@ export default function SellerPage() {
                       {product.description}
                     </p>
                   )}
+
+                  <p className="mt-3 text-xs text-gray-500">
+                    Dosya: {product.file_path ? "Yüklendi" : "Henüz dosya yok"}
+                  </p>
 
                   <div className="mt-5 flex flex-wrap gap-3">
                     <a
