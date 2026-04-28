@@ -7,6 +7,7 @@ type Product = {
   id: string;
   title: string;
   seller: string;
+  seller_id: string | null;
   category: string;
   price: string;
   status: string;
@@ -74,6 +75,7 @@ export default function AdminProductsPage() {
   const liveProducts = products.filter((product) => product.status === "Yayında").length;
   const pendingProducts = products.filter((product) => product.status === "Onay Bekliyor").length;
   const rejectedProducts = products.filter((product) => product.status === "Reddedildi").length;
+  const unpublishedProducts = products.filter((product) => product.status === "Yayından Kaldırıldı").length;
 
   function statusClass(status: string) {
     if (status === "Yayında") {
@@ -82,6 +84,10 @@ export default function AdminProductsPage() {
 
     if (status === "Reddedildi") {
       return "w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300 md:ml-auto";
+    }
+
+    if (status === "Yayından Kaldırıldı") {
+      return "w-fit rounded-full bg-gray-500/20 px-4 py-2 text-sm text-gray-300 md:ml-auto";
     }
 
     if (status === "İnceleniyor") {
@@ -106,7 +112,7 @@ export default function AdminProductsPage() {
           <div>
             <h1 className="text-2xl font-bold">Admin Ürünler</h1>
             <p className="text-sm text-gray-400">
-              Satıcı ürünlerini onayla, reddet veya tekrar incelemeye al
+              Ürünleri onayla, reddet, beklemeye al veya yayından kaldır
             </p>
           </div>
 
@@ -133,7 +139,7 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
+        <section className="grid gap-6 md:grid-cols-5">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Ürün</p>
             <h2 className="mt-3 text-4xl font-bold">{totalProducts}</h2>
@@ -153,12 +159,17 @@ export default function AdminProductsPage() {
             <p className="text-sm text-gray-400">Reddedildi</p>
             <h2 className="mt-3 text-4xl font-bold text-red-300">{rejectedProducts}</h2>
           </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Yayından Kaldırıldı</p>
+            <h2 className="mt-3 text-4xl font-bold text-gray-300">{unpublishedProducts}</h2>
+          </div>
         </section>
 
         <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Ürün Onay Listesi</h2>
+          <h2 className="text-2xl font-bold">Ürün Durum Yönetimi</h2>
           <p className="mt-2 text-sm text-gray-400">
-            Satıcıların eklediği ürünler burada listelenir. Onaylanan ürünler kullanıcı tarafındaki ürünler sayfasında görünür.
+            Sadece “Yayında” durumundaki ürünler kullanıcı tarafındaki ürünler sayfasında görünür.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -184,7 +195,7 @@ export default function AdminProductsPage() {
                   )}
                 </div>
 
-                <div className="grid gap-3 md:min-w-56 md:text-right">
+                <div className="grid gap-3 md:min-w-60 md:text-right">
                   <span className={statusClass(product.status)}>
                     {product.status}
                   </span>
@@ -194,7 +205,7 @@ export default function AdminProductsPage() {
                       onClick={() => updateProductStatus(product.id, "Yayında")}
                       className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
                     >
-                      Onayla
+                      Onayla / Yayına Al
                     </button>
 
                     <button
@@ -206,9 +217,16 @@ export default function AdminProductsPage() {
 
                     <button
                       onClick={() => updateProductStatus(product.id, "Onay Bekliyor")}
-                      className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+                      className="rounded-2xl border border-yellow-500/30 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
                     >
                       Beklemeye Al
+                    </button>
+
+                    <button
+                      onClick={() => updateProductStatus(product.id, "Yayından Kaldırıldı")}
+                      className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10"
+                    >
+                      Yayından Kaldır
                     </button>
                   </div>
 
