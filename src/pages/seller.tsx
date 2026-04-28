@@ -118,6 +118,30 @@ export default function SellerPage() {
     setMessage("Ürün başarıyla gönderildi. Admin onayı bekliyor.");
   }
 
+  async function unpublishProduct(productId: string) {
+    const confirmed = window.confirm("Bu ürünü yayından kaldırmak istiyor musun?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .update({ status: "Yayından Kaldırıldı" })
+      .eq("id", productId);
+
+    if (error) {
+      setMessage("Ürün yayından kaldırılamadı: " + error.message);
+      return;
+    }
+
+    if (user) {
+      await loadMyProducts(user);
+    }
+
+    setMessage("Ürün yayından kaldırıldı.");
+  }
+
   function statusClass(status: string) {
     if (status === "Yayında") {
       return "w-fit rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
@@ -125,6 +149,10 @@ export default function SellerPage() {
 
     if (status === "Reddedildi") {
       return "w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+    }
+
+    if (status === "Yayından Kaldırıldı") {
+      return "w-fit rounded-full bg-gray-500/20 px-4 py-2 text-sm text-gray-300";
     }
 
     return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
@@ -294,6 +322,13 @@ export default function SellerPage() {
                     >
                       Detay Aç
                     </a>
+
+                    <button
+                      onClick={() => unpublishProduct(product.id)}
+                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                    >
+                      Yayından Kaldır
+                    </button>
 
                     <a
                       href="/admin/products"
