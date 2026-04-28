@@ -280,7 +280,14 @@ export default function SellerPage() {
                     </p>
                   )}
 
-                  <div className="mt-5 flex gap-3">
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <a
+                      href={`/seller/edit/${product.id}`}
+                      className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                    >
+                      Düzenle
+                    </a>
+
                     <a
                       href={`/product/${product.id}`}
                       className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black"
