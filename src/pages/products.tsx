@@ -33,6 +33,7 @@ export default function ProductsPage() {
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("status", "Yayında")
         .order("created_at", { ascending: false });
 
       if (error) {
