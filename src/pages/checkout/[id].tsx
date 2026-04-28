@@ -1,55 +1,113 @@
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
-const products = [
-  {
-    id: "1",
-    title: "Modern E-Ticaret Sitesi",
-    price: "₺1.499",
-    seller: "NCS Studio",
-  },
-  {
-    id: "2",
-    title: "Admin Panel Paketi",
-    price: "₺899",
-    seller: "CodeMarket",
-  },
-  {
-    id: "3",
-    title: "Portfolio Scripti",
-    price: "₺499",
-    seller: "DevCraft",
-  },
-  {
-    id: "4",
-    title: "Mobil Uygulama Arayüzü",
-    price: "₺699",
-    seller: "AppForge",
-  },
-];
+type Product = {
+  id: string;
+  title: string;
+  category: string;
+  price: string;
+  seller: string;
+  status: string;
+  description: string | null;
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { id } = router.query;
 
-  const product = products.find((item) => item.id === id);
+  const [user, setUser] = useState<User | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
-  if (!router.isReady) {
+  useEffect(() => {
+    async function loadCheckout() {
+      if (!router.isReady || !id) return;
+
+      setLoading(true);
+      setMessage("");
+
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) {
+        router.push("/login");
+        return;
+      }
+
+      setUser(userData.user);
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", String(id))
+        .single();
+
+      if (error || !data) {
+        setMessage("Ürün bilgisi yüklenemedi.");
+        setProduct(null);
+      } else {
+        setProduct(data);
+      }
+
+      setLoading(false);
+    }
+
+    loadCheckout();
+  }, [router.isReady, id, router]);
+
+  async function completeOrder() {
+    if (!user || !product) {
+      setMessage("Kullanıcı veya ürün bilgisi eksik.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    const { error } = await supabase.from("orders").insert({
+      user_id: user.id,
+      product_id: product.id,
+      product_title: product.title,
+      price: product.price,
+      seller: product.seller,
+      status: "Tamamlandı",
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setMessage("Sipariş oluşturulamadı: " + error.message);
+      return;
+    }
+
+    router.push(`/success/${product.id}`);
+  }
+
+  if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
-        Yükleniyor...
+        Checkout yükleniyor...
       </main>
     );
   }
 
   if (!product) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
-        <div className="text-center">
+      <main className="flex min-h-screen items-center justify-center bg-[#070A12] px-6 text-white">
+        <section className="w-full max-w-xl rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
           <h1 className="text-3xl font-bold">Ürün bulunamadı</h1>
-          <a href="/products" className="mt-6 inline-block rounded-2xl bg-white px-5 py-3 text-black">
-            Ürünlere dön
+          <p className="mt-4 text-red-200">{message}</p>
+
+          <a
+            href="/products"
+            className="mt-8 inline-block rounded-2xl bg-white px-5 py-3 font-semibold text-black"
+          >
+            Ürünlere Dön
           </a>
-        </div>
+        </section>
       </main>
     );
   }
@@ -59,8 +117,10 @@ export default function CheckoutPage() {
       <section className="mx-auto max-w-5xl px-6 py-10">
         <nav className="mb-10 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">devcodstore</h1>
-            <p className="text-sm text-gray-400">Satın alma ekranı</p>
+            <h1 className="text-2xl font-bold">devcodstore Checkout</h1>
+            <p className="text-sm text-gray-400">
+              Siparişini kontrol et ve tamamla
+            </p>
           </div>
 
           <a
@@ -71,6 +131,12 @@ export default function CheckoutPage() {
           </a>
         </nav>
 
+        {message && (
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+            {message}
+          </div>
+        )}
+
         <section className="grid gap-8 md:grid-cols-2">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
             <h2 className="text-3xl font-bold">Sipariş Özeti</h2>
@@ -78,7 +144,12 @@ export default function CheckoutPage() {
             <div className="mt-6 rounded-2xl bg-black/30 p-5">
               <p className="text-sm text-gray-400">Ürün</p>
               <h3 className="mt-2 text-2xl font-bold">{product.title}</h3>
-              <p className="mt-2 text-sm text-gray-400">Satıcı: {product.seller}</p>
+              <p className="mt-2 text-sm text-gray-400">
+                Satıcı: {product.seller}
+              </p>
+              <p className="mt-2 text-sm text-gray-400">
+                Kategori: {product.category}
+              </p>
             </div>
 
             <div className="mt-6 flex items-center justify-between rounded-2xl bg-black/30 p-5">
@@ -90,7 +161,7 @@ export default function CheckoutPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
             <h2 className="text-3xl font-bold">Ödeme Bilgileri</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Şimdilik tasarım ekranı. İleride buraya gerçek ödeme sistemi eklenecek.
+              Şimdilik demo ödeme ekranı. Butona basınca orders tablosuna gerçek sipariş kaydı oluşur.
             </p>
 
             <div className="mt-6 grid gap-4">
@@ -116,12 +187,13 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              <a
-                href={`/success/${product.id}`}
-                className="mt-2 rounded-2xl bg-blue-600 px-5 py-4 text-center font-semibold hover:bg-blue-500"
+              <button
+                onClick={completeOrder}
+                disabled={saving}
+                className="mt-2 rounded-2xl bg-blue-600 px-5 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
-                Ödemeyi Tamamla
-              </a>
+                {saving ? "Sipariş oluşturuluyor..." : "Ödemeyi Tamamla"}
+              </button>
             </div>
           </div>
         </section>
