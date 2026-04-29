@@ -10,6 +10,7 @@ const adminLinks = [
   { href: "/admin/reports", label: "Raporlar" },
   { href: "/admin/reviews", label: "Yorumlar" },
   { href: "/admin/support", label: "Destek" },
+  { href: "/admin/logs", label: "İşlem Kayıtları" },
   { href: "/admin/sellers", label: "Satıcılar" },
   { href: "/notifications", label: "Bildirimler" },
 ];
