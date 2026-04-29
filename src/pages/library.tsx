@@ -17,7 +17,7 @@ type Order = {
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
-  ms = 15000,
+  ms = 12000,
   message = "Sunucu yanıtı gecikti. Lütfen tekrar dene."
 ): Promise<T> {
   return Promise.race([
@@ -57,7 +57,9 @@ export default function LibraryPage() {
       const currentUser = sessionResult.data.session?.user;
 
       if (!currentUser) {
-        router.push("/login");
+        setLoading(false);
+        setRefreshing(false);
+        router.replace("/login");
         return;
       }
 
@@ -69,7 +71,7 @@ export default function LibraryPage() {
           .select("id,user_id,product_id,product_title,price,seller,status,created_at")
           .eq("user_id", currentUser.id)
           .order("created_at", { ascending: false }),
-        15000,
+        12000,
         "Satın alınan ürünler yüklenirken sunucu geç cevap verdi."
       );
 
@@ -186,7 +188,7 @@ export default function LibraryPage() {
             <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
               <h2 className="text-3xl font-bold">Satın Alınanlar</h2>
               <p className="mt-2 text-gray-400">
-                Satın aldığın ürünler orders tablosundan gelir.
+                Satın aldığın ürünler sipariş kayıtlarından gelir.
               </p>
 
               <div className="mt-8 grid gap-5">
