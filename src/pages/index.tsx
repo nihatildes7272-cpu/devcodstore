@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import MainNavbar from "@/components/MainNavbar";
 
 type Product = {
   id: string;
@@ -98,58 +99,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <nav className="flex items-center justify-between gap-6">
-          <div>
-            <h1 className="text-2xl font-bold">devcodstore</h1>
-            <p className="text-sm text-gray-400">
-              Kod, proje ve web sistemleri pazarı
-            </p>
-          </div>
-
-          <div className="hidden items-center gap-4 md:flex">
-            <a href="/products" className="text-sm text-gray-300 hover:text-white">
-              Ürünler
-            </a>
-
-            <a href="/seller" className="text-sm text-gray-300 hover:text-white">
-              Satıcı Ol
-            </a>
-
-            <a href="/about" className="text-sm text-gray-300 hover:text-white">
-              Hakkımızda
-            </a>
-
-            <a href="/contact" className="text-sm text-gray-300 hover:text-white">
-              İletişim
-            </a>
-
-            {user ? (
-              <a
-                href="/account"
-                className="rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-500"
-              >
-                Hesabım
-              </a>
-            ) : (
-              <>
-                <a href="/login" className="text-sm text-gray-300 hover:text-white">
-                  Giriş Yap
-                </a>
-
-                <a href="/register" className="text-sm text-gray-300 hover:text-white">
-                  Kayıt Ol
-                </a>
-              </>
-            )}
-
-            <a
-              href="/admin"
-              className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-            >
-              Admin
-            </a>
-          </div>
-        </nav>
+        <MainNavbar user={user} />
 
         <section className="grid gap-10 py-16 md:grid-cols-2 md:items-center">
           <div>
