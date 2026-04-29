@@ -17,12 +17,21 @@ type Product = {
   created_at?: string;
 };
 
+type GalleryImage = {
+  id: string;
+  product_id: string;
+  image_url: string;
+  image_path: string;
+  created_at?: string;
+};
+
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id } = router.query;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -47,6 +56,14 @@ export default function ProductDetailPage() {
       }
 
       setProduct(data);
+
+      const { data: galleryData } = await supabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", data.id)
+        .order("created_at", { ascending: true });
+
+      setGalleryImages(galleryData || []);
 
       const { data: relatedData } = await supabase
         .from("products")
@@ -331,6 +348,33 @@ export default function ProductDetailPage() {
             </p>
           </aside>
         </section>
+
+        {galleryImages.length > 0 && (
+          <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8">
+            <h2 className="text-2xl font-bold">Ürün Galerisi</h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Ürüne ait ekran görüntüleri ve ön izleme görselleri.
+            </p>
+
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {galleryImages.map((image) => (
+                <a
+                  key={image.id}
+                  href={image.image_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block overflow-hidden rounded-3xl border border-white/10 bg-black/30 transition hover:border-blue-500/40"
+                >
+                  <img
+                    src={image.image_url}
+                    alt="Ürün galeri görseli"
+                    className="h-56 w-full object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8">
           <div className="flex items-center justify-between gap-4">

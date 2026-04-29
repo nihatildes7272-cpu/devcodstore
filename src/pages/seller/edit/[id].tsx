@@ -17,6 +17,14 @@ type Product = {
   image_url: string | null;
 };
 
+type GalleryImage = {
+  id: string;
+  product_id: string;
+  image_url: string;
+  image_path: string;
+  created_at?: string;
+};
+
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
 
 function safeFileName(fileName: string) {
@@ -64,6 +72,7 @@ export default function SellerEditProductPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Web Site");
@@ -71,6 +80,7 @@ export default function SellerEditProductPage() {
   const [description, setDescription] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,11 +135,39 @@ export default function SellerEditProductPage() {
       setPrice(data.price);
       setDescription(data.description || "");
 
+      const { data: galleryData } = await supabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", data.id)
+        .order("created_at", { ascending: true });
+
+      setGalleryImages(galleryData || []);
+
       setLoading(false);
     }
 
     loadProduct();
   }, [router.isReady, id, router]);
+
+  async function deleteGalleryImage(image: GalleryImage) {
+    const confirmed = window.confirm("Bu galeri görselini silmek istiyor musun?");
+
+    if (!confirmed) return;
+
+    await supabase.storage.from("product-images").remove([image.image_path]);
+
+    const { error } = await supabase
+      .from("product_images")
+      .delete()
+      .eq("id", image.id);
+
+    if (error) {
+      setMessage("Galeri görseli silinemedi: " + error.message);
+      return;
+    }
+
+    setGalleryImages((current) => current.filter((item) => item.id !== image.id));
+  }
 
   async function handleUpdate(event: React.FormEvent) {
     event.preventDefault();
@@ -212,13 +250,57 @@ export default function SellerEditProductPage() {
       })
       .eq("id", product.id);
 
-    setSaving(false);
-
     if (error) {
+      setSaving(false);
       setMessage("Ürün güncellenirken hata oluştu: " + error.message);
       return;
     }
 
+    if (galleryFiles.length > 0) {
+      const galleryRecords = [];
+
+      for (let index = 0; index < galleryFiles.length; index++) {
+        const file = galleryFiles[index];
+        const imagePath = `${user.id}/${product.id}/gallery/${Date.now()}-${index}-${safeImageName(
+          file.name
+        )}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(imagePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          setSaving(false);
+          setMessage("Galeri görseli yüklenemedi: " + uploadError.message);
+          return;
+        }
+
+        const { data: publicImage } = supabase.storage
+          .from("product-images")
+          .getPublicUrl(imagePath);
+
+        galleryRecords.push({
+          product_id: product.id,
+          image_url: publicImage.publicUrl,
+          image_path: imagePath,
+        });
+      }
+
+      const { error: galleryError } = await supabase
+        .from("product_images")
+        .insert(galleryRecords);
+
+      if (galleryError) {
+        setSaving(false);
+        setMessage("Galeri kayıtları oluşturulamadı: " + galleryError.message);
+        return;
+      }
+    }
+
+    setSaving(false);
     router.push("/seller");
   }
 
@@ -261,7 +343,8 @@ export default function SellerEditProductPage() {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
           <h1 className="text-3xl font-bold">Ürün Düzenle</h1>
           <p className="mt-2 text-sm text-gray-400">
-            Ürün bilgilerini, kapak görselini veya ZIP dosyasını güncelle. Kaydedince ürün tekrar admin onayına düşer.
+            Ürün bilgilerini, kapak görselini, ZIP dosyasını ve galeri görsellerini güncelle.
+            Kaydedince ürün tekrar admin onayına düşer.
           </p>
 
           {product?.image_url ? (
@@ -281,6 +364,39 @@ export default function SellerEditProductPage() {
             <p className="mt-2 break-all font-semibold">
               {shownFileName(product?.file_path || null)}
             </p>
+          </div>
+
+          <div className="mt-8 rounded-3xl border border-white/10 bg-black/30 p-5">
+            <h2 className="text-2xl font-bold">Mevcut Galeri Görselleri</h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Ürün detayında gösterilecek ek ekran görüntüleri.
+            </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {galleryImages.map((image) => (
+                <div key={image.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <img
+                    src={image.image_url}
+                    alt="Galeri görseli"
+                    className="h-40 w-full rounded-xl object-cover"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => deleteGalleryImage(image)}
+                    className="mt-3 w-full rounded-xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10"
+                  >
+                    Görseli Sil
+                  </button>
+                </div>
+              ))}
+
+              {galleryImages.length === 0 && (
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-center text-gray-400 md:col-span-3">
+                  Henüz galeri görseli yok.
+                </div>
+              )}
+            </div>
           </div>
 
           <form onSubmit={handleUpdate} className="mt-8 grid gap-4">
@@ -332,6 +448,27 @@ export default function SellerEditProductPage() {
 
               <p className="mt-2 text-xs text-gray-500">
                 Yeni görsel seçmezsen mevcut kapak görseli korunur.
+              </p>
+            </label>
+
+            <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+              <p className="mb-2 text-sm text-gray-400">
+                Galeri görselleri ekle
+              </p>
+
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(event) =>
+                  setGalleryFiles(Array.from(event.target.files || []))
+                }
+                className="w-full text-sm text-gray-300"
+              />
+
+              <p className="mt-2 text-xs text-gray-500">
+                Birden fazla ekran görüntüsü seçebilirsin. Mevcut galeri korunur,
+                seçtiğin yeni görseller eklenir.
               </p>
             </label>
 
