@@ -65,6 +65,7 @@ export default function SellerPage() {
   const [activeTab, setActiveTab] = useState<"upload" | "products" | "sales">(
     "upload"
   );
+  const [sellerMenuOpen, setSellerMenuOpen] = useState(false);
 
   const [user, setUser] = useState<User | null>(null);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
@@ -466,22 +467,45 @@ export default function SellerPage() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
-          <div className="grid gap-3 md:grid-cols-3">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={
-                  activeTab === tab.key
-                    ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                    : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
+        <section className="relative mt-10 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Satıcı İşlemleri</h2>
+              <p className="mt-2 text-sm text-gray-400">
+                Aktif bölüm: {tabs.find((tab) => tab.key === activeTab)?.label}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSellerMenuOpen(!sellerMenuOpen)}
+              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              {sellerMenuOpen ? "Kapat" : "☰ Satıcı Menü"}
+            </button>
           </div>
+
+          {sellerMenuOpen && (
+            <div className="absolute left-0 right-0 top-28 z-40 rounded-3xl border border-white/10 bg-[#0B1020] p-5 shadow-2xl">
+              <div className="grid gap-3 md:grid-cols-3">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setActiveTab(tab.key);
+                      setSellerMenuOpen(false);
+                    }}
+                    className={
+                      activeTab === tab.key
+                        ? "rounded-2xl bg-blue-600 px-5 py-3 text-left text-sm font-semibold text-white"
+                        : "rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-sm font-semibold text-gray-200 hover:bg-white/10"
+                    }
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {activeTab === "upload" && (
