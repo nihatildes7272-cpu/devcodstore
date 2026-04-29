@@ -21,6 +21,20 @@ export default function AdminUsersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => {
+      setMessage((current) =>
+        current || "Sunucu yanıtı gecikti. Sayfayı yenileyebilir veya tekrar deneyebilirsin."
+      );
+      setLoading(false);
+    }, 12000);
+
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   const [search, setSearch] = useState("");
 
   async function loadProfiles() {

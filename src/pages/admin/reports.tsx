@@ -38,6 +38,20 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => {
+      setMessage((current) =>
+        current || "Sunucu yanıtı gecikti. Sayfayı yenileyebilir veya tekrar deneyebilirsin."
+      );
+      setLoading(false);
+    }, 12000);
+
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+
   async function loadReports() {
     setLoading(true);
     setMessage("");

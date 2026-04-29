@@ -63,6 +63,20 @@ export default function SellerPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    if (!loadingUser) return;
+
+    const timer = setTimeout(() => {
+      setMessage((current) =>
+        current || "Sunucu yanıtı gecikti. Sayfayı yenileyebilir veya tekrar deneyebilirsin."
+      );
+      setLoadingUser(false);
+    }, 12000);
+
+    return () => clearTimeout(timer);
+  }, [loadingUser]);
+
+
   async function loadMyProducts(currentUser: User) {
     const sellerName =
       currentUser.user_metadata?.full_name ||
