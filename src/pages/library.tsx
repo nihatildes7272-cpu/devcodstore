@@ -34,34 +34,46 @@ export default function LibraryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadOrders() {
-    setLoading(true);
+  async function loadOrders(currentUser?: User, showLoading = true) {
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     setMessage("");
 
     try {
-      const userResult = await withTimeout(
-        supabase.auth.getUser(),
-        10000,
-        "Kullanıcı bilgisi alınırken sunucu geç cevap verdi."
-      );
+      let activeUser = currentUser;
 
-      const currentUser = userResult.data.user;
+      if (!activeUser) {
+        const userResult = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          "Kullanıcı bilgisi alınırken sunucu geç cevap verdi."
+        );
 
-      if (!currentUser) {
+        activeUser = userResult.data.user || undefined;
+      }
+
+      if (!activeUser) {
         setLoading(false);
+        setRefreshing(false);
         router.push("/login");
         return;
       }
 
-      setUser(currentUser);
+      setUser(activeUser);
 
       const orderResult = await withTimeout(
         supabase
           .from("orders")
           .select("*")
-          .eq("user_id", currentUser.id)
+          .eq("user_id", activeUser.id)
           .order("created_at", { ascending: false }),
         15000,
         "Satın alınan ürünler yüklenirken sunucu geç cevap verdi."
@@ -72,6 +84,13 @@ export default function LibraryPage() {
         setOrders([]);
       } else {
         setOrders(orderResult.data || []);
+        setLastUpdated(
+          new Date().toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        );
       }
     } catch (error) {
       setMessage(
@@ -82,12 +101,64 @@ export default function LibraryPage() {
       setOrders([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    async function setupLiveLibrary() {
+      const userResult = await supabase.auth.getUser();
+      const activeUser = userResult.data.user;
+
+      if (!activeUser) {
+        router.push("/login");
+        return;
+      }
+
+      if (cancelled) return;
+
+      setUser(activeUser);
+      await loadOrders(activeUser);
+
+      channel = supabase
+        .channel(`library-orders-${activeUser.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `user_id=eq.${activeUser.id}`,
+          },
+          () => {
+            loadOrders(activeUser, false);
+          }
+        )
+        .subscribe();
+
+      interval = setInterval(() => {
+        loadOrders(activeUser, false);
+      }, 15000);
+    }
+
+    setupLiveLibrary();
+
+    return () => {
+      cancelled = true;
+
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [router]);
 
   function formatDate(date: string) {
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -105,10 +176,24 @@ export default function LibraryPage() {
         <SiteNavbar />
 
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="text-4xl font-bold">Dosyalarım</h1>
-          <p className="mt-3 text-gray-400">
-            Satın aldığın proje ve kod paketleri burada görünür.
-          </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold">Dosyalarım</h1>
+              <p className="mt-3 text-gray-400">
+                Satın aldığın proje ve kod paketleri burada canlı olarak yenilenir.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
+              {refreshing ? (
+                <span className="text-blue-300">Yenileniyor...</span>
+              ) : lastUpdated ? (
+                <span>Son güncelleme: {lastUpdated}</span>
+              ) : (
+                <span>Canlı takip aktif</span>
+              )}
+            </div>
+          </div>
         </section>
 
         {message && (
@@ -116,7 +201,7 @@ export default function LibraryPage() {
             <p>{message}</p>
 
             <button
-              onClick={loadOrders}
+              onClick={() => loadOrders(user || undefined)}
               className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
             >
               Tekrar Dene
@@ -144,7 +229,7 @@ export default function LibraryPage() {
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Erişim Durumu</p>
+                <p className="text-sm text-gray-400">Canlı Durum</p>
                 <h2 className="mt-3 text-4xl font-bold text-green-300">Aktif</h2>
               </div>
             </section>
@@ -152,7 +237,7 @@ export default function LibraryPage() {
             <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
               <h2 className="text-3xl font-bold">Satın Alınanlar</h2>
               <p className="mt-2 text-gray-400">
-                Bu liste Supabase orders tablosundan gelir.
+                Yeni sipariş oluşturulduğunda bu liste otomatik yenilenir.
               </p>
 
               <div className="mt-8 grid gap-5">
@@ -220,7 +305,7 @@ export default function LibraryPage() {
                   <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center">
                     <h3 className="text-2xl font-bold">Henüz satın alma yok</h3>
                     <p className="mt-2 text-gray-400">
-                      Bir ürün satın aldığında burada görünecek.
+                      Bir ürün satın aldığında burada canlı olarak görünecek.
                     </p>
 
                     <a
