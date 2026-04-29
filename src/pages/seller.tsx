@@ -46,13 +46,29 @@ function safeFileName(fileName: string) {
   return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
 }
 
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 15000,
+  message = "Sunucu yanıtı gecikti."
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 export default function SellerPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [myOrders, setMyOrders] = useState<Order[]>([]);
+
   const [loadingUser, setLoadingUser] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState("");
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Web Site");
@@ -63,70 +79,92 @@ export default function SellerPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    if (!loadingUser) return;
+  function sellerNameFor(currentUser: User) {
+    return (
+      currentUser.user_metadata?.full_name ||
+      currentUser.email ||
+      "Bilinmeyen Satıcı"
+    );
+  }
 
-    const timer = setTimeout(() => {
-      setMessage((current) =>
-        current || "Sunucu yanıtı gecikti. Sayfayı yenileyebilir veya tekrar deneyebilirsin."
+  async function loadSellerDashboard(currentUser: User, showLoading = false) {
+    if (showLoading) {
+      setLoadingUser(true);
+    } else {
+      setRefreshing(true);
+    }
+
+    setMessage("");
+
+    try {
+      const sellerName = sellerNameFor(currentUser);
+
+      const productsResult = await withTimeout(
+        supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        15000,
+        "Satıcı ürünleri yüklenirken sunucu geç cevap verdi."
       );
+
+      if (productsResult.error) {
+        setMessage("Ürünlerin yüklenirken hata oluştu: " + productsResult.error.message);
+        setMyProducts([]);
+      } else {
+        const filteredProducts = (productsResult.data || []).filter((product) => {
+          return product.seller_id === currentUser.id || product.seller === sellerName;
+        });
+
+        setMyProducts(filteredProducts);
+      }
+
+      const ordersResult = await withTimeout(
+        supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        15000,
+        "Satışların yüklenirken sunucu geç cevap verdi."
+      );
+
+      if (ordersResult.error) {
+        setMessage("Satışların yüklenirken hata oluştu: " + ordersResult.error.message);
+        setMyOrders([]);
+      } else {
+        const filteredOrders = (ordersResult.data || []).filter((order) => {
+          return order.seller_id === currentUser.id || order.seller === sellerName;
+        });
+
+        setMyOrders(filteredOrders);
+      }
+
+      setLastUpdated(
+        new Date().toLocaleTimeString("tr-TR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Satıcı paneli yüklenirken bilinmeyen bir hata oluştu."
+      );
+    } finally {
       setLoadingUser(false);
-    }, 12000);
-
-    return () => clearTimeout(timer);
-  }, [loadingUser]);
-
-
-  async function loadMyProducts(currentUser: User) {
-    const sellerName =
-      currentUser.user_metadata?.full_name ||
-      currentUser.email ||
-      "Bilinmeyen Satıcı";
-
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setMessage("Ürünlerin yüklenirken hata oluştu: " + error.message);
-      setMyProducts([]);
-      return;
+      setRefreshing(false);
     }
-
-    const filteredProducts = (data || []).filter((product) => {
-      return product.seller_id === currentUser.id || product.seller === sellerName;
-    });
-
-    setMyProducts(filteredProducts);
-  }
-
-  async function loadMyOrders(currentUser: User) {
-    const sellerName =
-      currentUser.user_metadata?.full_name ||
-      currentUser.email ||
-      "Bilinmeyen Satıcı";
-
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setMessage("Satışların yüklenirken hata oluştu: " + error.message);
-      setMyOrders([]);
-      return;
-    }
-
-    const filteredOrders = (data || []).filter((order) => {
-      return order.seller_id === currentUser.id || order.seller === sellerName;
-    });
-
-    setMyOrders(filteredOrders);
   }
 
   useEffect(() => {
-    async function checkUser() {
+    let productChannel: ReturnType<typeof supabase.channel> | null = null;
+    let orderChannel: ReturnType<typeof supabase.channel> | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    async function setupSellerPanel() {
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
@@ -134,13 +172,63 @@ export default function SellerPage() {
         return;
       }
 
+      if (cancelled) return;
+
       setUser(data.user);
-      await loadMyProducts(data.user);
-      await loadMyOrders(data.user);
-      setLoadingUser(false);
+      await loadSellerDashboard(data.user, true);
+
+      productChannel = supabase
+        .channel(`seller-products-${data.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "products",
+          },
+          () => {
+            loadSellerDashboard(data.user!, false);
+          }
+        )
+        .subscribe();
+
+      orderChannel = supabase
+        .channel(`seller-orders-${data.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+          },
+          () => {
+            loadSellerDashboard(data.user!, false);
+          }
+        )
+        .subscribe();
+
+      interval = setInterval(() => {
+        loadSellerDashboard(data.user!, false);
+      }, 15000);
     }
 
-    checkUser();
+    setupSellerPanel();
+
+    return () => {
+      cancelled = true;
+
+      if (productChannel) {
+        supabase.removeChannel(productChannel);
+      }
+
+      if (orderChannel) {
+        supabase.removeChannel(orderChannel);
+      }
+
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [router]);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -161,12 +249,7 @@ export default function SellerPage() {
     }
 
     const productId = String(Date.now());
-
-    const sellerName =
-      user.user_metadata?.full_name ||
-      user.email ||
-      "Bilinmeyen Satıcı";
-
+    const sellerName = sellerNameFor(user);
     const filePath = `${user.id}/${productId}/${safeFileName(zipFile.name)}`;
 
     const { error: uploadError } = await supabase.storage
@@ -209,7 +292,7 @@ export default function SellerPage() {
     setDescription("");
     setZipFile(null);
 
-    await loadMyProducts(user);
+    await loadSellerDashboard(user, false);
     setMessage("Ürün ve ZIP dosyası başarıyla gönderildi. Admin onayı bekliyor.");
   }
 
@@ -231,14 +314,14 @@ export default function SellerPage() {
     }
 
     if (user) {
-      await loadMyProducts(user);
+      await loadSellerDashboard(user, false);
     }
 
     setMessage("Ürün yayından kaldırıldı.");
   }
 
-  function parsePrice(price: string) {
-    const numberText = price.replace(/[^\d]/g, "");
+  function parsePrice(value: string) {
+    const numberText = value.replace(/[^\d]/g, "");
     return Number(numberText || 0);
   }
 
@@ -299,8 +382,44 @@ export default function SellerPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <SiteNavbar />
 
+        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold">Satıcı Paneli</h1>
+              <p className="mt-3 text-gray-400">
+                Projelerini yükle, satışlarını ve ürün durumlarını canlı takip et.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
+              {refreshing ? (
+                <span className="text-blue-300">Yenileniyor...</span>
+              ) : lastUpdated ? (
+                <span>Son güncelleme: {lastUpdated}</span>
+              ) : (
+                <span>Canlı takip aktif</span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {message && (
+          <div className="mb-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
+            <p>{message}</p>
+
+            {user && (
+              <button
+                onClick={() => loadSellerDashboard(user, false)}
+                className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+              >
+                Tekrar Dene
+              </button>
+            )}
+          </div>
+        )}
+
         <section className="grid gap-6 md:grid-cols-6">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 md:col-span-2">
             <p className="text-sm text-gray-400">Satıcı</p>
             <h2 className="mt-3 break-all text-xl font-bold">
               {user?.user_metadata?.full_name || user?.email}
@@ -318,11 +437,6 @@ export default function SellerPage() {
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Reddedildi</p>
-            <h2 className="mt-3 text-4xl font-bold text-red-300">{rejectedCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Satış</p>
             <h2 className="mt-3 text-4xl font-bold text-green-300">{totalSales}</h2>
           </div>
@@ -332,12 +446,6 @@ export default function SellerPage() {
             <h2 className="mt-3 text-3xl font-bold">{formatMoney(totalRevenue)}</h2>
           </div>
         </section>
-
-        {message && (
-          <div className="mt-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
-            {message}
-          </div>
-        )}
 
         <section className="mt-10 grid gap-8 md:grid-cols-[1fr_520px]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -405,7 +513,7 @@ export default function SellerPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-bold">Eklediğim Ürünler</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Ürünlerinin admin onay durumunu buradan takip edebilirsin.
+              Admin onay durumları canlı olarak yenilenir.
             </p>
 
             <div className="mt-6 grid gap-4">
@@ -478,7 +586,7 @@ export default function SellerPage() {
         <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-2xl font-bold">Satışlarım</h2>
           <p className="mt-2 text-sm text-gray-400">
-            Ürünlerinden oluşan gerçek sipariş kayıtları burada görünür.
+            Ürünlerinden oluşan sipariş kayıtları canlı olarak güncellenir.
           </p>
 
           <div className="mt-6 grid gap-4">
