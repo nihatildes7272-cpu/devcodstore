@@ -47,11 +47,11 @@ export default function ProductsPage() {
         .from("products")
         .select("id,title,category,price,seller,status,description,created_at")
         .eq("status", "Yayında")
-        .order("created_at", { ascending: false });
+        .limit(100);
 
       const result = (await Promise.race([
         query,
-        timeoutPromise(10000),
+        timeoutPromise(60000),
       ])) as Awaited<typeof query>;
 
       if (result.error) {
