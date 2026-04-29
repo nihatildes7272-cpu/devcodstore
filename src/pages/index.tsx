@@ -166,6 +166,48 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="mb-16 grid gap-6 md:grid-cols-4">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold">
+              ✓
+            </div>
+            <h3 className="text-xl font-bold">Admin Onaylı Ürünler</h3>
+            <p className="mt-3 text-sm leading-6 text-gray-400">
+              Yayına çıkan ürünler admin kontrolünden geçer. Kullanıcı sadece onaylı ürünleri görür.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-xl font-bold">
+              ↓
+            </div>
+            <h3 className="text-xl font-bold">Dijital Teslimat</h3>
+            <p className="mt-3 text-sm leading-6 text-gray-400">
+              Satın alınan projeler kullanıcının Dosyalarım alanına tanımlanır ve güvenli indirme sağlanır.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-xl font-bold">
+              S
+            </div>
+            <h3 className="text-xl font-bold">Satıcı Paneli</h3>
+            <p className="mt-3 text-sm leading-6 text-gray-400">
+              Satıcılar ürünlerini, ZIP dosyalarını, görsellerini, satışlarını ve kazançlarını takip edebilir.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-600 text-xl font-bold">
+              ★
+            </div>
+            <h3 className="text-xl font-bold">Yorum ve Puanlama</h3>
+            <p className="mt-3 text-sm leading-6 text-gray-400">
+              Satın alan kullanıcılar ürünlere yorum ve puan verebilir. Böylece ürün kalitesi görünür olur.
+            </p>
+          </div>
+        </section>
+
         <section>
           <h3 className="text-3xl font-bold">Öne Çıkan Ürünler</h3>
           <p className="mt-2 text-gray-400">
