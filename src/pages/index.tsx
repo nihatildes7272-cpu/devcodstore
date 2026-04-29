@@ -2,37 +2,67 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-const products = [
-  {
-    title: "Modern E-Ticaret Sitesi",
-    category: "Web Site",
-    price: "₺1.499",
-    description: "Hazır yönetim paneli, ürün sayfası ve modern tasarım.",
-  },
-  {
-    title: "Kişisel Portfolio Scripti",
-    category: "Frontend",
-    price: "₺499",
-    description: "Yazılımcılar ve freelancerlar için şık portfolio sistemi.",
-  },
-  {
-    title: "Admin Panel Paketi",
-    category: "Dashboard",
-    price: "₺899",
-    description: "Satış, kullanıcı ve proje yönetimi için sade panel arayüzü.",
-  },
-];
+type Product = {
+  id: string;
+  title: string;
+  category: string;
+  price: string;
+  seller: string;
+  status: string;
+  description: string | null;
+};
+
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  account_type: "buyer" | "seller" | "admin";
+};
+
+type Order = {
+  id: string;
+  price: string;
+  status: string;
+};
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function getSession() {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+    async function loadHome() {
+      setLoading(true);
+
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user);
+
+      const [productsResult, profilesResult, ordersResult] = await Promise.all([
+        supabase
+          .from("products")
+          .select("*")
+          .eq("status", "Yayında")
+          .order("created_at", { ascending: false }),
+
+        supabase
+          .from("profiles")
+          .select("id,email,full_name,account_type"),
+
+        supabase
+          .from("orders")
+          .select("id,price,status"),
+      ]);
+
+      setProducts(productsResult.data || []);
+      setProfiles(profilesResult.data || []);
+      setOrders(ordersResult.data || []);
+
+      setLoading(false);
     }
 
-    getSession();
+    loadHome();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
@@ -43,13 +73,37 @@ export default function Home() {
     };
   }, []);
 
+  function parsePrice(price: string) {
+    const numberText = price.replace(/[^\d]/g, "");
+    return Number(numberText || 0);
+  }
+
+  function formatMoney(value: number) {
+    return new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency: "TRY",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  const totalProducts = products.length;
+  const sellerCount = profiles.filter((profile) => profile.account_type === "seller").length;
+
+  const totalRevenue = orders
+    .filter((order) => order.status !== "İade Edildi")
+    .reduce((total, order) => total + parsePrice(order.price), 0);
+
+  const featuredProducts = products.slice(0, 3);
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
         <nav className="flex items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl font-bold">devcodstore</h1>
-            <p className="text-sm text-gray-400">Kod, proje ve web sistemleri pazarı</p>
+            <p className="text-sm text-gray-400">
+              Kod, proje ve web sistemleri pazarı
+            </p>
           </div>
 
           <div className="hidden items-center gap-4 md:flex">
@@ -108,8 +162,8 @@ export default function Home() {
             </h2>
 
             <p className="mt-6 max-w-xl text-lg leading-8 text-gray-400">
-              devcodstore; web sitesi, uygulama arayüzü, admin panel ve proje dosyalarının
-              güvenli şekilde listelenip satılacağı modern bir platformdur.
+              devcodstore; web sitesi, uygulama arayüzü, admin panel ve proje
+              dosyalarının güvenli şekilde listelenip satılacağı modern bir platformdur.
             </p>
 
             <div className="mt-8 flex gap-4">
@@ -130,35 +184,48 @@ export default function Home() {
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
-            <h3 className="text-xl font-semibold">Pazar Paneli</h3>
+            <h3 className="text-xl font-semibold">Canlı Platform Paneli</h3>
+            <p className="mt-1 text-sm text-gray-400">
+              Veriler Supabase’den gerçek zamanlı olarak çekilir.
+            </p>
 
-            <div className="mt-5 grid gap-4">
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Toplam Ürün</p>
-                <p className="mt-2 text-3xl font-bold">128</p>
+            {loading ? (
+              <div className="mt-5 rounded-2xl bg-black/30 p-5 text-gray-400">
+                Veriler yükleniyor...
               </div>
+            ) : (
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Yayındaki Ürün</p>
+                  <p className="mt-2 text-3xl font-bold">{totalProducts}</p>
+                </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Satıcı Kazancı</p>
-                <p className="mt-2 text-3xl font-bold">₺42.850</p>
-              </div>
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Satıcı Sayısı</p>
+                  <p className="mt-2 text-3xl font-bold">{sellerCount}</p>
+                </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Onay Bekleyen Projeler</p>
-                <p className="mt-2 text-3xl font-bold">16</p>
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Toplam Ciro</p>
+                  <p className="mt-2 text-3xl font-bold">
+                    {formatMoney(totalRevenue)}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 
         <section>
           <h3 className="text-3xl font-bold">Öne Çıkan Ürünler</h3>
-          <p className="mt-2 text-gray-400">Kod paketleri, paneller ve hazır web sistemleri.</p>
+          <p className="mt-2 text-gray-400">
+            Veritabanındaki yayındaki ürünlerden seçilen kod paketleri.
+          </p>
 
           <div className="mt-6 grid gap-6 md:grid-cols-3">
-            {products.map((product) => (
+            {featuredProducts.map((product) => (
               <div
-                key={product.title}
+                key={product.id}
                 className="rounded-3xl border border-white/10 bg-white/5 p-6"
               >
                 <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
@@ -166,14 +233,20 @@ export default function Home() {
                 </span>
 
                 <h4 className="mt-5 text-xl font-semibold">{product.title}</h4>
+
                 <p className="mt-3 text-sm leading-6 text-gray-400">
-                  {product.description}
+                  {product.description || "Bu ürün için açıklama eklenmemiş."}
+                </p>
+
+                <p className="mt-3 text-sm text-gray-500">
+                  Satıcı: {product.seller}
                 </p>
 
                 <div className="mt-6 flex items-center justify-between">
                   <p className="text-2xl font-bold">{product.price}</p>
+
                   <a
-                    href="/products"
+                    href={`/product/${product.id}`}
                     className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black"
                   >
                     İncele
@@ -181,6 +254,12 @@ export default function Home() {
                 </div>
               </div>
             ))}
+
+            {!loading && featuredProducts.length === 0 && (
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-gray-400 md:col-span-3">
+                Henüz yayında ürün yok.
+              </div>
+            )}
           </div>
         </section>
 
@@ -188,7 +267,8 @@ export default function Home() {
           <div className="mb-8">
             <h3 className="text-3xl font-bold">devcodstore Nasıl Çalışır?</h3>
             <p className="mt-2 text-gray-400">
-              Alıcılar hazır projeleri satın alır, satıcılar kendi kod paketlerini güvenli şekilde yayınlar.
+              Alıcılar hazır projeleri satın alır, satıcılar kendi kod paketlerini
+              güvenli şekilde yayınlar.
             </p>
           </div>
 
@@ -199,7 +279,8 @@ export default function Home() {
               </div>
               <h4 className="text-xl font-bold">Projeyi Keşfet</h4>
               <p className="mt-3 text-sm leading-6 text-gray-400">
-                Kullanıcılar web sitesi, admin panel, mobil arayüz ve hazır kod paketlerini inceler.
+                Kullanıcılar web sitesi, admin panel, mobil arayüz ve hazır kod
+                paketlerini inceler.
               </p>
             </div>
 
