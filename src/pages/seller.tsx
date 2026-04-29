@@ -402,14 +402,22 @@ export default function SellerPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-              {refreshing ? (
-                <span className="text-blue-300">Yenileniyor...</span>
-              ) : lastUpdated ? (
-                <span>Son güncelleme: {lastUpdated}</span>
-              ) : (
-                <span>Canlı takip aktif</span>
-              )}
+            <div className="grid gap-2 md:text-right">
+              <button
+                onClick={() => user && loadSellerDashboard(user, false)}
+                disabled={refreshing || !user}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+              >
+                {refreshing ? "Yenileniyor..." : "Yenile"}
+              </button>
+
+              <div className="text-xs text-gray-500">
+                {lastUpdated ? (
+                  <span>Son güncelleme: {lastUpdated}</span>
+                ) : (
+                  <span>Canlı takip aktif</span>
+                )}
+              </div>
             </div>
           </div>
         </section>
