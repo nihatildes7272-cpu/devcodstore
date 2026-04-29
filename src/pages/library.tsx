@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
@@ -17,7 +16,7 @@ type Order = {
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
-  ms = 25000,
+  ms = 12000,
   message = "Sunucu yanıtı gecikti. Lütfen tekrar dene."
 ): Promise<T> {
   return Promise.race([
@@ -28,9 +27,35 @@ function withTimeout<T>(
   ]);
 }
 
-export default function LibraryPage() {
-  const router = useRouter();
+function waitForAuthEvent(ms = 4000): Promise<User | null> {
+  return new Promise((resolve) => {
+    let subscription: { unsubscribe: () => void } | null = null;
 
+    const timer = setTimeout(() => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+
+      resolve(null);
+    }, ms);
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        clearTimeout(timer);
+
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+
+        resolve(session.user);
+      }
+    });
+
+    subscription = data.subscription;
+  });
+}
+
+export default function LibraryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,31 +64,27 @@ export default function LibraryPage() {
   const [lastUpdated, setLastUpdated] = useState("");
 
   async function getActiveUser() {
-    try {
-      const sessionResult = await withTimeout(
-        supabase.auth.getSession(),
-        25000,
-        "Oturum bilgisi alınırken gecikme oldu."
-      );
+    const sessionResult = await withTimeout(
+      supabase.auth.getSession(),
+      6000,
+      "Oturum bilgisi alınırken gecikme oldu."
+    ).catch(() => null);
 
-      if (sessionResult.data.session?.user) {
-        return sessionResult.data.session.user;
-      }
-    } catch {
-      // Yedek kontrol aşağıda yapılacak.
+    if (sessionResult?.data.session?.user) {
+      return sessionResult.data.session.user;
     }
 
-    try {
-      const userResult = await withTimeout(
-        supabase.auth.getUser(),
-        25000,
-        "Kullanıcı bilgisi alınırken gecikme oldu."
-      );
+    const userResult = await withTimeout(
+      supabase.auth.getUser(),
+      6000,
+      "Kullanıcı bilgisi alınırken gecikme oldu."
+    ).catch(() => null);
 
-      return userResult.data.user || null;
-    } catch {
-      return null;
+    if (userResult?.data.user) {
+      return userResult.data.user;
     }
+
+    return waitForAuthEvent(4000);
   }
 
   async function loadOrders(showMainLoading = true) {
@@ -95,7 +116,7 @@ export default function LibraryPage() {
           .select("id,user_id,product_id,product_title,price,seller,status,created_at")
           .eq("user_id", currentUser.id)
           .order("created_at", { ascending: false }),
-        25000,
+        12000,
         "Satın alınan ürünler yüklenirken sunucu geç cevap verdi."
       );
 
