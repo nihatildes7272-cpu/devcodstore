@@ -64,6 +64,7 @@ export default function SiteNavbar() {
     { href: "/library", label: "Dosyalarım" },
     { href: "/about", label: "Hakkımızda" },
     { href: "/contact", label: "İletişim" },
+    { href: "/yasal", label: "Yasal" },
   ];
 
   return (
