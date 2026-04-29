@@ -7,6 +7,7 @@ export default function SiteNavbar() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   async function checkAdmin(currentUser: User | null) {
     if (!currentUser) {
@@ -24,6 +25,21 @@ export default function SiteNavbar() {
       data?.account_type === "admin" ||
       currentUser.email === "nihatildes1@gmail.com"
     );
+  }
+
+  async function loadNotificationCount(currentUser?: User | null) {
+    if (!currentUser) {
+      setNotificationCount(0);
+      return;
+    }
+
+    const { count } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", currentUser.id)
+      .eq("is_read", false);
+
+    setNotificationCount(count || 0);
   }
 
   async function loadCartCount(currentUser?: User | null) {
@@ -54,6 +70,8 @@ export default function SiteNavbar() {
       setUser(data.user);
       await checkAdmin(data.user);
       await loadCartCount(data.user);
+      await loadNotificationCount(data.user);
+      await loadNotificationCount(data.user);
     }
 
     loadUser();
@@ -65,6 +83,7 @@ export default function SiteNavbar() {
         setUser(currentUser);
         await checkAdmin(currentUser);
         await loadCartCount(currentUser);
+        await loadNotificationCount(currentUser);
       }
     );
 
@@ -75,11 +94,13 @@ export default function SiteNavbar() {
 
     window.addEventListener("storage", refreshCart);
     window.addEventListener("devcodstore-cart-updated", refreshCart);
+    window.addEventListener("devcodstore-notifications-updated", refreshCart);
 
     return () => {
       listener.subscription.unsubscribe();
       window.removeEventListener("storage", refreshCart);
       window.removeEventListener("devcodstore-cart-updated", refreshCart);
+      window.removeEventListener("devcodstore-notifications-updated", refreshCart);
     };
   }, []);
 
@@ -119,6 +140,15 @@ export default function SiteNavbar() {
             {link.label}
           </a>
         ))}
+
+        {user && (
+          <a
+            href="/notifications"
+            className="rounded-2xl border border-yellow-500/30 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/10"
+          >
+            🔔 Bildirimler {notificationCount > 0 ? `(${notificationCount})` : ""}
+          </a>
+        )}
 
         <a
           href="/cart"
