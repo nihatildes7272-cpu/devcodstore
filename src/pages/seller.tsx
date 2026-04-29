@@ -14,6 +14,7 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  image_url: string | null;
   created_at?: string;
 };
 
@@ -30,6 +31,21 @@ type Order = {
 };
 
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
+
+function safeImageName(fileName: string) {
+  const cleaned = fileName
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return cleaned;
+}
 
 function safeFileName(fileName: string) {
   const cleaned = fileName
@@ -80,6 +96,7 @@ export default function SellerPage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -253,9 +270,16 @@ export default function SellerPage() {
       return;
     }
 
+    if (!coverImage) {
+      setMessage("Lütfen ürün kapak görselini seç.");
+      setSaving(false);
+      return;
+    }
+
     const productId = String(Date.now());
     const sellerName = sellerNameFor(user);
     const filePath = `${user.id}/${productId}/${safeFileName(zipFile.name)}`;
+    const imagePath = `${user.id}/${productId}/${safeImageName(coverImage.name)}`;
 
     const { error: uploadError } = await supabase.storage
       .from("product-files")
@@ -270,6 +294,23 @@ export default function SellerPage() {
       return;
     }
 
+    const { error: imageUploadError } = await supabase.storage
+      .from("product-images")
+      .upload(imagePath, coverImage, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (imageUploadError) {
+      setMessage("Kapak görseli yüklenirken hata oluştu: " + imageUploadError.message);
+      setSaving(false);
+      return;
+    }
+
+    const { data: publicImage } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(imagePath);
+
     const newProduct = {
       id: productId,
       title,
@@ -280,6 +321,7 @@ export default function SellerPage() {
       status: "Onay Bekliyor",
       description,
       file_path: filePath,
+      image_url: publicImage.publicUrl,
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -296,6 +338,7 @@ export default function SellerPage() {
     setPrice("");
     setDescription("");
     setZipFile(null);
+    setCoverImage(null);
 
     await loadSellerDashboard(user, false);
     setActiveTab("products");
@@ -551,6 +594,20 @@ export default function SellerPage() {
               />
 
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
+                  required
+                  className="w-full text-sm text-gray-300"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  PNG, JPG veya WEBP formatında ürün görseli yükle.
+                </p>
+              </label>
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
                 <p className="mb-2 text-sm text-gray-400">ZIP dosyası</p>
                 <input
                   type="file"
@@ -582,6 +639,14 @@ export default function SellerPage() {
             <div className="mt-6 grid gap-4">
               {myProducts.map((product) => (
                 <div key={product.id} className="rounded-2xl bg-black/30 p-5">
+                  {product.image_url && (
+                    <img
+                      src={product.image_url}
+                      alt={product.title}
+                      className="mb-4 h-40 w-full rounded-2xl object-cover"
+                    />
+                  )}
+
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="font-semibold">{product.title}</h3>

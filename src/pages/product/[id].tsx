@@ -13,6 +13,7 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  image_url?: string | null;
   created_at?: string;
 };
 
@@ -168,8 +169,20 @@ export default function ProductDetailPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <section className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+          {product.image_url ? (
+            <img
+              src={product.image_url}
+              alt={product.title}
+              className="h-80 w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-80 w-full items-center justify-center bg-black/30 text-gray-500">
+              Ürün görseli yok
+            </div>
+          )}
+
+          <div className="flex flex-col gap-5 p-6 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap gap-3">
                 <span className="rounded-full bg-blue-500/20 px-4 py-2 text-sm text-blue-300">

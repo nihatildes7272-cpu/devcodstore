@@ -13,6 +13,7 @@ type Product = {
   status: string;
   description: string | null;
   created_at?: string;
+  image_url?: string | null;
 };
 
 type ProductsPageProps = {
@@ -63,7 +64,7 @@ export default function ProductsPage({
       const result = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,category,price,seller,status,description,created_at")
+          .select("id,title,category,price,seller,status,description,created_at,image_url")
           .eq("status", "Yayında")
           .order("created_at", { ascending: false })
           .limit(100),
@@ -266,9 +267,22 @@ export default function ProductsPage({
           {filteredProducts.map((product) => (
             <div
               key={product.id}
-              className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/[0.07]"
+              className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 transition hover:border-blue-500/40 hover:bg-white/[0.07]"
             >
-              <div className="flex items-start justify-between gap-4">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.title}
+                  className="h-56 w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-56 w-full items-center justify-center bg-black/30 text-gray-500">
+                  Görsel yok
+                </div>
+              )}
+
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-4">
                 <div>
                   <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
                     {product.category}
@@ -300,6 +314,7 @@ export default function ProductsPage({
                 >
                   İncele
                 </a>
+              </div>
               </div>
             </div>
           ))}
@@ -354,7 +369,7 @@ export const getServerSideProps: GetServerSideProps<ProductsPageProps> = async (
 
   const { data, error } = await serverSupabase
     .from("products")
-    .select("id,title,category,price,seller,status,description,created_at")
+    .select("id,title,category,price,seller,status,description,created_at,image_url")
     .eq("status", "Yayında")
     .order("created_at", { ascending: false })
     .limit(100);
