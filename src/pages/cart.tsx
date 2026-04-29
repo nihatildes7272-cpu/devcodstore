@@ -14,6 +14,15 @@ type Product = {
   file_path: string | null;
 };
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error("Sepet yüklenirken sunucu yanıtı gecikti.")), ms);
+    }),
+  ]);
+}
+
 export default function CartPage() {
   const [user, setUser] = useState<User | null>(null);
   const [cartIds, setCartIds] = useState<string[]>([]);
@@ -35,55 +44,71 @@ export default function CartPage() {
     setLoading(true);
     setMessage("");
 
-    const { data: userData } = await supabase.auth.getUser();
-    setUser(userData.user);
+    try {
+      const userResult = await withTimeout(supabase.auth.getUser(), 10000);
+      const currentUser = userResult.data.user;
+      setUser(currentUser);
 
-    let ids: string[] = [];
+      let ids: string[] = [];
 
-    if (userData.user) {
-      const { data: cartData, error: cartError } = await supabase
-        .from("cart_items")
-        .select("product_id,created_at")
-        .eq("user_id", userData.user.id)
-        .order("created_at", { ascending: true });
+      if (currentUser) {
+        const cartResult = await withTimeout(
+          supabase
+            .from("cart_items")
+            .select("product_id,created_at")
+            .eq("user_id", currentUser.id)
+            .order("created_at", { ascending: true }),
+          15000
+        );
 
-      if (cartError) {
-        setMessage("Sepet yüklenirken hata oluştu: " + cartError.message);
+        if (cartResult.error) {
+          setMessage("Sepet yüklenirken hata oluştu: " + cartResult.error.message);
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        ids = (cartResult.data || []).map((item) => item.product_id);
+      } else {
+        ids = readLocalCart();
+      }
+
+      setCartIds(ids);
+
+      if (ids.length === 0) {
         setProducts([]);
         setLoading(false);
         return;
       }
 
-      ids = (cartData || []).map((item) => item.product_id);
-    } else {
-      ids = readLocalCart();
-    }
+      const productResult = await withTimeout(
+        supabase
+          .from("products")
+          .select("id,title,category,price,seller,status,description,file_path")
+          .in("id", ids),
+        15000
+      );
 
-    setCartIds(ids);
+      if (productResult.error) {
+        setMessage("Sepet ürünleri yüklenirken hata oluştu: " + productResult.error.message);
+        setProducts([]);
+      } else {
+        const sortedProducts = ids
+          .map((id) => (productResult.data || []).find((product) => product.id === id))
+          .filter(Boolean) as Product[];
 
-    if (ids.length === 0) {
+        setProducts(sortedProducts);
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Sepet yüklenirken bilinmeyen bir hata oluştu."
+      );
       setProducts([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data, error } = await supabase
-      .from("products")
-      .select("id,title,category,price,seller,status,description,file_path")
-      .in("id", ids);
-
-    if (error) {
-      setMessage("Sepet ürünleri yüklenirken hata oluştu: " + error.message);
-      setProducts([]);
-    } else {
-      const sortedProducts = ids
-        .map((id) => (data || []).find((product) => product.id === id))
-        .filter(Boolean) as Product[];
-
-      setProducts(sortedProducts);
-    }
-
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -91,32 +116,40 @@ export default function CartPage() {
   }, []);
 
   async function removeFromCart(productId: string) {
-    if (user) {
-      await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("product_id", productId);
-    } else {
-      const updatedIds = cartIds.filter((id) => id !== productId);
-      localStorage.setItem("devcodstore_cart", JSON.stringify(updatedIds));
-      setCartIds(updatedIds);
-    }
+    try {
+      if (user) {
+        await supabase
+          .from("cart_items")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", productId);
+      } else {
+        const updatedIds = cartIds.filter((id) => id !== productId);
+        localStorage.setItem("devcodstore_cart", JSON.stringify(updatedIds));
+        setCartIds(updatedIds);
+      }
 
-    window.dispatchEvent(new Event("devcodstore-cart-updated"));
-    setProducts((current) => current.filter((product) => product.id !== productId));
+      window.dispatchEvent(new Event("devcodstore-cart-updated"));
+      setProducts((current) => current.filter((product) => product.id !== productId));
+    } catch {
+      setMessage("Ürün sepetten kaldırılamadı.");
+    }
   }
 
   async function clearCart() {
-    if (user) {
-      await supabase.from("cart_items").delete().eq("user_id", user.id);
-    } else {
-      localStorage.removeItem("devcodstore_cart");
-      setCartIds([]);
-    }
+    try {
+      if (user) {
+        await supabase.from("cart_items").delete().eq("user_id", user.id);
+      } else {
+        localStorage.removeItem("devcodstore_cart");
+        setCartIds([]);
+      }
 
-    window.dispatchEvent(new Event("devcodstore-cart-updated"));
-    setProducts([]);
+      window.dispatchEvent(new Event("devcodstore-cart-updated"));
+      setProducts([]);
+    } catch {
+      setMessage("Sepet temizlenirken hata oluştu.");
+    }
   }
 
   function parsePrice(price: string) {
@@ -161,7 +194,14 @@ export default function CartPage() {
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            {message}
+            <p>{message}</p>
+
+            <button
+              onClick={loadCartProducts}
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Tekrar Dene
+            </button>
           </div>
         )}
 
