@@ -9,46 +9,53 @@ export default function App({ Component, pageProps }: AppProps) {
   const [checkingAdmin, setCheckingAdmin] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function protectAdminRoutes() {
       if (!router.isReady) return;
 
       const isAdminRoute = router.pathname.startsWith("/admin");
 
       if (!isAdminRoute) {
-        setCheckingAdmin(false);
+        if (!cancelled) setCheckingAdmin(false);
         return;
       }
 
-      setCheckingAdmin(true);
+      if (!cancelled) setCheckingAdmin(true);
 
       const { data: userData } = await supabase.auth.getUser();
 
       if (!userData.user) {
+        if (!cancelled) setCheckingAdmin(false);
         router.replace("/login");
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
-        .select("account_type")
+        .select("account_type,email")
         .eq("id", userData.user.id)
         .maybeSingle();
 
-      const roleFromProfile = profile?.account_type;
-      const roleFromMetadata = userData.user.user_metadata?.account_type;
+      const isAdmin =
+        profile?.account_type === "admin" ||
+        userData.user.email === "nihatildes1@gmail.com";
 
-      const isAdmin = roleFromProfile === "admin" || roleFromMetadata === "admin";
-
-      if (!isAdmin) {
+      if (error || !isAdmin) {
+        if (!cancelled) setCheckingAdmin(false);
         router.replace("/not-authorized");
         return;
       }
 
-      setCheckingAdmin(false);
+      if (!cancelled) setCheckingAdmin(false);
     }
 
     protectAdminRoutes();
-  }, [router.isReady, router.pathname, router]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, router.pathname]);
 
   if (checkingAdmin) {
     return (
