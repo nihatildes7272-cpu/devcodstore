@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import SiteNavbar from "@/components/SiteNavbar";
 
 type Product = {
   id: string;
@@ -64,39 +65,7 @@ export default function ProductsPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">devcodstore Ürünler</h1>
-            <p className="text-sm text-gray-400">
-              Satışa sunulan kod ve proje paketleri
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <a
-              href="/"
-              className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold"
-            >
-              Ana Sayfa
-            </a>
-
-            {user ? (
-              <a
-                href="/account"
-                className="rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white"
-              >
-                Hesabım
-              </a>
-            ) : (
-              <a
-                href="/login"
-                className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-              >
-                Giriş Yap
-              </a>
-            )}
-          </div>
-        </nav>
+        <SiteNavbar />
 
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-3xl font-bold">Tüm Ürünler</h2>

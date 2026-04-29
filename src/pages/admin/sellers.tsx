@@ -1,3 +1,4 @@
+import SiteNavbar from "@/components/SiteNavbar";
 const sellers = [
   {
     id: "SELL-001",
@@ -29,21 +30,7 @@ export default function AdminSellersPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Satıcılar</h1>
-            <p className="text-sm text-gray-400">
-              devcodstore satıcı hesaplarını yönet
-            </p>
-          </div>
-
-          <a
-            href="/admin"
-            className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-          >
-            Admin Panele Dön
-          </a>
-        </nav>
+        <SiteNavbar />
 
         <section className="grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">

@@ -1,20 +1,9 @@
+import SiteNavbar from "@/components/SiteNavbar";
 export default function ContactPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-5xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">devcodstore</h1>
-            <p className="text-sm text-gray-400">İletişim ve destek</p>
-          </div>
-
-          <a
-            href="/"
-            className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-          >
-            Ana Sayfa
-          </a>
-        </nav>
+        <SiteNavbar />
 
         <section className="grid gap-8 md:grid-cols-[1fr_360px]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import SiteNavbar from "@/components/SiteNavbar";
 
 type Profile = {
   id: string;
@@ -114,30 +115,7 @@ export default function AdminUsersPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Kullanıcılar</h1>
-            <p className="text-sm text-gray-400">
-              Gerçek profiles tablosundaki kullanıcıları yönet
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <a
-              href="/admin"
-              className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold"
-            >
-              Admin Panel
-            </a>
-
-            <a
-              href="/"
-              className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-            >
-              Ana Sayfa
-            </a>
-          </div>
-        </nav>
+        <SiteNavbar />
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">

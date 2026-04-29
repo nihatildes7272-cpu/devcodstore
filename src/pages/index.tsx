@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import MainNavbar from "@/components/MainNavbar";
+import SiteNavbar from "@/components/SiteNavbar";
 
 type Product = {
   id: string;
@@ -99,7 +99,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <MainNavbar user={user} />
+        <SiteNavbar />
 
         <section className="grid gap-10 py-16 md:grid-cols-2 md:items-center">
           <div>

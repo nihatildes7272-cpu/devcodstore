@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import SiteNavbar from "@/components/SiteNavbar";
 
 type Product = {
   id: string;
@@ -117,21 +118,7 @@ export default function CheckoutPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-5xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">devcodstore Checkout</h1>
-            <p className="text-sm text-gray-400">
-              Siparişini kontrol et ve tamamla
-            </p>
-          </div>
-
-          <a
-            href={`/product/${product.id}`}
-            className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-          >
-            Ürüne Dön
-          </a>
-        </nav>
+        <SiteNavbar />
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">

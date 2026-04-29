@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
+import SiteNavbar from "@/components/SiteNavbar";
 
 type Product = {
   id: string;
@@ -96,30 +97,7 @@ export default function ProductDetailPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-6xl px-6 py-10">
-        <nav className="mb-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">devcodstore Ürün Detayı</h1>
-            <p className="text-sm text-gray-400">
-              Veritabanından gelen ürün bilgisi
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <a
-              href="/products"
-              className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold"
-            >
-              Ürünler
-            </a>
-
-            <a
-              href="/account"
-              className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-            >
-              Hesabım
-            </a>
-          </div>
-        </nav>
+        <SiteNavbar />
 
         <section className="grid gap-8 md:grid-cols-[1fr_360px]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
