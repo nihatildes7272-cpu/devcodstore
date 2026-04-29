@@ -14,6 +14,7 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  image_url: string | null;
 };
 
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
@@ -33,6 +34,30 @@ function safeFileName(fileName: string) {
   return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
 }
 
+function safeImageName(fileName: string) {
+  return fileName
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function getStoragePathFromPublicUrl(url: string | null) {
+  if (!url) return null;
+
+  const marker = "/product-images/";
+  const index = url.indexOf(marker);
+
+  if (index === -1) return null;
+
+  return url.slice(index + marker.length);
+}
+
 export default function SellerEditProductPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -45,6 +70,7 @@ export default function SellerEditProductPage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,6 +143,7 @@ export default function SellerEditProductPage() {
     setMessage("");
 
     let newFilePath = product.file_path;
+    let newImageUrl = product.image_url;
 
     if (zipFile) {
       const filePath = `${user.id}/${product.id}/${Date.now()}-${safeFileName(zipFile.name)}`;
@@ -141,6 +168,37 @@ export default function SellerEditProductPage() {
       }
     }
 
+    if (coverImage) {
+      const imagePath = `${user.id}/${product.id}/${Date.now()}-${safeImageName(
+        coverImage.name
+      )}`;
+
+      const { error: imageUploadError } = await supabase.storage
+        .from("product-images")
+        .upload(imagePath, coverImage, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (imageUploadError) {
+        setSaving(false);
+        setMessage("Yeni kapak görseli yüklenemedi: " + imageUploadError.message);
+        return;
+      }
+
+      const { data: publicImage } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(imagePath);
+
+      newImageUrl = publicImage.publicUrl;
+
+      const oldImagePath = getStoragePathFromPublicUrl(product.image_url);
+
+      if (oldImagePath) {
+        await supabase.storage.from("product-images").remove([oldImagePath]);
+      }
+    }
+
     const { error } = await supabase
       .from("products")
       .update({
@@ -149,6 +207,7 @@ export default function SellerEditProductPage() {
         price,
         description,
         file_path: newFilePath,
+        image_url: newImageUrl,
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -196,14 +255,26 @@ export default function SellerEditProductPage() {
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
-      <section className="mx-auto max-w-4xl px-6 py-10">
+      <section className="mx-auto max-w-5xl px-6 py-10">
         <SiteNavbar />
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h2 className="text-3xl font-bold">Proje Bilgileri</h2>
+          <h1 className="text-3xl font-bold">Ürün Düzenle</h1>
           <p className="mt-2 text-sm text-gray-400">
-            Düzenleme yaptıktan sonra ürün tekrar “Onay Bekliyor” durumuna alınır.
+            Ürün bilgilerini, kapak görselini veya ZIP dosyasını güncelle. Kaydedince ürün tekrar admin onayına düşer.
           </p>
+
+          {product?.image_url ? (
+            <img
+              src={product.image_url}
+              alt={product.title}
+              className="mt-8 h-72 w-full rounded-3xl object-cover"
+            />
+          ) : (
+            <div className="mt-8 flex h-72 w-full items-center justify-center rounded-3xl bg-black/30 text-gray-500">
+              Mevcut kapak görseli yok
+            </div>
+          )}
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <p className="text-sm text-gray-400">Mevcut ZIP dosyası</p>
@@ -246,6 +317,23 @@ export default function SellerEditProductPage() {
               required
               className="min-h-40 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
             />
+
+            <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+              <p className="mb-2 text-sm text-gray-400">
+                Yeni kapak görseli seç
+              </p>
+
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-300"
+              />
+
+              <p className="mt-2 text-xs text-gray-500">
+                Yeni görsel seçmezsen mevcut kapak görseli korunur.
+              </p>
+            </label>
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">
