@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 
@@ -12,6 +11,16 @@ type Order = {
   seller: string;
   status: string;
   created_at: string;
+};
+
+type LibraryUser = {
+  id: string;
+  email: string | null;
+};
+
+type BrowserSession = {
+  access_token: string;
+  user: LibraryUser;
 };
 
 function timeout<T>(
@@ -27,10 +36,97 @@ function timeout<T>(
   ]);
 }
 
+function getStoredSupabaseSession(): BrowserSession | null {
+  if (typeof window === "undefined") return null;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  const keys: string[] = [];
+
+  try {
+    if (supabaseUrl) {
+      const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+      keys.push(`sb-${projectRef}-auth-token`);
+    }
+  } catch {
+    // Devam et, aşağıda tüm sb-* auth key'leri aranacak.
+  }
+
+  for (let index = 0; index < window.localStorage.length; index++) {
+    const key = window.localStorage.key(index);
+
+    if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+      keys.push(key);
+    }
+  }
+
+  const uniqueKeys = Array.from(new Set(keys));
+
+  for (const key of uniqueKeys) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw);
+      const session = parsed?.currentSession || parsed?.session || parsed;
+      const user = session?.user || parsed?.user;
+
+      if (session?.access_token && user?.id) {
+        return {
+          access_token: session.access_token,
+          user: {
+            id: user.id,
+            email: user.email || null,
+          },
+        };
+      }
+    } catch {
+      // Bu key uygun değilse diğerine geç.
+    }
+  }
+
+  return null;
+}
+
+async function fetchOrdersWithToken(session: BrowserSession): Promise<Order[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase bağlantı bilgileri eksik.");
+  }
+
+  const query =
+    "/rest/v1/orders" +
+    "?select=id,user_id,product_id,product_title,price,seller,status,created_at" +
+    `&user_id=eq.${encodeURIComponent(session.user.id)}` +
+    "&order=created_at.desc";
+
+  const response = await timeout(
+    fetch(`${supabaseUrl}${query}`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    }),
+    12000,
+    "Siparişler 12 saniye içinde yüklenemedi."
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Siparişler yüklenemedi: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+}
+
 export default function LibraryPage() {
   const mountedRef = useRef(true);
 
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LibraryUser | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -38,37 +134,34 @@ export default function LibraryPage() {
   const [lastUpdated, setLastUpdated] = useState("");
   const [debugText, setDebugText] = useState("");
 
-  async function getCurrentUser() {
-    setDebugText("Oturum kontrol ediliyor...");
+  async function getCurrentSession(): Promise<BrowserSession | null> {
+    setDebugText("Tarayıcı oturumu kontrol ediliyor...");
+
+    const storedSession = getStoredSupabaseSession();
+
+    if (storedSession) {
+      setDebugText("Tarayıcı oturumu bulundu.");
+      return storedSession;
+    }
+
+    setDebugText("Supabase oturumu kontrol ediliyor...");
 
     const sessionResult = await timeout(
       supabase.auth.getSession(),
-      8000,
-      "Oturum bilgisi 8 saniye içinde alınamadı."
-    ).catch((error) => {
-      setDebugText(error instanceof Error ? error.message : "Oturum alınamadı.");
-      return null;
-    });
+      12000,
+      "Oturum bilgisi 12 saniye içinde alınamadı."
+    ).catch(() => null);
 
-    if (sessionResult?.data?.session?.user) {
-      setDebugText("Oturum bulundu.");
-      return sessionResult.data.session.user;
-    }
+    if (sessionResult?.data?.session?.access_token && sessionResult.data.session.user) {
+      setDebugText("Supabase oturumu bulundu.");
 
-    setDebugText("Oturum bulunamadı, kullanıcı bilgisi kontrol ediliyor...");
-
-    const userResult = await timeout(
-      supabase.auth.getUser(),
-      8000,
-      "Kullanıcı bilgisi 8 saniye içinde alınamadı."
-    ).catch((error) => {
-      setDebugText(error instanceof Error ? error.message : "Kullanıcı alınamadı.");
-      return null;
-    });
-
-    if (userResult?.data?.user) {
-      setDebugText("Kullanıcı bulundu.");
-      return userResult.data.user;
+      return {
+        access_token: sessionResult.data.session.access_token,
+        user: {
+          id: sessionResult.data.session.user.id,
+          email: sessionResult.data.session.user.email || null,
+        },
+      };
     }
 
     return null;
@@ -95,11 +188,11 @@ export default function LibraryPage() {
     }, 15000);
 
     try {
-      const currentUser = await getCurrentUser();
+      const session = await getCurrentSession();
 
       if (!mountedRef.current) return;
 
-      if (!currentUser) {
+      if (!session) {
         setUser(null);
         setOrders([]);
         setMessage(
@@ -108,37 +201,23 @@ export default function LibraryPage() {
         return;
       }
 
-      setUser(currentUser);
+      setUser(session.user);
       setDebugText("Siparişler yükleniyor...");
 
-      const orderResult = await timeout(
-        supabase
-          .from("orders")
-          .select("id,user_id,product_id,product_title,price,seller,status,created_at")
-          .eq("user_id", currentUser.id)
-          .order("created_at", { ascending: false }),
-        10000,
-        "Siparişler 10 saniye içinde yüklenemedi."
-      );
+      const orderData = await fetchOrdersWithToken(session);
 
       if (!mountedRef.current) return;
 
-      if (orderResult.error) {
-        setMessage("Dosyalarım yüklenirken hata oluştu: " + orderResult.error.message);
-        setOrders([]);
-        setDebugText("Orders sorgusunda hata var.");
-      } else {
-        setOrders(orderResult.data || []);
-        setMessage("");
-        setDebugText("Dosyalarım başarıyla yüklendi.");
-        setLastUpdated(
-          new Date().toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })
-        );
-      }
+      setOrders(orderData || []);
+      setMessage("");
+      setDebugText("Dosyalarım başarıyla yüklendi.");
+      setLastUpdated(
+        new Date().toLocaleTimeString("tr-TR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
     } catch (error) {
       if (!mountedRef.current) return;
 
