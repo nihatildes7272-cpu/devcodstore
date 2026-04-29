@@ -18,7 +18,7 @@ type Order = {
 function withTimeout<T>(
   promise: PromiseLike<T>,
   ms = 15000,
-  message = "Sunucu yanıtı gecikti."
+  message = "Sunucu yanıtı gecikti. Lütfen tekrar dene."
 ): Promise<T> {
   return Promise.race([
     promise as Promise<T>,
@@ -38,8 +38,8 @@ export default function LibraryPage() {
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadOrders(currentUser?: User, showLoading = true) {
-    if (showLoading) {
+  async function loadOrders(showMainLoading = true) {
+    if (showMainLoading) {
       setLoading(true);
     } else {
       setRefreshing(true);
@@ -48,39 +48,33 @@ export default function LibraryPage() {
     setMessage("");
 
     try {
-      let activeUser = currentUser;
+      const sessionResult = await withTimeout(
+        supabase.auth.getSession(),
+        8000,
+        "Oturum bilgisi alınırken gecikme oldu."
+      );
 
-      if (!activeUser) {
-        const userResult = await withTimeout(
-          supabase.auth.getUser(),
-          10000,
-          "Kullanıcı bilgisi alınırken sunucu geç cevap verdi."
-        );
+      const currentUser = sessionResult.data.session?.user;
 
-        activeUser = userResult.data.user || undefined;
-      }
-
-      if (!activeUser) {
-        setLoading(false);
-        setRefreshing(false);
+      if (!currentUser) {
         router.push("/login");
         return;
       }
 
-      setUser(activeUser);
+      setUser(currentUser);
 
       const orderResult = await withTimeout(
         supabase
           .from("orders")
-          .select("*")
-          .eq("user_id", activeUser.id)
+          .select("id,user_id,product_id,product_title,price,seller,status,created_at")
+          .eq("user_id", currentUser.id)
           .order("created_at", { ascending: false }),
         15000,
         "Satın alınan ürünler yüklenirken sunucu geç cevap verdi."
       );
 
       if (orderResult.error) {
-        setMessage("Satın alınan ürünler yüklenirken hata oluştu: " + orderResult.error.message);
+        setMessage("Dosyalarım yüklenirken hata oluştu: " + orderResult.error.message);
         setOrders([]);
       } else {
         setOrders(orderResult.data || []);
@@ -96,7 +90,7 @@ export default function LibraryPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Dosyalarım sayfası yüklenirken bilinmeyen bir hata oluştu."
+          : "Dosyalarım yüklenirken bilinmeyen bir hata oluştu."
       );
       setOrders([]);
     } finally {
@@ -106,59 +100,8 @@ export default function LibraryPage() {
   }
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
-    let cancelled = false;
-
-    async function setupLiveLibrary() {
-      const userResult = await supabase.auth.getUser();
-      const activeUser = userResult.data.user;
-
-      if (!activeUser) {
-        router.push("/login");
-        return;
-      }
-
-      if (cancelled) return;
-
-      setUser(activeUser);
-      await loadOrders(activeUser);
-
-      channel = supabase
-        .channel(`library-orders-${activeUser.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "orders",
-            filter: `user_id=eq.${activeUser.id}`,
-          },
-          () => {
-            loadOrders(activeUser, false);
-          }
-        )
-        .subscribe();
-
-      interval = setInterval(() => {
-        loadOrders(activeUser, false);
-      }, 15000);
-    }
-
-    setupLiveLibrary();
-
-    return () => {
-      cancelled = true;
-
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [router]);
+    loadOrders(true);
+  }, []);
 
   function formatDate(date: string) {
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -180,17 +123,23 @@ export default function LibraryPage() {
             <div>
               <h1 className="text-4xl font-bold">Dosyalarım</h1>
               <p className="mt-3 text-gray-400">
-                Satın aldığın proje ve kod paketleri burada canlı olarak yenilenir.
+                Satın aldığın proje ve kod paketleri burada görünür.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-              {refreshing ? (
-                <span className="text-blue-300">Yenileniyor...</span>
-              ) : lastUpdated ? (
-                <span>Son güncelleme: {lastUpdated}</span>
-              ) : (
-                <span>Canlı takip aktif</span>
+            <div className="grid gap-2 md:text-right">
+              <button
+                onClick={() => loadOrders(false)}
+                disabled={refreshing}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {refreshing ? "Yenileniyor..." : "Yenile"}
+              </button>
+
+              {lastUpdated && (
+                <p className="text-xs text-gray-500">
+                  Son güncelleme: {lastUpdated}
+                </p>
               )}
             </div>
           </div>
@@ -201,7 +150,7 @@ export default function LibraryPage() {
             <p>{message}</p>
 
             <button
-              onClick={() => loadOrders(user || undefined)}
+              onClick={() => loadOrders(true)}
               className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
             >
               Tekrar Dene
@@ -210,9 +159,9 @@ export default function LibraryPage() {
         )}
 
         {loading ? (
-          <main className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             Dosyaların yükleniyor...
-          </main>
+          </section>
         ) : (
           <>
             <section className="grid gap-6 md:grid-cols-3">
@@ -229,7 +178,7 @@ export default function LibraryPage() {
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Canlı Durum</p>
+                <p className="text-sm text-gray-400">Erişim Durumu</p>
                 <h2 className="mt-3 text-4xl font-bold text-green-300">Aktif</h2>
               </div>
             </section>
@@ -237,7 +186,7 @@ export default function LibraryPage() {
             <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
               <h2 className="text-3xl font-bold">Satın Alınanlar</h2>
               <p className="mt-2 text-gray-400">
-                Yeni sipariş oluşturulduğunda bu liste otomatik yenilenir.
+                Satın aldığın ürünler orders tablosundan gelir.
               </p>
 
               <div className="mt-8 grid gap-5">
@@ -305,7 +254,7 @@ export default function LibraryPage() {
                   <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center">
                     <h3 className="text-2xl font-bold">Henüz satın alma yok</h3>
                     <p className="mt-2 text-gray-400">
-                      Bir ürün satın aldığında burada canlı olarak görünecek.
+                      Bir ürün satın aldığında burada görünecek.
                     </p>
 
                     <a
