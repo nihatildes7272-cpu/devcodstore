@@ -9,6 +9,7 @@ type Product = {
   category: string;
   price: string;
   seller: string;
+  seller_id: string | null;
   status: string;
   description: string | null;
 };
@@ -73,6 +74,7 @@ export default function CheckoutPage() {
       product_title: product.title,
       price: product.price,
       seller: product.seller,
+      seller_id: product.seller_id,
       status: "Tamamlandı",
     });
 

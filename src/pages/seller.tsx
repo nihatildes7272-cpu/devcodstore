@@ -16,6 +16,18 @@ type Product = {
   created_at?: string;
 };
 
+type Order = {
+  id: string;
+  user_id: string | null;
+  product_id: string | null;
+  product_title: string;
+  price: string;
+  seller: string;
+  seller_id: string | null;
+  status: string;
+  created_at: string;
+};
+
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
 
 function safeFileName(fileName: string) {
@@ -38,6 +50,7 @@ export default function SellerPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [loadingUser, setLoadingUser] = useState(true);
 
   const [title, setTitle] = useState("");
@@ -73,6 +86,30 @@ export default function SellerPage() {
     setMyProducts(filteredProducts);
   }
 
+  async function loadMyOrders(currentUser: User) {
+    const sellerName =
+      currentUser.user_metadata?.full_name ||
+      currentUser.email ||
+      "Bilinmeyen Satıcı";
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage("Satışların yüklenirken hata oluştu: " + error.message);
+      setMyOrders([]);
+      return;
+    }
+
+    const filteredOrders = (data || []).filter((order) => {
+      return order.seller_id === currentUser.id || order.seller === sellerName;
+    });
+
+    setMyOrders(filteredOrders);
+  }
+
   useEffect(() => {
     async function checkUser() {
       const { data } = await supabase.auth.getUser();
@@ -84,6 +121,7 @@ export default function SellerPage() {
 
       setUser(data.user);
       await loadMyProducts(data.user);
+      await loadMyOrders(data.user);
       setLoadingUser(false);
     }
 
@@ -184,6 +222,29 @@ export default function SellerPage() {
     setMessage("Ürün yayından kaldırıldı.");
   }
 
+  function parsePrice(price: string) {
+    const numberText = price.replace(/[^\d]/g, "");
+    return Number(numberText || 0);
+  }
+
+  function formatMoney(value: number) {
+    return new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency: "TRY",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleDateString("tr-TR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   function statusClass(status: string) {
     if (status === "Yayında") {
       return "w-fit rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
@@ -211,6 +272,12 @@ export default function SellerPage() {
   const pendingCount = myProducts.filter((item) => item.status === "Onay Bekliyor").length;
   const liveCount = myProducts.filter((item) => item.status === "Yayında").length;
   const rejectedCount = myProducts.filter((item) => item.status === "Reddedildi").length;
+
+  const completedOrders = myOrders.filter((order) => order.status === "Tamamlandı");
+  const totalSales = completedOrders.length;
+  const totalRevenue = completedOrders.reduce((total, order) => {
+    return total + parsePrice(order.price);
+  }, 0);
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -240,7 +307,7 @@ export default function SellerPage() {
           </div>
         </nav>
 
-        <section className="grid gap-6 md:grid-cols-4">
+        <section className="grid gap-6 md:grid-cols-6">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Satıcı</p>
             <h2 className="mt-3 break-all text-xl font-bold">
@@ -261,6 +328,16 @@ export default function SellerPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Reddedildi</p>
             <h2 className="mt-3 text-4xl font-bold text-red-300">{rejectedCount}</h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Satış</p>
+            <h2 className="mt-3 text-4xl font-bold text-green-300">{totalSales}</h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Kazanç</p>
+            <h2 className="mt-3 text-3xl font-bold">{formatMoney(totalRevenue)}</h2>
           </div>
         </section>
 
@@ -403,6 +480,54 @@ export default function SellerPage() {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <h2 className="text-2xl font-bold">Satışlarım</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Ürünlerinden oluşan gerçek sipariş kayıtları burada görünür.
+          </p>
+
+          <div className="mt-6 grid gap-4">
+            {myOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex flex-col gap-4 rounded-2xl bg-black/30 p-5 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <h3 className="text-xl font-semibold">{order.product_title}</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Sipariş No: {order.id}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Tarih: {formatDate(order.created_at)}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Durum: {order.status}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 md:text-right">
+                  <p className="text-2xl font-bold">{order.price}</p>
+
+                  {order.product_id && (
+                    <a
+                      href={`/product/${order.product_id}`}
+                      className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                    >
+                      Ürünü Aç
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {myOrders.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-center text-gray-400">
+                Henüz satış kaydı yok.
+              </div>
+            )}
           </div>
         </section>
       </section>
