@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 
@@ -23,40 +22,56 @@ const sortOptions = [
   { value: "title_az", label: "A-Z" },
 ];
 
+function timeoutPromise(ms: number) {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Sunucu yanıtı gecikti. Lütfen tekrar dene."));
+    }, ms);
+  });
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
   const [sortBy, setSortBy] = useState("newest");
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    async function loadPage() {
-      setLoading(true);
-      setMessage("");
+  async function loadProducts() {
+    setLoading(true);
+    setMessage("");
 
-      const { data: userData } = await supabase.auth.getUser();
-      setUser(userData.user);
-
-      const { data, error } = await supabase
+    try {
+      const query = supabase
         .from("products")
-        .select("*")
+        .select("id,title,category,price,seller,status,description,created_at")
         .eq("status", "Yayında")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        setMessage("Ürünler yüklenirken hata oluştu: " + error.message);
+      const result = (await Promise.race([
+        query,
+        timeoutPromise(10000),
+      ])) as Awaited<typeof query>;
+
+      if (result.error) {
+        setMessage("Ürünler yüklenirken hata oluştu: " + result.error.message);
         setProducts([]);
       } else {
-        setProducts(data || []);
+        setProducts(result.data || []);
       }
-
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Ürünler yüklenemedi.";
+      setMessage(errorMessage);
+      setProducts([]);
+    } finally {
       setLoading(false);
     }
+  }
 
-    loadPage();
+  useEffect(() => {
+    loadProducts();
   }, []);
 
   function parsePrice(price: string) {
@@ -165,7 +180,14 @@ export default function ProductsPage() {
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            {message}
+            <p>{message}</p>
+
+            <button
+              onClick={loadProducts}
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              Tekrar Dene
+            </button>
           </div>
         )}
 
@@ -234,17 +256,26 @@ export default function ProductsPage() {
 
             {filteredProducts.length === 0 && (
               <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-                <h3 className="text-2xl font-bold">Ürün bulunamadı</h3>
+                <h3 className="text-2xl font-bold">Yayında ürün bulunamadı</h3>
                 <p className="mt-2 text-gray-400">
-                  Farklı bir kelime, kategori veya sıralama deneyebilirsin.
+                  Ürünlerin admin panelinden “Yayında” durumuna alındığından emin ol.
                 </p>
 
-                <button
-                  onClick={clearFilters}
-                  className="mt-6 rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
-                >
-                  Filtreleri Temizle
-                </button>
+                <div className="mt-6 flex justify-center gap-3">
+                  <button
+                    onClick={clearFilters}
+                    className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
+                  >
+                    Filtreleri Temizle
+                  </button>
+
+                  <button
+                    onClick={loadProducts}
+                    className="rounded-2xl border border-white/15 px-6 py-3 font-semibold hover:bg-white/10"
+                  >
+                    Yenile
+                  </button>
+                </div>
               </div>
             )}
           </>
