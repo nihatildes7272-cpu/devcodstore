@@ -110,6 +110,7 @@ export default function SiteNavbar() {
     { href: "/library", label: "Dosyalarım" },
     { href: "/about", label: "Hakkımızda" },
     { href: "/contact", label: "İletişim" },
+    { href: "/support", label: "Destek" },
     { href: "/yasal", label: "Yasal" },
   ];
 
