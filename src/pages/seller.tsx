@@ -62,6 +62,10 @@ function withTimeout<T>(
 export default function SellerPage() {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<"upload" | "products" | "sales">(
+    "upload"
+  );
+
   const [user, setUser] = useState<User | null>(null);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [myOrders, setMyOrders] = useState<Order[]>([]);
@@ -293,6 +297,7 @@ export default function SellerPage() {
     setZipFile(null);
 
     await loadSellerDashboard(user, false);
+    setActiveTab("products");
     setMessage("Ürün ve ZIP dosyası başarıyla gönderildi. Admin onayı bekliyor.");
   }
 
@@ -377,6 +382,12 @@ export default function SellerPage() {
     return total + parsePrice(order.price);
   }, 0);
 
+  const tabs = [
+    { key: "upload", label: "Yeni Ürün Yükle" },
+    { key: "products", label: `Ürünlerim (${myProducts.length})` },
+    { key: "sales", label: `Satışlarım (${myOrders.length})` },
+  ] as const;
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
@@ -387,7 +398,7 @@ export default function SellerPage() {
             <div>
               <h1 className="text-4xl font-bold">Satıcı Paneli</h1>
               <p className="mt-3 text-gray-400">
-                Projelerini yükle, satışlarını ve ürün durumlarını canlı takip et.
+                Ürün yükle, ürün durumlarını takip et ve satışlarını yönet.
               </p>
             </div>
 
@@ -447,8 +458,26 @@ export default function SellerPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-8 md:grid-cols-[1fr_520px]">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
+          <div className="grid gap-3 md:grid-cols-3">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={
+                  activeTab === tab.key
+                    ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
+                    : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {activeTab === "upload" && (
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-bold">Yeni Proje Yükle</h2>
             <p className="mt-2 text-sm text-gray-400">
               Ürün ve ZIP dosyası admin onayına gönderilir.
@@ -508,12 +537,14 @@ export default function SellerPage() {
                 {saving ? "Gönderiliyor..." : "Projeyi Gönder"}
               </button>
             </form>
-          </div>
+          </section>
+        )}
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-bold">Eklediğim Ürünler</h2>
+        {activeTab === "products" && (
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+            <h2 className="text-2xl font-bold">Ürünlerim</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Admin onay durumları canlı olarak yenilenir.
+              Eklediğin ürünleri ve admin onay durumlarını buradan takip edebilirsin.
             </p>
 
             <div className="mt-6 grid gap-4">
@@ -563,13 +594,6 @@ export default function SellerPage() {
                     >
                       Yayından Kaldır
                     </button>
-
-                    <a
-                      href="/admin/products"
-                      className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold"
-                    >
-                      Admin Onayına Bak
-                    </a>
                   </div>
                 </div>
               ))}
@@ -580,56 +604,58 @@ export default function SellerPage() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Satışlarım</h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Ürünlerinden oluşan sipariş kayıtları canlı olarak güncellenir.
-          </p>
+        {activeTab === "sales" && (
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+            <h2 className="text-2xl font-bold">Satışlarım</h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Ürünlerinden oluşan sipariş kayıtları burada görünür.
+            </p>
 
-          <div className="mt-6 grid gap-4">
-            {myOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex flex-col gap-4 rounded-2xl bg-black/30 p-5 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <h3 className="text-xl font-semibold">{order.product_title}</h3>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Sipariş No: {order.id}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Tarih: {formatDate(order.created_at)}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Durum: {order.status}
-                  </p>
+            <div className="mt-6 grid gap-4">
+              {myOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex flex-col gap-4 rounded-2xl bg-black/30 p-5 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <h3 className="text-xl font-semibold">{order.product_title}</h3>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Sipariş No: {order.id}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Tarih: {formatDate(order.created_at)}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Durum: {order.status}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:text-right">
+                    <p className="text-2xl font-bold">{order.price}</p>
+
+                    {order.product_id && (
+                      <a
+                        href={`/product/${order.product_id}`}
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                      >
+                        Ürünü Aç
+                      </a>
+                    )}
+                  </div>
                 </div>
+              ))}
 
-                <div className="grid gap-3 md:text-right">
-                  <p className="text-2xl font-bold">{order.price}</p>
-
-                  {order.product_id && (
-                    <a
-                      href={`/product/${order.product_id}`}
-                      className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
-                    >
-                      Ürünü Aç
-                    </a>
-                  )}
+              {myOrders.length === 0 && (
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-center text-gray-400">
+                  Henüz satış kaydı yok.
                 </div>
-              </div>
-            ))}
-
-            {myOrders.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-6 text-center text-gray-400">
-                Henüz satış kaydı yok.
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+          </section>
+        )}
       </section>
     </main>
   );
