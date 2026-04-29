@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
+import type { User } from "@supabase/supabase-js";
 
 type Product = {
   id: string;
@@ -14,12 +15,13 @@ type Product = {
 };
 
 export default function CartPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [cartIds, setCartIds] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  function readCart() {
+  function readLocalCart() {
     try {
       const rawCart = localStorage.getItem("devcodstore_cart");
       const ids = rawCart ? JSON.parse(rawCart) : [];
@@ -33,7 +35,30 @@ export default function CartPage() {
     setLoading(true);
     setMessage("");
 
-    const ids = readCart();
+    const { data: userData } = await supabase.auth.getUser();
+    setUser(userData.user);
+
+    let ids: string[] = [];
+
+    if (userData.user) {
+      const { data: cartData, error: cartError } = await supabase
+        .from("cart_items")
+        .select("product_id,created_at")
+        .eq("user_id", userData.user.id)
+        .order("created_at", { ascending: true });
+
+      if (cartError) {
+        setMessage("Sepet yüklenirken hata oluştu: " + cartError.message);
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      ids = (cartData || []).map((item) => item.product_id);
+    } else {
+      ids = readLocalCart();
+    }
+
     setCartIds(ids);
 
     if (ids.length === 0) {
@@ -65,18 +90,32 @@ export default function CartPage() {
     loadCartProducts();
   }, []);
 
-  function removeFromCart(productId: string) {
-    const updatedIds = cartIds.filter((id) => id !== productId);
-    localStorage.setItem("devcodstore_cart", JSON.stringify(updatedIds));
+  async function removeFromCart(productId: string) {
+    if (user) {
+      await supabase
+        .from("cart_items")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("product_id", productId);
+    } else {
+      const updatedIds = cartIds.filter((id) => id !== productId);
+      localStorage.setItem("devcodstore_cart", JSON.stringify(updatedIds));
+      setCartIds(updatedIds);
+    }
+
     window.dispatchEvent(new Event("devcodstore-cart-updated"));
-    setCartIds(updatedIds);
     setProducts((current) => current.filter((product) => product.id !== productId));
   }
 
-  function clearCart() {
-    localStorage.removeItem("devcodstore_cart");
+  async function clearCart() {
+    if (user) {
+      await supabase.from("cart_items").delete().eq("user_id", user.id);
+    } else {
+      localStorage.removeItem("devcodstore_cart");
+      setCartIds([]);
+    }
+
     window.dispatchEvent(new Event("devcodstore-cart-updated"));
-    setCartIds([]);
     setProducts([]);
   }
 
@@ -107,7 +146,9 @@ export default function CartPage() {
             <div>
               <h1 className="text-4xl font-bold">Sepetim</h1>
               <p className="mt-2 text-gray-400">
-                Satın almak istediğin ürünleri buradan yönetebilirsin.
+                {user
+                  ? "Bu sepet hesabına bağlıdır."
+                  : "Giriş yapmadığın için bu sepet sadece bu cihazda tutulur."}
               </p>
             </div>
 

@@ -62,11 +62,28 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [router.isReady, id]);
 
-  function addToCart(productId: string) {
+  async function addToCart(productId: string) {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (userData.user) {
+        const { error } = await supabase.from("cart_items").upsert({
+          user_id: userData.user.id,
+          product_id: productId,
+        });
+
+        if (error) {
+          alert("Sepete eklenirken hata oluştu: " + error.message);
+          return;
+        }
+
+        window.dispatchEvent(new Event("devcodstore-cart-updated"));
+        router.push("/cart");
+        return;
+      }
+
       const rawCart = localStorage.getItem("devcodstore_cart");
       const cartItems = rawCart ? JSON.parse(rawCart) : [];
-
       const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
 
       if (!safeCartItems.includes(productId)) {

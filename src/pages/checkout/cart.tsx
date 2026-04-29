@@ -49,7 +49,26 @@ export default function CartCheckoutPage() {
 
       setUser(userData.user);
 
-      const ids = readCart();
+      let ids: string[] = [];
+
+      if (userData.user) {
+        const { data: cartData, error: cartError } = await supabase
+          .from("cart_items")
+          .select("product_id,created_at")
+          .eq("user_id", userData.user.id)
+          .order("created_at", { ascending: true });
+
+        if (cartError) {
+          setMessage("Hesap sepeti yüklenemedi: " + cartError.message);
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        ids = (cartData || []).map((item) => item.product_id);
+      } else {
+        ids = readCart();
+      }
 
       if (ids.length === 0) {
         setProducts([]);
@@ -129,7 +148,12 @@ export default function CartCheckoutPage() {
       return;
     }
 
-    localStorage.removeItem("devcodstore_cart");
+    if (user) {
+      await supabase.from("cart_items").delete().eq("user_id", user.id);
+    } else {
+      localStorage.removeItem("devcodstore_cart");
+    }
+
     window.dispatchEvent(new Event("devcodstore-cart-updated"));
 
     router.push("/success/cart");
