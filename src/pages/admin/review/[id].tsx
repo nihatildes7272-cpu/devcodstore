@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import AdminNavbar from "@/components/AdminNavbar";
 
 const projects = [
   {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import SiteNavbar from "@/components/SiteNavbar";
+import AdminNavbar from "@/components/AdminNavbar";
 
 type Product = {
   id: string;
@@ -169,7 +169,7 @@ export default function AdminReportsPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <SiteNavbar />
+        <AdminNavbar />
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">

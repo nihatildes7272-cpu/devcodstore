@@ -1,3 +1,4 @@
+import AdminNavbar from "@/components/AdminNavbar";
 export default function ApprovedPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#070A12] px-6 text-white">

@@ -1,4 +1,4 @@
-import SiteNavbar from "@/components/SiteNavbar";
+import AdminNavbar from "@/components/AdminNavbar";
 const sellers = [
   {
     id: "SELL-001",
@@ -30,7 +30,7 @@ export default function AdminSellersPage() {
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
-        <SiteNavbar />
+        <AdminNavbar />
 
         <section className="grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">

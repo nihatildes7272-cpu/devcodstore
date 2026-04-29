@@ -5,7 +5,26 @@ import { supabase } from "@/lib/supabase";
 export default function SiteNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+
+  async function checkAdmin(currentUser: User | null) {
+    if (!currentUser) {
+      setIsAdmin(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("account_type")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+    setIsAdmin(
+      data?.account_type === "admin" ||
+      currentUser.email === "nihatildes1@gmail.com"
+    );
+  }
 
   async function loadCartCount(currentUser?: User | null) {
     if (currentUser) {
@@ -33,15 +52,21 @@ export default function SiteNavbar() {
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
+      await checkAdmin(data.user);
       await loadCartCount(data.user);
     }
 
     loadUser();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      await loadCartCount(session?.user ?? null);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+
+        setUser(currentUser);
+        await checkAdmin(currentUser);
+        await loadCartCount(currentUser);
+      }
+    );
 
     async function refreshCart() {
       const { data } = await supabase.auth.getUser();
@@ -118,12 +143,14 @@ export default function SiteNavbar() {
           </a>
         )}
 
-        <a
-          href="/admin"
-          className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold hover:bg-white/10"
-        >
-          Admin
-        </a>
+        {isAdmin && (
+          <a
+            href="/admin"
+            className="rounded-2xl border border-purple-500/30 px-5 py-2 text-sm font-semibold text-purple-300 hover:bg-purple-500/10"
+          >
+            Admin
+          </a>
+        )}
       </div>
 
       <button
@@ -169,12 +196,14 @@ export default function SiteNavbar() {
               </a>
             )}
 
-            <a
-              href="/admin"
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
-            >
-              Admin
-            </a>
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm font-semibold text-purple-300"
+              >
+                Admin
+              </a>
+            )}
           </div>
         </div>
       )}
