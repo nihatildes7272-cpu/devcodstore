@@ -62,6 +62,25 @@ export default function ProductDetailPage() {
     loadProduct();
   }, [router.isReady, id]);
 
+  function addToCart(productId: string) {
+    try {
+      const rawCart = localStorage.getItem("devcodstore_cart");
+      const cartItems = rawCart ? JSON.parse(rawCart) : [];
+
+      const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
+
+      if (!safeCartItems.includes(productId)) {
+        safeCartItems.push(productId);
+      }
+
+      localStorage.setItem("devcodstore_cart", JSON.stringify(safeCartItems));
+      window.dispatchEvent(new Event("devcodstore-cart-updated"));
+      router.push("/cart");
+    } catch {
+      alert("Sepete eklenirken hata oluştu.");
+    }
+  }
+
   function formatDate(date?: string) {
     if (!date) return "Tarih yok";
 
@@ -254,12 +273,13 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="mt-8 grid gap-3">
-              <a
-                href={`/cart/${product.id}`}
+              <button
+                type="button"
+                onClick={() => addToCart(product.id)}
                 className="rounded-2xl bg-blue-600 px-5 py-4 text-center font-semibold hover:bg-blue-500"
               >
                 Sepete Ekle
-              </a>
+              </button>
 
               <a
                 href={`/checkout/${product.id}`}

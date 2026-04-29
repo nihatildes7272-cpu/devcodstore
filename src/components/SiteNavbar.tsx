@@ -5,6 +5,19 @@ import { supabase } from "@/lib/supabase";
 export default function SiteNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [cartCount, setCartCount] = useState(0);
+
+  function loadCartCount() {
+    if (typeof window === "undefined") return;
+
+    try {
+      const rawCart = localStorage.getItem("devcodstore_cart");
+      const cartItems = rawCart ? JSON.parse(rawCart) : [];
+      setCartCount(Array.isArray(cartItems) ? cartItems.length : 0);
+    } catch {
+      setCartCount(0);
+    }
+  }
 
   useEffect(() => {
     async function loadUser() {
@@ -13,13 +26,19 @@ export default function SiteNavbar() {
     }
 
     loadUser();
+    loadCartCount();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
+    window.addEventListener("storage", loadCartCount);
+    window.addEventListener("devcodstore-cart-updated", loadCartCount);
+
     return () => {
       listener.subscription.unsubscribe();
+      window.removeEventListener("storage", loadCartCount);
+      window.removeEventListener("devcodstore-cart-updated", loadCartCount);
     };
   }, []);
 
@@ -50,6 +69,18 @@ export default function SiteNavbar() {
             {link.label}
           </a>
         ))}
+
+        <a
+          href="/cart"
+          className="relative rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold hover:bg-white/10"
+        >
+          🛒 Sepet
+          {cartCount > 0 && (
+            <span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">
+              {cartCount}
+            </span>
+          )}
+        </a>
 
         {user ? (
           <a
@@ -94,6 +125,13 @@ export default function SiteNavbar() {
                 {link.label}
               </a>
             ))}
+
+            <a
+              href="/cart"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
+            >
+              🛒 Sepet {cartCount > 0 ? `(${cartCount})` : ""}
+            </a>
 
             {user ? (
               <a
