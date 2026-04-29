@@ -16,6 +16,15 @@ type Product = {
   file_path: string | null;
 };
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 15000, message = "Sunucu yanıtı gecikti.") {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 export default function CartCheckoutPage() {
   const router = useRouter();
 
@@ -25,7 +34,7 @@ export default function CartCheckoutPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  function readCart() {
+  function readLocalCart() {
     try {
       const rawCart = localStorage.getItem("devcodstore_cart");
       const ids = rawCart ? JSON.parse(rawCart) : [];
@@ -35,39 +44,54 @@ export default function CartCheckoutPage() {
     }
   }
 
-  useEffect(() => {
-    async function loadCheckout() {
-      setLoading(true);
-      setMessage("");
+  async function loadCheckout() {
+    setLoading(true);
+    setMessage("");
 
-      const { data: userData } = await supabase.auth.getUser();
+    try {
+      const userResult = await withTimeout(
+        supabase.auth.getUser(),
+        10000,
+        "Kullanıcı bilgisi alınırken sunucu geç cevap verdi."
+      );
 
-      if (!userData.user) {
+      const currentUser = userResult.data.user;
+
+      if (!currentUser) {
+        setLoading(false);
         router.push("/login");
         return;
       }
 
-      setUser(userData.user);
+      setUser(currentUser);
 
       let ids: string[] = [];
 
-      if (userData.user) {
-        const { data: cartData, error: cartError } = await supabase
+      const cartResult = await withTimeout(
+        supabase
           .from("cart_items")
           .select("product_id,created_at")
-          .eq("user_id", userData.user.id)
-          .order("created_at", { ascending: true });
+          .eq("user_id", currentUser.id)
+          .order("created_at", { ascending: true }),
+        15000,
+        "Hesap sepeti yüklenirken sunucu geç cevap verdi."
+      );
 
-        if (cartError) {
-          setMessage("Hesap sepeti yüklenemedi: " + cartError.message);
-          setProducts([]);
-          setLoading(false);
-          return;
+      if (cartResult.error) {
+        setMessage("Hesap sepeti yüklenemedi: " + cartResult.error.message);
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      ids = (cartResult.data || []).map((item) => item.product_id);
+
+      if (ids.length === 0) {
+        const localIds = readLocalCart();
+
+        if (localIds.length > 0) {
+          ids = localIds;
         }
-
-        ids = (cartData || []).map((item) => item.product_id);
-      } else {
-        ids = readCart();
       }
 
       if (ids.length === 0) {
@@ -76,27 +100,40 @@ export default function CartCheckoutPage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,title,category,price,seller,seller_id,status,description,file_path")
-        .in("id", ids);
+      const productResult = await withTimeout(
+        supabase
+          .from("products")
+          .select("id,title,category,price,seller,seller_id,status,description,file_path")
+          .in("id", ids),
+        15000,
+        "Sepet ürünleri yüklenirken sunucu geç cevap verdi."
+      );
 
-      if (error) {
-        setMessage("Sepet ürünleri yüklenemedi: " + error.message);
+      if (productResult.error) {
+        setMessage("Sepet ürünleri yüklenemedi: " + productResult.error.message);
         setProducts([]);
       } else {
         const sortedProducts = ids
-          .map((id) => (data || []).find((product) => product.id === id))
+          .map((id) => (productResult.data || []).find((product) => product.id === id))
           .filter(Boolean) as Product[];
 
         setProducts(sortedProducts);
       }
-
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Sepet ödeme ekranı yüklenirken bilinmeyen bir hata oluştu."
+      );
+      setProducts([]);
+    } finally {
       setLoading(false);
     }
+  }
 
+  useEffect(() => {
     loadCheckout();
-  }, [router]);
+  }, []);
 
   function parsePrice(price: string) {
     const numberText = price.replace(/[^\d]/g, "");
@@ -129,42 +166,44 @@ export default function CartCheckoutPage() {
     setSaving(true);
     setMessage("");
 
-    const orders = products.map((product) => ({
-      user_id: user.id,
-      product_id: product.id,
-      product_title: product.title,
-      price: product.price,
-      seller: product.seller,
-      seller_id: product.seller_id,
-      status: "Tamamlandı",
-    }));
+    try {
+      const orders = products.map((product) => ({
+        user_id: user.id,
+        product_id: product.id,
+        product_title: product.title,
+        price: product.price,
+        seller: product.seller,
+        seller_id: product.seller_id,
+        status: "Tamamlandı",
+      }));
 
-    const { error } = await supabase.from("orders").insert(orders);
+      const orderResult = await withTimeout(
+        supabase.from("orders").insert(orders),
+        20000,
+        "Sipariş oluşturulurken sunucu geç cevap verdi."
+      );
 
-    setSaving(false);
+      if (orderResult.error) {
+        setMessage("Sipariş oluşturulamadı: " + orderResult.error.message);
+        setSaving(false);
+        return;
+      }
 
-    if (error) {
-      setMessage("Sipariş oluşturulamadı: " + error.message);
-      return;
-    }
-
-    if (user) {
       await supabase.from("cart_items").delete().eq("user_id", user.id);
-    } else {
       localStorage.removeItem("devcodstore_cart");
+
+      window.dispatchEvent(new Event("devcodstore-cart-updated"));
+
+      setSaving(false);
+      router.push("/success/cart");
+    } catch (error) {
+      setSaving(false);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Sipariş oluşturulurken bilinmeyen bir hata oluştu."
+      );
     }
-
-    window.dispatchEvent(new Event("devcodstore-cart-updated"));
-
-    router.push("/success/cart");
-  }
-
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
-        Sepet ödeme ekranı yükleniyor...
-      </main>
-    );
   }
 
   return (
@@ -175,19 +214,31 @@ export default function CartCheckoutPage() {
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
           <h1 className="text-4xl font-bold">Sepet Ödemesi</h1>
           <p className="mt-3 text-gray-400">
-            Sepetindeki tüm ürünleri tek işlemde siparişe dönüştür.
+            Sepetindeki ürünleri tek işlemde siparişe dönüştür.
           </p>
         </section>
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            {message}
+            <p>{message}</p>
+
+            <button
+              onClick={loadCheckout}
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Tekrar Dene
+            </button>
           </div>
         )}
 
-        {products.length === 0 ? (
+        {loading ? (
           <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h2 className="text-3xl font-bold">Sepetin Boş</h2>
+            Sepet ödeme ekranı yükleniyor...
+          </section>
+        ) : products.length === 0 ? (
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+            <div className="text-6xl">🛒</div>
+            <h2 className="mt-5 text-3xl font-bold">Sepetin Boş</h2>
             <p className="mt-3 text-gray-400">
               Ödeme yapmak için önce sepete ürün eklemelisin.
             </p>
@@ -248,7 +299,7 @@ export default function CartCheckoutPage() {
               </div>
 
               <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                Şimdilik demo ödeme sistemi. Butona basınca her ürün için orders tablosuna sipariş kaydı oluşur.
+                Şimdilik demo ödeme sistemi. PayTR onayından sonra gerçek ödeme buraya bağlanacak.
               </div>
 
               <button
