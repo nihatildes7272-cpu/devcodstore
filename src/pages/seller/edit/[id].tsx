@@ -12,9 +12,25 @@ type Product = {
   seller_id: string | null;
   status: string;
   description: string | null;
+  file_path: string | null;
 };
 
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
+
+function safeFileName(fileName: string) {
+  const cleaned = fileName
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
+}
 
 export default function SellerEditProductPage() {
   const router = useRouter();
@@ -27,6 +43,7 @@ export default function SellerEditProductPage() {
   const [category, setCategory] = useState("Web Site");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [zipFile, setZipFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,6 +115,31 @@ export default function SellerEditProductPage() {
     setSaving(true);
     setMessage("");
 
+    let newFilePath = product.file_path;
+
+    if (zipFile) {
+      const filePath = `${user.id}/${product.id}/${Date.now()}-${safeFileName(zipFile.name)}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-files")
+        .upload(filePath, zipFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setSaving(false);
+        setMessage("Yeni ZIP dosyası yüklenemedi: " + uploadError.message);
+        return;
+      }
+
+      newFilePath = filePath;
+
+      if (product.file_path) {
+        await supabase.storage.from("product-files").remove([product.file_path]);
+      }
+    }
+
     const { error } = await supabase
       .from("products")
       .update({
@@ -105,6 +147,7 @@ export default function SellerEditProductPage() {
         category,
         price,
         description,
+        file_path: newFilePath,
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -117,6 +160,11 @@ export default function SellerEditProductPage() {
     }
 
     router.push("/seller");
+  }
+
+  function shownFileName(path: string | null) {
+    if (!path) return "Dosya yok";
+    return path.split("/").pop() || "proje-dosyasi.zip";
   }
 
   if (loading) {
@@ -152,7 +200,7 @@ export default function SellerEditProductPage() {
           <div>
             <h1 className="text-2xl font-bold">Ürün Düzenle</h1>
             <p className="text-sm text-gray-400">
-              Ürünü güncelle ve tekrar admin onayına gönder
+              Ürünü ve ZIP dosyasını güncelle, tekrar admin onayına gönder
             </p>
           </div>
 
@@ -169,6 +217,13 @@ export default function SellerEditProductPage() {
           <p className="mt-2 text-sm text-gray-400">
             Düzenleme yaptıktan sonra ürün tekrar “Onay Bekliyor” durumuna alınır.
           </p>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p className="text-sm text-gray-400">Mevcut ZIP dosyası</p>
+            <p className="mt-2 break-all font-semibold">
+              {shownFileName(product?.file_path || null)}
+            </p>
+          </div>
 
           <form onSubmit={handleUpdate} className="mt-8 grid gap-4">
             <input
@@ -204,6 +259,23 @@ export default function SellerEditProductPage() {
               required
               className="min-h-40 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
             />
+
+            <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+              <p className="mb-2 text-sm text-gray-400">
+                Yeni ZIP dosyası seç
+              </p>
+
+              <input
+                type="file"
+                accept=".zip,application/zip,application/x-zip-compressed"
+                onChange={(event) => setZipFile(event.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-300"
+              />
+
+              <p className="mt-2 text-xs text-gray-500">
+                Yeni dosya seçmezsen mevcut ZIP dosyası korunur.
+              </p>
+            </label>
 
             <button
               type="submit"
