@@ -216,7 +216,17 @@ export default function ProductDetailPage() {
               </h1>
 
               <p className="mt-4 text-gray-400">
-                Satıcı: <span className="font-semibold text-white">{product.seller}</span>
+                Satıcı:{" "}
+                {product.seller_id ? (
+                  <a
+                    href={`/seller-store/${product.seller_id}`}
+                    className="font-semibold text-blue-300 hover:text-blue-200"
+                  >
+                    {product.seller}
+                  </a>
+                ) : (
+                  <span className="font-semibold text-white">{product.seller}</span>
+                )}
               </p>
             </div>
 
@@ -311,7 +321,16 @@ export default function ProductDetailPage() {
 
             <div className="mt-6 rounded-2xl bg-black/30 p-5">
               <p className="text-sm text-gray-400">Satıcı</p>
-              <p className="mt-2 font-bold">{product.seller}</p>
+              {product.seller_id ? (
+                <a
+                  href={`/seller-store/${product.seller_id}`}
+                  className="mt-2 block font-bold text-blue-300 hover:text-blue-200"
+                >
+                  {product.seller}
+                </a>
+              ) : (
+                <p className="mt-2 font-bold">{product.seller}</p>
+              )}
 
               <p className="mt-4 text-sm text-gray-400">Dosya</p>
               <p className={product.file_path ? "mt-2 font-bold text-green-300" : "mt-2 font-bold text-yellow-300"}>

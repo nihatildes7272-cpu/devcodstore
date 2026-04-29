@@ -487,6 +487,15 @@ export default function SellerPage() {
             <h2 className="mt-3 break-all text-xl font-bold">
               {user?.user_metadata?.full_name || user?.email}
             </h2>
+
+            {user && (
+              <a
+                href={`/seller-store/${user.id}`}
+                className="mt-4 inline-block rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+              >
+                Mağazamı Gör
+              </a>
+            )}
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">

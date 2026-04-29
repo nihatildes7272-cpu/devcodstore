@@ -10,6 +10,7 @@ type Product = {
   category: string;
   price: string;
   seller: string;
+  seller_id: string | null;
   status: string;
   description: string | null;
   created_at?: string;
@@ -64,7 +65,7 @@ export default function ProductsPage({
       const result = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,category,price,seller,status,description,created_at,image_url")
+          .select("id,title,category,price,seller,seller_id,status,description,created_at,image_url")
           .eq("status", "Yayında")
           .order("created_at", { ascending: false })
           .limit(100),
@@ -290,7 +291,17 @@ export default function ProductsPage({
 
                   <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
                   <p className="mt-2 text-sm text-gray-400">
-                    Satıcı: {product.seller}
+                    Satıcı:{" "}
+                    {product.seller_id ? (
+                      <a
+                        href={`/seller-store/${product.seller_id}`}
+                        className="text-blue-300 hover:text-blue-200"
+                      >
+                        {product.seller}
+                      </a>
+                    ) : (
+                      <span>{product.seller}</span>
+                    )}
                   </p>
 
                   {product.description && (
@@ -369,7 +380,7 @@ export const getServerSideProps: GetServerSideProps<ProductsPageProps> = async (
 
   const { data, error } = await serverSupabase
     .from("products")
-    .select("id,title,category,price,seller,status,description,created_at,image_url")
+    .select("id,title,category,price,seller,seller_id,status,description,created_at,image_url")
     .eq("status", "Yayında")
     .order("created_at", { ascending: false })
     .limit(100);
