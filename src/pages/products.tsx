@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { GetServerSideProps } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 
 type Product = {
@@ -28,14 +29,97 @@ const sortOptions = [
   { value: "title_az", label: "A-Z" },
 ];
 
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 15000,
+  message = "Sunucu yanıtı gecikti."
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 export default function ProductsPage({
   initialProducts,
   initialError,
 }: ProductsPageProps) {
-  const [products] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
   const [sortBy, setSortBy] = useState("newest");
+  const [message, setMessage] = useState(initialError);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState("");
+
+  async function loadProducts(showRefreshing = true) {
+    if (showRefreshing) {
+      setRefreshing(true);
+    }
+
+    try {
+      const result = await withTimeout(
+        supabase
+          .from("products")
+          .select("id,title,category,price,seller,status,description,created_at")
+          .eq("status", "Yayında")
+          .order("created_at", { ascending: false })
+          .limit(100),
+        15000,
+        "Ürünler yenilenirken sunucu geç cevap verdi."
+      );
+
+      if (result.error) {
+        setMessage("Ürünler yenilenemedi: " + result.error.message);
+      } else {
+        setProducts(result.data || []);
+        setMessage("");
+        setLastUpdated(
+          new Date().toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        );
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ürünler yenilenirken bilinmeyen bir hata oluştu."
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("products-live-list")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "products",
+        },
+        () => {
+          loadProducts(false);
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(() => {
+      loadProducts(false);
+    }, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, []);
 
   function parsePrice(price: string) {
     const numberText = price.replace(/[^\d]/g, "");
@@ -96,9 +180,19 @@ export default function ProductsPage({
               </p>
             </div>
 
-            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-              Yayındaki ürün:{" "}
-              <span className="font-bold text-white">{products.length}</span>
+            <div className="grid gap-2 md:text-right">
+              <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
+                Yayındaki ürün:{" "}
+                <span className="font-bold text-white">{products.length}</span>
+              </div>
+
+              <div className="text-xs text-gray-500">
+                {refreshing
+                  ? "Canlı yenileniyor..."
+                  : lastUpdated
+                  ? `Son güncelleme: ${lastUpdated}`
+                  : "Canlı takip aktif"}
+              </div>
             </div>
           </div>
 
@@ -141,9 +235,16 @@ export default function ProductsPage({
           </div>
         </section>
 
-        {initialError && (
+        {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            {initialError}
+            <p>{message}</p>
+
+            <button
+              onClick={() => loadProducts(true)}
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Tekrar Dene
+            </button>
           </div>
         )}
 
@@ -208,16 +309,24 @@ export default function ProductsPage({
           <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h3 className="text-2xl font-bold">Yayında ürün bulunamadı</h3>
             <p className="mt-2 text-gray-400">
-              Supabase’de Yayında ürün var ama burada görünmüyorsa Vercel environment
-              değişkenlerini kontrol etmemiz gerekir.
+              Admin panelinden ürünleri “Yayında” durumuna alabilirsin.
             </p>
 
-            <button
-              onClick={clearFilters}
-              className="mt-6 rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
-            >
-              Filtreleri Temizle
-            </button>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                onClick={clearFilters}
+                className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
+              >
+                Filtreleri Temizle
+              </button>
+
+              <button
+                onClick={() => loadProducts(true)}
+                className="rounded-2xl border border-white/15 px-6 py-3 font-semibold hover:bg-white/10"
+              >
+                Yenile
+              </button>
+            </div>
           </div>
         )}
       </section>
