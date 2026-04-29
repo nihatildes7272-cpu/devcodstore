@@ -210,18 +210,12 @@ export default function CartPage() {
               </div>
 
               <div className="mt-8 grid gap-3">
-                {products.length === 1 ? (
-                  <a
-                    href={`/checkout/${products[0].id}`}
-                    className="rounded-2xl bg-blue-600 px-5 py-4 text-center font-semibold hover:bg-blue-500"
-                  >
-                    Ödemeye Geç
-                  </a>
-                ) : (
-                  <p className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                    Şimdilik ödeme tek ürün üzerinden çalışıyor. Ödeme yapmak için bir ürünü bırak veya ürün kartındaki “Ürünü Aç” kısmından satın al.
-                  </p>
-                )}
+                <a
+                  href="/checkout/cart"
+                  className="rounded-2xl bg-blue-600 px-5 py-4 text-center font-semibold hover:bg-blue-500"
+                >
+                  Sepeti Satın Al
+                </a>
 
                 <button
                   onClick={clearCart}
