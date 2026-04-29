@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
+import SiteFooter from "@/components/SiteFooter";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -122,5 +123,10 @@ export default function App({ Component, pageProps }: AppProps) {
     );
   }
 
-  return <Component {...pageProps} />;
+  return (
+    <>
+      <Component {...pageProps} />
+      {!router.pathname.startsWith("/admin") && <SiteFooter />}
+    </>
+  );
 }
