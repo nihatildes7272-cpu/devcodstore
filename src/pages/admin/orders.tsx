@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AdminNavbar from "@/components/AdminNavbar";
 
@@ -9,76 +9,112 @@ type Order = {
   product_title: string;
   price: string;
   seller: string;
+  seller_id?: string | null;
   status: string;
   created_at: string;
 };
 
-type Profile = {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  account_type: string | null;
-};
+type OrderTab = "Tümü" | "Tamamlandı" | "Beklemede" | "İade Edildi";
+
+const tabs: OrderTab[] = ["Tümü", "Tamamlandı", "Beklemede", "İade Edildi"];
+
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 15000,
+  message = "Sunucu yanıtı gecikti."
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (!loading) return;
-
-    const timer = setTimeout(() => {
-      setMessage((current) =>
-        current || "Sunucu yanıtı gecikti. Sayfayı yenileyebilir veya tekrar deneyebilirsin."
-      );
-      setLoading(false);
-    }, 12000);
-
-    return () => clearTimeout(timer);
-  }, [loading]);
-
+  const [activeTab, setActiveTab] = useState<OrderTab>("Tümü");
   const [search, setSearch] = useState("");
+  const [openManageId, setOpenManageId] = useState<string | null>(null);
 
-  async function loadOrders() {
-    setLoading(true);
-    setMessage("");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
 
-    const { data: orderData, error: orderError } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (orderError) {
-      setMessage("Siparişler yüklenirken hata oluştu: " + orderError.message);
-      setOrders([]);
-      setLoading(false);
-      return;
+  async function loadOrders(showLoading = true) {
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
     }
 
-    setOrders(orderData || []);
+    setMessage("");
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("id,email,full_name,account_type");
+    try {
+      const result = await withTimeout(
+        supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(300),
+        15000,
+        "Siparişler yüklenirken sunucu geç cevap verdi."
+      );
 
-    setProfiles(profileData || []);
-    setLoading(false);
+      if (result.error) {
+        setMessage("Siparişler yüklenemedi: " + result.error.message);
+        setOrders([]);
+      } else {
+        setOrders(result.data || []);
+        setLastUpdated(
+          new Date().toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        );
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Siparişler yüklenirken bilinmeyen hata oluştu."
+      );
+      setOrders([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    loadOrders(true);
 
-  function getCustomer(order: Order) {
-    const profile = profiles.find((item) => item.id === order.user_id);
+    const channel = supabase
+      .channel("admin-orders-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+        },
+        () => {
+          loadOrders(false);
+        }
+      )
+      .subscribe();
 
-    return {
-      name: profile?.full_name || "Bilinmeyen Kullanıcı",
-      email: profile?.email || "E-posta yok",
+    const interval = setInterval(() => {
+      loadOrders(false);
+    }, 20000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
-  }
+  }, []);
 
   function parsePrice(price: string) {
     const numberText = price.replace(/[^\d]/g, "");
@@ -105,14 +141,18 @@ export default function AdminOrdersPage() {
 
   function statusClass(status: string) {
     if (status === "Tamamlandı") {
-      return "w-fit rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
+      return "rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-300";
     }
 
     if (status === "İade Edildi") {
-      return "w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+      return "rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300";
     }
 
-    return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+    if (status === "Beklemede") {
+      return "rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300";
+    }
+
+    return "rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300";
   }
 
   async function updateOrderStatus(orderId: string, status: string) {
@@ -128,25 +168,37 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    await loadOrders();
+    setMessage(`Sipariş durumu "${status}" olarak güncellendi.`);
+    setOpenManageId(null);
+    await loadOrders(false);
   }
 
-  const filteredOrders = orders.filter((order) => {
-    const customer = getCustomer(order);
+  const completedOrders = orders.filter((order) => order.status === "Tamamlandı");
+  const pendingOrders = orders.filter((order) => order.status === "Beklemede");
+  const refundedOrders = orders.filter((order) => order.status === "İade Edildi");
 
-    const text = `${order.product_title} ${order.seller} ${order.price} ${order.status} ${customer.name} ${customer.email}`.toLowerCase();
+  const totalRevenue = orders
+    .filter((order) => order.status !== "İade Edildi")
+    .reduce((sum, order) => sum + parsePrice(order.price), 0);
 
-    return text.includes(search.toLowerCase());
-  });
+  const completedRevenue = completedOrders.reduce(
+    (sum, order) => sum + parsePrice(order.price),
+    0
+  );
 
-  const totalRevenue = orders.reduce((total, order) => {
-    if (order.status === "İade Edildi") return total;
-    return total + parsePrice(order.price);
-  }, 0);
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesTab = activeTab === "Tümü" || order.status === activeTab;
 
-  const completedOrders = orders.filter((order) => order.status === "Tamamlandı").length;
-  const refundedOrders = orders.filter((order) => order.status === "İade Edildi").length;
-  const pendingOrders = orders.filter((order) => order.status === "Beklemede").length;
+      const searchText = `${order.id} ${order.product_title} ${order.seller} ${
+        order.price
+      } ${order.status} ${order.product_id || ""} ${order.user_id || ""}`.toLowerCase();
+
+      const matchesSearch = searchText.includes(search.toLowerCase());
+
+      return matchesTab && matchesSearch;
+    });
+  }, [orders, activeTab, search]);
 
   if (loading) {
     return (
@@ -161,113 +213,234 @@ export default function AdminOrdersPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
+        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold">Admin Sipariş Yönetimi</h1>
+              <p className="mt-3 text-gray-400">
+                Siparişleri, satış durumlarını ve iade süreçlerini sade bir panelden yönet.
+              </p>
+            </div>
+
+            <div className="grid gap-2 md:text-right">
+              <button
+                onClick={() => loadOrders(false)}
+                disabled={refreshing}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+              >
+                {refreshing ? "Yenileniyor..." : "Yenile"}
+              </button>
+
+              {lastUpdated && (
+                <p className="text-xs text-gray-500">
+                  Son güncelleme: {lastUpdated}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
         {message && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            {message}
+          <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
+            <p>{message}</p>
+
+            <button
+              onClick={() => loadOrders(false)}
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Tekrar Dene
+            </button>
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
+        <section className="grid gap-6 md:grid-cols-5">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Sipariş</p>
             <h2 className="mt-3 text-4xl font-bold">{orders.length}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ciro</p>
-            <h2 className="mt-3 text-4xl font-bold">{formatMoney(totalRevenue)}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Tamamlanan</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{completedOrders}</h2>
+            <h2 className="mt-3 text-4xl font-bold text-green-300">
+              {completedOrders.length}
+            </h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">İade / Bekleyen</p>
+            <p className="text-sm text-gray-400">Bekleyen</p>
             <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {refundedOrders + pendingOrders}
+              {pendingOrders.length}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">İade Edilen</p>
+            <h2 className="mt-3 text-4xl font-bold text-red-300">
+              {refundedOrders.length}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Net Ciro</p>
+            <h2 className="mt-3 text-3xl font-bold">
+              {formatMoney(totalRevenue)}
             </h2>
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Tamamlanan Sipariş Cirosu</p>
+            <h2 className="mt-3 text-4xl font-bold text-green-300">
+              {formatMoney(completedRevenue)}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Gösterilen Sipariş</p>
+            <h2 className="mt-3 text-4xl font-bold text-blue-300">
+              {filteredOrders.length}
+            </h2>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
+          <div className="grid gap-3 md:grid-cols-4">
+            {tabs.map((tab) => {
+              const count =
+                tab === "Tümü"
+                  ? orders.length
+                  : orders.filter((order) => order.status === tab).length;
+
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={
+                    activeTab === tab
+                      ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
+                      : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                  }
+                >
+                  {tab} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Gerçek Sipariş Listesi</h2>
+              <h2 className="text-2xl font-bold">{activeTab}</h2>
               <p className="mt-2 text-sm text-gray-400">
-                Kullanıcıların oluşturduğu siparişler burada görünür.
+                Sipariş kartlarında sadece özet görünür. Detay için Durum Yönet panelini aç.
               </p>
             </div>
 
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Sipariş, müşteri, ürün ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-80"
+              placeholder="Ürün, satıcı, sipariş no veya durum ara..."
+              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
             />
           </div>
 
           <div className="mt-6 grid gap-4">
             {filteredOrders.map((order) => {
-              const customer = getCustomer(order);
+              const isOpen = openManageId === order.id;
 
               return (
-                <div
-                  key={order.id}
-                  className="flex flex-col gap-5 rounded-2xl bg-black/30 p-5 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="max-w-2xl">
-                    <h3 className="text-xl font-semibold">{order.product_title}</h3>
+                <div key={order.id} className="rounded-3xl bg-black/30 p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap gap-3">
+                        <span className={statusClass(order.status)}>
+                          {order.status}
+                        </span>
 
-                    <div className="mt-2 grid gap-1 text-sm text-gray-400">
-                      <p>Sipariş No: {order.id}</p>
-                      <p>Müşteri: {customer.name}</p>
-                      <p>E-posta: {customer.email}</p>
-                      <p>Satıcı: {order.seller}</p>
-                      <p>Tarih: {formatDate(order.created_at)}</p>
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300">
+                          {order.price}
+                        </span>
+                      </div>
+
+                      <h3 className="mt-4 text-2xl font-bold">
+                        {order.product_title}
+                      </h3>
+
+                      <div className="mt-3 grid gap-1 text-sm text-gray-400">
+                        <p>Satıcı: {order.seller}</p>
+                        <p>Tarih: {formatDate(order.created_at)}</p>
+                        <p className="break-all">Sipariş No: {order.id}</p>
+                        {order.product_id && (
+                          <p className="break-all">Ürün ID: {order.product_id}</p>
+                        )}
+                        {order.user_id && (
+                          <p className="break-all">Alıcı ID: {order.user_id}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 lg:min-w-48">
+                      {order.product_id && (
+                        <a
+                          href={`/product/${order.product_id}`}
+                          className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        >
+                          Ürünü Aç
+                        </a>
+                      )}
+
+                      <button
+                        onClick={() => setOpenManageId(isOpen ? null : order.id)}
+                        className={
+                          isOpen
+                            ? "rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                            : "rounded-2xl border border-blue-500/30 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+                        }
+                      >
+                        Durum Yönet
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:min-w-56 md:text-right">
-                    <p className="text-3xl font-bold">{order.price}</p>
+                  {isOpen && (
+                    <section className="mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
+                      <h4 className="text-xl font-bold">Sipariş Durumu</h4>
+                      <p className="mt-2 text-sm text-gray-400">
+                        Sipariş durumunu değiştir. İade edilen siparişler net cirodan düşer.
+                      </p>
 
-                    <span className={statusClass(order.status)}>
-                      {order.status}
-                    </span>
+                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "Tamamlandı")}
+                          className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold hover:bg-green-500"
+                        >
+                          Tamamlandı Yap
+                        </button>
 
-                    <div className="grid gap-2">
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Tamamlandı")}
-                        className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
-                      >
-                        Tamamlandı Yap
-                      </button>
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "Beklemede")}
+                          className="rounded-2xl border border-yellow-500/30 px-4 py-3 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
+                        >
+                          Beklemede Yap
+                        </button>
 
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Beklemede")}
-                        className="rounded-2xl border border-yellow-500/30 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
-                      >
-                        Beklemeye Al
-                      </button>
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "İade Edildi")}
+                          className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-500"
+                        >
+                          İade Edildi Yap
+                        </button>
+                      </div>
 
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "İade Edildi")}
-                        className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500"
-                      >
-                        İade Edildi Yap
-                      </button>
-                    </div>
-
-                    {order.product_id && (
-                      <a
-                        href={`/product/${order.product_id}`}
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
-                      >
-                        Ürünü Aç
-                      </a>
-                    )}
-                  </div>
+                      <div className="mt-5 rounded-2xl bg-black/30 p-4 text-sm text-gray-300">
+                        <p>Mevcut durum: {order.status}</p>
+                        <p className="mt-1">Tutar: {order.price}</p>
+                        <p className="mt-1">Ürün: {order.product_title}</p>
+                      </div>
+                    </section>
+                  )}
                 </div>
               );
             })}
@@ -276,7 +449,7 @@ export default function AdminOrdersPage() {
               <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center">
                 <h3 className="text-2xl font-bold">Sipariş bulunamadı</h3>
                 <p className="mt-2 text-gray-400">
-                  Henüz sipariş yok veya arama sonucu boş.
+                  Bu sekmede veya aramada eşleşen sipariş yok.
                 </p>
               </div>
             )}
