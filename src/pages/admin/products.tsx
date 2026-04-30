@@ -31,6 +31,10 @@ type Product = {
   security_scan_score?: number | null;
   security_scan_report?: ScanReport | null;
   security_scanned_at?: string | null;
+  license_type?: string | null;
+  license_summary?: string | null;
+  license_allows_commercial?: boolean | null;
+  license_allows_resale?: boolean | null;
   strong_scan_status?: string | null;
   strong_scan_job_id?: string | null;
   strong_scan_started_at?: string | null;
@@ -570,6 +574,15 @@ export default function AdminProductsPage() {
                         <p>Eklenme: {formatDate(product.created_at)}</p>
                         <p>Dosya: {product.file_path ? "Yüklendi" : "Dosya yok"}</p>
                         <p>Güvenlik notu: {product.security_note || "Not yok"}</p>
+                        <p>Lisans: {product.license_type || "Kişisel Kullanım"}</p>
+                        <p>
+                          Ticari kullanım:{" "}
+                          {product.license_allows_commercial ? "İzinli" : "İzinli değil"}
+                        </p>
+                        <p>
+                          Yeniden satış:{" "}
+                          {product.license_allows_resale ? "İzinli" : "Yasak"}
+                        </p>
                         <p>Tarama skoru: {product.security_scan_score ?? 0}</p>
                         <p>Son tarama: {formatDate(product.security_scanned_at)}</p>
                         <p>Güçlü tarama: {product.strong_scan_status || "Yok"}</p>

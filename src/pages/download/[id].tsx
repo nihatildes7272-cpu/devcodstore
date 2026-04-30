@@ -14,6 +14,10 @@ type Product = {
   file_name?: string | null;
   file_type?: string | null;
   file_size?: number | null;
+  license_type?: string | null;
+  license_summary?: string | null;
+  license_allows_commercial?: boolean | null;
+  license_allows_resale?: boolean | null;
 };
 
 type Order = {
@@ -114,7 +118,7 @@ export default function DownloadPage() {
       const productResult = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,price,seller,category,file_path,file_name,file_type,file_size")
+          .select("id,title,price,seller,category,file_path,file_name,file_type,file_size,license_type,license_summary,license_allows_commercial,license_allows_resale")
           .eq("id", String(id))
           .maybeSingle(),
         12000,
@@ -317,6 +321,17 @@ export default function DownloadPage() {
               <div className="flex items-center justify-between rounded-2xl border border-white/10 p-4">
                 <span className="text-gray-400">Erişim</span>
                 <span className="font-semibold text-green-300">Onaylandı</span>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 p-4">
+                <p className="text-sm text-gray-400">Lisans</p>
+                <p className="mt-2 font-semibold text-blue-300">
+                  {product.license_type || "Kişisel Kullanım"}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">
+                  {product.license_summary ||
+                    "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
+                </p>
               </div>
             </div>
           </div>

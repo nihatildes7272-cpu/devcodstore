@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
+import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
 
 type Product = {
   id: string;
@@ -19,6 +20,10 @@ type Product = {
   file_type: string | null;
   file_size: number | null;
   image_url: string | null;
+  license_type: string | null;
+  license_summary: string | null;
+  license_allows_commercial: boolean | null;
+  license_allows_resale: boolean | null;
 };
 
 type GalleryImage = {
@@ -98,6 +103,7 @@ export default function SellerEditProductPage() {
   const [category, setCategory] = useState("Web Site");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -154,6 +160,7 @@ export default function SellerEditProductPage() {
       setCategory(data.category);
       setPrice(data.price);
       setDescription(data.description || "");
+      setLicenseType(data.license_type || "Kişisel Kullanım");
 
       const { data: galleryData } = await supabase
         .from("product_images")
@@ -205,6 +212,7 @@ export default function SellerEditProductPage() {
     let newFileType = product.file_type;
     let newFileSize = product.file_size;
     let newImageUrl = product.image_url;
+    const selectedLicense = getLicenseInfo(licenseType);
 
     if (zipFile) {
       const filePath = `${user.id}/${product.id}/${Date.now()}-${safeFileName(zipFile.name)}`;
@@ -275,6 +283,10 @@ export default function SellerEditProductPage() {
         file_type: newFileType,
         file_size: newFileSize,
         image_url: newImageUrl,
+        license_type: selectedLicense.type,
+        license_summary: selectedLicense.summary,
+        license_allows_commercial: selectedLicense.allowsCommercial,
+        license_allows_resale: selectedLicense.allowsResale,
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -465,6 +477,26 @@ export default function SellerEditProductPage() {
               required
               className="min-h-40 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
             />
+
+            <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+              <p className="mb-2 text-sm text-gray-400">Lisans türü</p>
+
+              <select
+                value={licenseType}
+                onChange={(event) => setLicenseType(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              >
+                {productLicenses.map((license) => (
+                  <option key={license.type} value={license.type}>
+                    {license.type}
+                  </option>
+                ))}
+              </select>
+
+              <p className="mt-2 text-xs text-gray-500">
+                {getLicenseInfo(licenseType).summary}
+              </p>
+            </label>
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">

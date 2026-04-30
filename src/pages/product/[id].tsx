@@ -18,6 +18,10 @@ type Product = {
   file_type?: string | null;
   file_size?: number | null;
   image_url?: string | null;
+  license_type?: string | null;
+  license_summary?: string | null;
+  license_allows_commercial?: boolean | null;
+  license_allows_resale?: boolean | null;
   security_status?: string | null;
   security_note?: string | null;
   security_checked_at?: string | null;
@@ -532,6 +536,50 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+              <h2 className="text-2xl font-bold">Lisans ve Kullanım Hakkı</h2>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Lisans Türü</p>
+                  <p className="mt-2 font-bold">
+                    {product.license_type || "Kişisel Kullanım"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Ticari Kullanım</p>
+                  <p
+                    className={
+                      product.license_allows_commercial
+                        ? "mt-2 font-bold text-green-300"
+                        : "mt-2 font-bold text-red-300"
+                    }
+                  >
+                    {product.license_allows_commercial ? "İzinli" : "İzinli Değil"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Yeniden Satış</p>
+                  <p
+                    className={
+                      product.license_allows_resale
+                        ? "mt-2 font-bold text-green-300"
+                        : "mt-2 font-bold text-red-300"
+                    }
+                  >
+                    {product.license_allows_resale ? "İzinli" : "Yasak"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-5 leading-7 text-gray-300">
+                {product.license_summary ||
+                  "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
+              </p>
+            </div>
+
             <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -699,6 +747,11 @@ export default function ProductDetailPage() {
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 {product.file_name || fileName(product.file_path)}
+              </p>
+
+              <p className="mt-4 text-sm text-gray-400">Lisans</p>
+              <p className="mt-2 font-bold text-blue-300">
+                {product.license_type || "Kişisel Kullanım"}
               </p>
 
               <p className="mt-4 text-sm text-gray-400">Güvenlik</p>

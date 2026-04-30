@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
+import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
 
 type Product = {
   id: string;
@@ -19,6 +20,10 @@ type Product = {
   file_type?: string | null;
   file_size?: number | null;
   image_url: string | null;
+  license_type?: string | null;
+  license_summary?: string | null;
+  license_allows_commercial?: boolean | null;
+  license_allows_resale?: boolean | null;
   security_status?: string | null;
   security_note?: string | null;
   created_at?: string;
@@ -117,6 +122,7 @@ export default function SellerPage() {
   const [category, setCategory] = useState("Web Site");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
@@ -303,6 +309,7 @@ export default function SellerPage() {
     const filePath = `${user.id}/${productId}/${safeFileName(zipFile.name)}`;
     const imagePath = `${user.id}/${productId}/${safeImageName(coverImage.name)}`;
     const detectedFileType = detectFileType(zipFile.name);
+    const selectedLicense = getLicenseInfo(licenseType);
 
     const { error: uploadError } = await supabase.storage
       .from("product-files")
@@ -350,6 +357,10 @@ export default function SellerPage() {
       image_url: publicImage.publicUrl,
       security_status: "Taranmadı",
       security_note: "Satıcı tarafından gönderildi. Admin güvenlik incelemesi bekleniyor.",
+      license_type: selectedLicense.type,
+      license_summary: selectedLicense.summary,
+      license_allows_commercial: selectedLicense.allowsCommercial,
+      license_allows_resale: selectedLicense.allowsResale,
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -365,6 +376,7 @@ export default function SellerPage() {
     setCategory("Web Site");
     setPrice("");
     setDescription("");
+    setLicenseType("Kişisel Kullanım");
     setZipFile(null);
     setCoverImage(null);
 
@@ -631,6 +643,26 @@ export default function SellerPage() {
               />
 
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Lisans türü</p>
+
+                <select
+                  value={licenseType}
+                  onChange={(event) => setLicenseType(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  {productLicenses.map((license) => (
+                    <option key={license.type} value={license.type}>
+                      {license.type}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  {getLicenseInfo(licenseType).summary}
+                </p>
+              </label>
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
                 <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
                 <input
                   type="file"
@@ -705,6 +737,10 @@ export default function SellerPage() {
 
                   <p className="mt-3 text-xs text-gray-500">
                     Dosya: {product.file_path ? product.file_type || "Yüklendi" : "Henüz dosya yok"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Lisans: {product.license_type || "Kişisel Kullanım"}
                   </p>
 
                   <div className="mt-5 flex flex-wrap gap-3">
