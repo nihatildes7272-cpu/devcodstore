@@ -4,162 +4,238 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import SellerPanelNav from "@/components/SellerPanelNav";
+import { productCategories } from "@/lib/productCategories";
+import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
+import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
+import { parseTags } from "@/lib/tags";
 
-type Product = {
-  id: string;
-  title: string;
-  category: string;
-  price: string;
-  seller: string;
-  seller_id: string | null;
-  status: string;
-  security_status?: string | null;
-  image_url?: string | null;
-  created_at?: string;
-};
+function safeFileName(fileName: string) {
+  return fileName
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
-type Order = {
-  id: string;
-  product_id: string | null;
-  product_title: string;
-  price: string;
-  seller: string;
-  seller_id: string | null;
-  status: string;
-  created_at: string;
-};
+function safeImageName(fileName: string) {
+  return safeFileName(fileName);
+}
 
-export default function SellerDashboardPage() {
+function detectFileType(fileName: string) {
+  const lower = fileName.toLowerCase();
+
+  if (lower.endsWith(".zip")) return "ZIP Proje Dosyası";
+  if (lower.endsWith(".pdf")) return "PDF Doküman";
+  if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "Ders Slaytı / Sunum";
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word Dokümanı";
+  if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "Excel Dosyası";
+  if (lower.endsWith(".txt")) return "Metin Dosyası";
+  if (lower.endsWith(".csv")) return "CSV Dosyası";
+  if (
+    lower.endsWith(".png") ||
+    lower.endsWith(".jpg") ||
+    lower.endsWith(".jpeg") ||
+    lower.endsWith(".webp")
+  ) {
+    return "Görsel Dosyası";
+  }
+  if (lower.endsWith(".json")) return "JSON Dosyası";
+
+  return "Dijital Dosya";
+}
+
+export default function SellerNewProductPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Web Site");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+
+  const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
+  const [previewType, setPreviewType] = useState("Kapak + Galeri");
+  const [previewNote, setPreviewNote] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
+
+  const [demoUrl, setDemoUrl] = useState("");
+  const [techStack, setTechStack] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [setupNotes, setSetupNotes] = useState("");
+
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [productFile, setProductFile] = useState<File | null>(null);
+
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function loadDashboard() {
-    setLoading(true);
-    setMessage("");
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
 
-    const { data: userData } = await supabase.auth.getUser();
+      if (!data.user) {
+        router.push("/login");
+        return;
+      }
 
-    if (!userData.user) {
-      router.push("/login");
+      setUser(data.user);
+      setLoadingUser(false);
+    }
+
+    loadUser();
+  }, [router]);
+
+  function sellerNameFor(currentUser: User) {
+    return (
+      currentUser.user_metadata?.full_name ||
+      currentUser.email ||
+      "Bilinmeyen Satıcı"
+    );
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!user) {
+      setMessage("Ürün eklemek için giriş yapmalısın.");
       return;
     }
 
-    setUser(userData.user);
-
-    const [productsResult, ordersResult] = await Promise.all([
-      supabase
-        .from("products")
-        .select("id,title,category,price,seller,seller_id,status,security_status,image_url,created_at")
-        .eq("seller_id", userData.user.id)
-        .order("created_at", { ascending: false }),
-
-      supabase
-        .from("orders")
-        .select("*")
-        .eq("seller_id", userData.user.id)
-        .order("created_at", { ascending: false }),
-    ]);
-
-    if (productsResult.error) {
-      setMessage("Ürünlerin yüklenemedi: " + productsResult.error.message);
-      setProducts([]);
-    } else {
-      setProducts(productsResult.data || []);
+    if (!coverImage) {
+      setMessage("Lütfen kapak görseli seç.");
+      return;
     }
 
-    if (ordersResult.error) {
-      setOrders([]);
-    } else {
-      setOrders(ordersResult.data || []);
+    if (!productFile) {
+      setMessage("Lütfen ürün dosyası seç.");
+      return;
     }
 
-    setLoading(false);
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const productId = String(Date.now());
+      const sellerName = sellerNameFor(user);
+
+      const filePath = `${user.id}/${productId}/${safeFileName(productFile.name)}`;
+      const imagePath = `${user.id}/${productId}/${safeImageName(coverImage.name)}`;
+
+      const { error: fileUploadError } = await supabase.storage
+        .from("product-files")
+        .upload(filePath, productFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (fileUploadError) {
+        setMessage("Ürün dosyası yüklenemedi: " + fileUploadError.message);
+        setSaving(false);
+        return;
+      }
+
+      const { error: imageUploadError } = await supabase.storage
+        .from("product-images")
+        .upload(imagePath, coverImage, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (imageUploadError) {
+        setMessage("Kapak görseli yüklenemedi: " + imageUploadError.message);
+        setSaving(false);
+        return;
+      }
+
+      const { data: publicImage } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(imagePath);
+
+      const selectedLicense = getLicenseInfo(licenseType);
+      const selectedPreview = getPreviewInfo(previewType);
+      const detectedFileType = detectFileType(productFile.name);
+
+      const newProduct = {
+        id: productId,
+        title,
+        category,
+        price,
+        seller: sellerName,
+        seller_id: user.id,
+        status: "Onay Bekliyor",
+        description,
+
+        file_path: filePath,
+        file_name: productFile.name,
+        file_type: detectedFileType,
+        file_size: productFile.size,
+
+        image_url: publicImage.publicUrl,
+
+        security_status: "Taranmadı",
+        security_note:
+          "Satıcı tarafından gönderildi. Admin güvenlik incelemesi bekleniyor.",
+
+        license_type: selectedLicense.type,
+        license_summary: selectedLicense.summary,
+        license_allows_commercial: selectedLicense.allowsCommercial,
+        license_allows_resale: selectedLicense.allowsResale,
+
+        demo_url: demoUrl.trim() || null,
+        tech_stack: techStack.trim() || null,
+        requirements: requirements.trim() || null,
+        setup_notes: setupNotes.trim() || null,
+
+        preview_type: previewType,
+        preview_note: previewNote.trim() || selectedPreview.description,
+
+        tags: parseTags(tagsInput),
+      };
+
+      const { error } = await supabase.from("products").insert(newProduct);
+
+      if (error) {
+        setMessage("Ürün eklenirken hata oluştu: " + error.message);
+        setSaving(false);
+        return;
+      }
+
+      router.push("/seller/products");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? "Ürün eklenirken hata oluştu: " + error.message
+          : "Ürün eklenirken bilinmeyen hata oluştu."
+      );
+      setSaving(false);
+    }
   }
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  function parsePrice(value: string) {
-    const numberText = value.replace(/[^\d]/g, "");
-    return Number(numberText || 0);
-  }
-
-  function formatMoney(value: number) {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: "TRY",
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
-
-  function statusClass(status: string) {
-    if (status === "Yayında" || status === "Tamamlandı") {
-      return "rounded-full bg-green-500/20 px-3 py-1 text-xs text-green-300";
-    }
-
-    if (status === "Reddedildi") {
-      return "rounded-full bg-red-500/20 px-3 py-1 text-xs text-red-300";
-    }
-
-    if (status === "Yayından Kaldırıldı") {
-      return "rounded-full bg-gray-500/20 px-3 py-1 text-xs text-gray-300";
-    }
-
-    return "rounded-full bg-yellow-500/20 px-3 py-1 text-xs text-yellow-300";
-  }
-
-  if (loading) {
+  if (loadingUser) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
-        Satıcı paneli yükleniyor...
+        Satıcı bilgisi yükleniyor...
       </main>
     );
   }
 
-  const pendingCount = products.filter((item) => item.status === "Onay Bekliyor").length;
-  const liveCount = products.filter((item) => item.status === "Yayında").length;
-  const completedOrders = orders.filter((order) => order.status === "Tamamlandı");
-  const totalRevenue = completedOrders.reduce((sum, order) => sum + parsePrice(order.price), 0);
-
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
-      <section className="mx-auto max-w-7xl px-6 py-10">
+      <section className="mx-auto max-w-5xl px-6 py-10">
         <SiteNavbar />
 
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-4xl font-bold">Yeni Ürün Yükle</h1>
-              <p className="mt-3 text-gray-400">
-                Ürünlerini, satışlarını ve mağazanı sade bir merkezden yönet.
-              </p>
-              <p className="mt-2 break-all text-sm text-gray-500">{user?.email}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <a
-                href="/seller/new"
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500"
-              >
-                Yeni Ürün Yükle
-              </a>
-
-              {user && (
-                <a
-                  href={`/seller-store/${user.id}`}
-                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
-                >
-                  Mağazamı Gör
-                </a>
-              )}
-            </div>
-          </div>
+          <h1 className="text-4xl font-bold">Yeni Ürün Yükle</h1>
+          <p className="mt-3 text-gray-400">
+            Dijital ürününü, dosyanı, kapak görselini, lisansını ve teknik bilgilerini ekle.
+          </p>
         </section>
 
         <SellerPanelNav />
@@ -170,95 +246,156 @@ export default function SellerDashboardPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold">{products.length}</h2>
-          </div>
+        <form
+          onSubmit={handleSubmit}
+          className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-6"
+        >
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Ürün adı"
+            required
+            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          />
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yayında</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{liveCount}</h2>
-          </div>
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          >
+            {productCategories.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Onay Bekleyen</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">{pendingCount}</h2>
-          </div>
+          <input
+            value={price}
+            onChange={(event) => setPrice(event.target.value)}
+            placeholder="Fiyat örnek: ₺499"
+            required
+            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          />
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kazanç</p>
-            <h2 className="mt-3 text-3xl font-bold">{formatMoney(totalRevenue)}</h2>
-          </div>
-        </section>
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Ürün açıklaması"
+            required
+            className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          />
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Son Ürünlerim</h2>
-              <a href="/seller/products" className="text-sm text-blue-300 hover:text-blue-200">
-                Tümünü gör
-              </a>
-            </div>
+          <input
+            value={tagsInput}
+            onChange={(event) => setTagsInput(event.target.value)}
+            placeholder="Etiketler örnek: react, nextjs, pdf, slayt"
+            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          />
 
-            <div className="mt-6 grid gap-4">
-              {products.slice(0, 4).map((product) => (
-                <div key={product.id} className="rounded-2xl bg-black/30 p-4">
-                  <div className="flex gap-4">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.title}
-                        className="h-20 w-24 rounded-xl object-cover"
-                      />
-                    )}
-
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{product.title}</h3>
-                      <p className="mt-1 text-sm text-gray-400">
-                        {product.category} • {product.price}
-                      </p>
-                      <span className={statusClass(product.status)}>
-                        {product.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+            <p className="mb-2 text-sm text-gray-400">Lisans türü</p>
+            <select
+              value={licenseType}
+              onChange={(event) => setLicenseType(event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            >
+              {productLicenses.map((license) => (
+                <option key={license.type} value={license.type}>
+                  {license.type}
+                </option>
               ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-500">
+              {getLicenseInfo(licenseType).summary}
+            </p>
+          </label>
 
-              {products.length === 0 && (
-                <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
-                  Henüz ürün eklemedin.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Son Satışlarım</h2>
-              <a href="/seller/sales" className="text-sm text-blue-300 hover:text-blue-200">
-                Tümünü gör
-              </a>
-            </div>
-
-            <div className="mt-6 grid gap-4">
-              {orders.slice(0, 4).map((order) => (
-                <div key={order.id} className="rounded-2xl bg-black/30 p-4">
-                  <h3 className="font-semibold">{order.product_title}</h3>
-                  <p className="mt-1 text-sm text-gray-400">{order.price}</p>
-                  <span className={statusClass(order.status)}>{order.status}</span>
-                </div>
+          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+            <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
+            <select
+              value={previewType}
+              onChange={(event) => setPreviewType(event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            >
+              {productPreviewTypes.map((item) => (
+                <option key={item.type} value={item.type}>
+                  {item.type}
+                </option>
               ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-500">
+              {getPreviewInfo(previewType).description}
+            </p>
+          </label>
 
-              {orders.length === 0 && (
-                <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
-                  Henüz satış kaydı yok.
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          <textarea
+            value={previewNote}
+            onChange={(event) => setPreviewNote(event.target.value)}
+            placeholder="Önizleme açıklaması"
+            className="min-h-24 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+          />
+
+          <section className="grid gap-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+            <h2 className="text-xl font-bold">Teknik Bilgiler</h2>
+
+            <input
+              value={demoUrl}
+              onChange={(event) => setDemoUrl(event.target.value)}
+              placeholder="Canlı demo linki"
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
+
+            <input
+              value={techStack}
+              onChange={(event) => setTechStack(event.target.value)}
+              placeholder="Teknolojiler örnek: Next.js, Tailwind, Supabase"
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
+
+            <textarea
+              value={requirements}
+              onChange={(event) => setRequirements(event.target.value)}
+              placeholder="Gereksinimler"
+              className="min-h-24 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
+
+            <textarea
+              value={setupNotes}
+              onChange={(event) => setSetupNotes(event.target.value)}
+              placeholder="Kurulum notları"
+              className="min-h-32 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
+          </section>
+
+          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+            <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
+              required
+              className="w-full text-sm text-gray-300"
+            />
+          </label>
+
+          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+            <p className="mb-2 text-sm text-gray-400">Ürün dosyası</p>
+            <input
+              type="file"
+              accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
+              onChange={(event) => setProductFile(event.target.files?.[0] || null)}
+              required
+              className="w-full text-sm text-gray-300"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-2xl bg-blue-600 px-5 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
+          >
+            {saving ? "Ürün gönderiliyor..." : "Ürünü Admin Onayına Gönder"}
+          </button>
+        </form>
       </section>
     </main>
   );
