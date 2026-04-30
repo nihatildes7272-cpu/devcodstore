@@ -22,10 +22,6 @@ function safeFileName(fileName: string) {
     .replace(/^-|-$/g, "");
 }
 
-function safeImageName(fileName: string) {
-  return safeFileName(fileName);
-}
-
 function detectFileType(fileName: string) {
   const lower = fileName.toLowerCase();
 
@@ -36,12 +32,7 @@ function detectFileType(fileName: string) {
   if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "Excel Dosyası";
   if (lower.endsWith(".txt")) return "Metin Dosyası";
   if (lower.endsWith(".csv")) return "CSV Dosyası";
-  if (
-    lower.endsWith(".png") ||
-    lower.endsWith(".jpg") ||
-    lower.endsWith(".jpeg") ||
-    lower.endsWith(".webp")
-  ) {
+  if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")) {
     return "Görsel Dosyası";
   }
   if (lower.endsWith(".json")) return "JSON Dosyası";
@@ -53,16 +44,17 @@ export default function SellerNewProductPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [activeStep, setActiveStep] = useState<"basic" | "files" | "license" | "technical">("basic");
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Web Site");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
 
   const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
   const [previewType, setPreviewType] = useState("Kapak + Galeri");
   const [previewNote, setPreviewNote] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
 
   const [demoUrl, setDemoUrl] = useState("");
   const [techStack, setTechStack] = useState("");
@@ -93,11 +85,16 @@ export default function SellerNewProductPage() {
   }, [router]);
 
   function sellerNameFor(currentUser: User) {
-    return (
-      currentUser.user_metadata?.full_name ||
-      currentUser.email ||
-      "Bilinmeyen Satıcı"
-    );
+    return currentUser.user_metadata?.full_name || currentUser.email || "Bilinmeyen Satıcı";
+  }
+
+  function validateBeforeSubmit() {
+    if (!title.trim()) return "Ürün adı boş olamaz.";
+    if (!price.trim()) return "Fiyat alanı boş olamaz.";
+    if (!description.trim()) return "Açıklama alanı boş olamaz.";
+    if (!coverImage) return "Lütfen kapak görseli seç.";
+    if (!productFile) return "Lütfen ürün dosyası seç.";
+    return "";
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -108,15 +105,14 @@ export default function SellerNewProductPage() {
       return;
     }
 
-    if (!coverImage) {
-      setMessage("Lütfen kapak görseli seç.");
+    const validationMessage = validateBeforeSubmit();
+
+    if (validationMessage) {
+      setMessage(validationMessage);
       return;
     }
 
-    if (!productFile) {
-      setMessage("Lütfen ürün dosyası seç.");
-      return;
-    }
+    if (!coverImage || !productFile) return;
 
     setSaving(true);
     setMessage("");
@@ -126,7 +122,7 @@ export default function SellerNewProductPage() {
       const sellerName = sellerNameFor(user);
 
       const filePath = `${user.id}/${productId}/${safeFileName(productFile.name)}`;
-      const imagePath = `${user.id}/${productId}/${safeImageName(coverImage.name)}`;
+      const imagePath = `${user.id}/${productId}/${safeFileName(coverImage.name)}`;
 
       const { error: fileUploadError } = await supabase.storage
         .from("product-files")
@@ -218,6 +214,13 @@ export default function SellerNewProductPage() {
     }
   }
 
+  const steps = [
+    { key: "basic", label: "1. Temel Bilgiler" },
+    { key: "files", label: "2. Dosyalar" },
+    { key: "license", label: "3. Lisans ve Önizleme" },
+    { key: "technical", label: "4. Teknik Bilgiler" },
+  ] as const;
+
   if (loadingUser) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
@@ -234,7 +237,7 @@ export default function SellerNewProductPage() {
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
           <h1 className="text-4xl font-bold">Yeni Ürün Yükle</h1>
           <p className="mt-3 text-gray-400">
-            Dijital ürününü, dosyanı, kapak görselini, lisansını ve teknik bilgilerini ekle.
+            Ürün bilgilerini adım adım ekle. Ürün admin onayından sonra yayına alınır.
           </p>
         </section>
 
@@ -246,155 +249,258 @@ export default function SellerNewProductPage() {
           </div>
         )}
 
+        <section className="mb-6 rounded-3xl border border-white/10 bg-white/5 p-3">
+          <div className="grid gap-3 md:grid-cols-4">
+            {steps.map((step) => (
+              <button
+                key={step.key}
+                type="button"
+                onClick={() => setActiveStep(step.key)}
+                className={
+                  activeStep === step.key
+                    ? "rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white"
+                    : "rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                }
+              >
+                {step.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         <form
           onSubmit={handleSubmit}
-          className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-6"
+          className="grid gap-6 rounded-3xl border border-white/10 bg-white/5 p-6"
         >
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Ürün adı"
-            required
-            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          />
+          {activeStep === "basic" && (
+            <section className="grid gap-5">
+              <div>
+                <h2 className="text-2xl font-bold">Temel Bilgiler</h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Ürünün adı, kategorisi, fiyatı, açıklaması ve etiketleri.
+                </p>
+              </div>
 
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          >
-            {productCategories.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Ürün adı"
+                required
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
 
-          <input
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-            placeholder="Fiyat örnek: ₺499"
-            required
-            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          />
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              >
+                {productCategories.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
 
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Ürün açıklaması"
-            required
-            className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          />
+              <input
+                value={price}
+                onChange={(event) => setPrice(event.target.value)}
+                placeholder="Fiyat örnek: ₺499"
+                required
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
 
-          <input
-            value={tagsInput}
-            onChange={(event) => setTagsInput(event.target.value)}
-            placeholder="Etiketler örnek: react, nextjs, pdf, slayt"
-            className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          />
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Ürün açıklaması"
+                required
+                className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
 
-          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-            <p className="mb-2 text-sm text-gray-400">Lisans türü</p>
-            <select
-              value={licenseType}
-              onChange={(event) => setLicenseType(event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            >
-              {productLicenses.map((license) => (
-                <option key={license.type} value={license.type}>
-                  {license.type}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-gray-500">
-              {getLicenseInfo(licenseType).summary}
-            </p>
-          </label>
+              <input
+                value={tagsInput}
+                onChange={(event) => setTagsInput(event.target.value)}
+                placeholder="Etiketler örnek: react, nextjs, pdf, slayt"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+            </section>
+          )}
 
-          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-            <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
-            <select
-              value={previewType}
-              onChange={(event) => setPreviewType(event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            >
-              {productPreviewTypes.map((item) => (
-                <option key={item.type} value={item.type}>
-                  {item.type}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-gray-500">
-              {getPreviewInfo(previewType).description}
-            </p>
-          </label>
+          {activeStep === "files" && (
+            <section className="grid gap-5">
+              <div>
+                <h2 className="text-2xl font-bold">Dosyalar</h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Kapak görseli ve satılacak ürün dosyasını seç.
+                </p>
+              </div>
 
-          <textarea
-            value={previewNote}
-            onChange={(event) => setPreviewNote(event.target.value)}
-            placeholder="Önizleme açıklaması"
-            className="min-h-24 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-          />
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
+                  required
+                  className="w-full text-sm text-gray-300"
+                />
+                {coverImage && (
+                  <p className="mt-2 text-xs text-green-300">
+                    Seçilen görsel: {coverImage.name}
+                  </p>
+                )}
+              </label>
 
-          <section className="grid gap-4 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="text-xl font-bold">Teknik Bilgiler</h2>
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Ürün dosyası</p>
+                <input
+                  type="file"
+                  accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
+                  onChange={(event) => setProductFile(event.target.files?.[0] || null)}
+                  required
+                  className="w-full text-sm text-gray-300"
+                />
+                {productFile && (
+                  <p className="mt-2 text-xs text-green-300">
+                    Seçilen dosya: {productFile.name} — {detectFileType(productFile.name)}
+                  </p>
+                )}
+              </label>
+            </section>
+          )}
 
-            <input
-              value={demoUrl}
-              onChange={(event) => setDemoUrl(event.target.value)}
-              placeholder="Canlı demo linki"
-              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            />
+          {activeStep === "license" && (
+            <section className="grid gap-5">
+              <div>
+                <h2 className="text-2xl font-bold">Lisans ve Önizleme</h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Kullanım hakkı ve satın alma öncesi ürünün nasıl tanıtılacağını belirle.
+                </p>
+              </div>
 
-            <input
-              value={techStack}
-              onChange={(event) => setTechStack(event.target.value)}
-              placeholder="Teknolojiler örnek: Next.js, Tailwind, Supabase"
-              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            />
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Lisans türü</p>
+                <select
+                  value={licenseType}
+                  onChange={(event) => setLicenseType(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  {productLicenses.map((license) => (
+                    <option key={license.type} value={license.type}>
+                      {license.type}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  {getLicenseInfo(licenseType).summary}
+                </p>
+              </label>
 
-            <textarea
-              value={requirements}
-              onChange={(event) => setRequirements(event.target.value)}
-              placeholder="Gereksinimler"
-              className="min-h-24 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            />
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
+                <select
+                  value={previewType}
+                  onChange={(event) => setPreviewType(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  {productPreviewTypes.map((item) => (
+                    <option key={item.type} value={item.type}>
+                      {item.type}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  {getPreviewInfo(previewType).description}
+                </p>
+              </label>
 
-            <textarea
-              value={setupNotes}
-              onChange={(event) => setSetupNotes(event.target.value)}
-              placeholder="Kurulum notları"
-              className="min-h-32 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-            />
-          </section>
+              <textarea
+                value={previewNote}
+                onChange={(event) => setPreviewNote(event.target.value)}
+                placeholder="Önizleme açıklaması"
+                className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+            </section>
+          )}
 
-          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-            <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
-              required
-              className="w-full text-sm text-gray-300"
-            />
-          </label>
+          {activeStep === "technical" && (
+            <section className="grid gap-5">
+              <div>
+                <h2 className="text-2xl font-bold">Teknik Bilgiler</h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Kod projeleri için demo, teknoloji ve kurulum bilgilerini ekleyebilirsin.
+                </p>
+              </div>
 
-          <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-            <p className="mb-2 text-sm text-gray-400">Ürün dosyası</p>
-            <input
-              type="file"
-              accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
-              onChange={(event) => setProductFile(event.target.files?.[0] || null)}
-              required
-              className="w-full text-sm text-gray-300"
-            />
-          </label>
+              <input
+                value={demoUrl}
+                onChange={(event) => setDemoUrl(event.target.value)}
+                placeholder="Canlı demo linki"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-2xl bg-blue-600 px-5 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
-          >
-            {saving ? "Ürün gönderiliyor..." : "Ürünü Admin Onayına Gönder"}
-          </button>
+              <input
+                value={techStack}
+                onChange={(event) => setTechStack(event.target.value)}
+                placeholder="Teknolojiler örnek: Next.js, Tailwind, Supabase"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <textarea
+                value={requirements}
+                onChange={(event) => setRequirements(event.target.value)}
+                placeholder="Gereksinimler"
+                className="min-h-24 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <textarea
+                value={setupNotes}
+                onChange={(event) => setSetupNotes(event.target.value)}
+                placeholder="Kurulum notları"
+                className="min-h-32 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+            </section>
+          )}
+
+          <div className="flex flex-col gap-3 border-t border-white/10 pt-6 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-gray-400">
+              Eksik zorunlu alanlar varsa sistem uyarı verecek.
+            </div>
+
+            <div className="flex gap-3">
+              {activeStep !== "basic" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentIndex = steps.findIndex((step) => step.key === activeStep);
+                    setActiveStep(steps[Math.max(0, currentIndex - 1)].key);
+                  }}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+                >
+                  Geri
+                </button>
+              )}
+
+              {activeStep !== "technical" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentIndex = steps.findIndex((step) => step.key === activeStep);
+                    setActiveStep(steps[Math.min(steps.length - 1, currentIndex + 1)].key);
+                  }}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500"
+                >
+                  Devam Et
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-semibold hover:bg-green-500 disabled:opacity-60"
+                >
+                  {saving ? "Ürün gönderiliyor..." : "Ürünü Admin Onayına Gönder"}
+                </button>
+              )}
+            </div>
+          </div>
         </form>
       </section>
     </main>
