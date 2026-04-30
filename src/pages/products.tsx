@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import type { GetServerSideProps } from "next";
-import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategoryFilters } from "@/lib/productCategories";
@@ -27,10 +25,7 @@ type Product = {
   created_at?: string;
 };
 
-type ProductsPageProps = {
-  initialProducts: Product[];
-  initialError: string;
-};
+const pageSize = 12;
 
 const sortOptions = [
   { value: "newest", label: "En Yeni" },
@@ -59,36 +54,41 @@ const securityFilters = [
   "Riskli",
 ];
 
-const previewFilters = [
-  "Tümü",
-  ...productPreviewTypes.map((item) => item.type),
-];
+const previewFilters = ["Tümü", ...productPreviewTypes.map((item) => item.type)];
+const licenseFilters = ["Tümü", ...productLicenses.map((item) => item.type)];
 
-const licenseFilters = [
-  "Tümü",
-  ...productLicenses.map((item) => item.type),
-];
-
-function withTimeout<T>(
-  promise: PromiseLike<T>,
-  ms = 15000,
-  message = "Sunucu yanıtı gecikti."
-): Promise<T> {
-  return Promise.race([
-    promise as Promise<T>,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error(message)), ms);
-    }),
-  ]);
+function normalizeSearch(input: string) {
+  return input
+    .trim()
+    .replaceAll(",", " ")
+    .replace(/\s+/g, " ");
 }
 
-export default function ProductsPage({
-  initialProducts,
-  initialError,
-}: ProductsPageProps) {
+function normalizeTag(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function parsePrice(price: string) {
+  const numberText = price.replace(/[^\d]/g, "");
+  return Number(numberText || 0);
+}
+
+export default function ProductsPage() {
   const router = useRouter();
 
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
   const [sortBy, setSortBy] = useState("newest");
@@ -99,49 +99,140 @@ export default function ProductsPage({
   const [selectedLicense, setSelectedLicense] = useState("Tümü");
   const [selectedPreview, setSelectedPreview] = useState("Tümü");
 
-  const [message, setMessage] = useState(initialError);
+  const [page, setPage] = useState(1);
+
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadProducts(showRefreshing = true) {
-    if (showRefreshing) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const activeAdvancedCount = [
+    selectedFileType !== "Tümü",
+    selectedSecurity !== "Tümü",
+    selectedLicense !== "Tümü",
+    selectedPreview !== "Tümü",
+  ].filter(Boolean).length;
+
+  async function loadProducts(targetPage = page, showMainLoading = false) {
+    if (showMainLoading) {
+      setLoading(true);
+    } else {
       setRefreshing(true);
     }
 
-    try {
-      const result = await withTimeout(
-        supabase
-          .from("products")
-          .select(
-            "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags"
-          )
-          .eq("status", "Yayında")
-          .order("created_at", { ascending: false })
-          .limit(100),
-        15000,
-        "Ürünler yenilenirken sunucu geç cevap verdi."
-      );
+    setMessage("");
 
-      if (result.error) {
-        setMessage("Ürünler yenilenemedi: " + result.error.message);
+    try {
+      const from = (targetPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("products")
+        .select(
+          "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags",
+          { count: "planned" }
+        )
+        .eq("status", "Yayında");
+
+      const cleanSearch = normalizeSearch(search);
+
+      if (cleanSearch) {
+        const tag = normalizeTag(cleanSearch);
+        const safeSearch = cleanSearch.replace(/[%_]/g, "");
+        const like = `%${safeSearch}%`;
+
+        const searchParts = [
+          `title.ilike.${like}`,
+          `seller.ilike.${like}`,
+          `category.ilike.${like}`,
+          `description.ilike.${like}`,
+          `file_type.ilike.${like}`,
+          `license_type.ilike.${like}`,
+          `preview_type.ilike.${like}`,
+        ];
+
+        if (tag && !tag.includes("-")) {
+          searchParts.push(`tags.cs.{${tag}}`);
+        }
+
+        query = query.or(searchParts.join(","));
+      }
+
+      if (selectedCategory !== "Tümü") {
+        query = query.eq("category", selectedCategory);
+      }
+
+      if (selectedFileType !== "Tümü") {
+        query = query.eq("file_type", selectedFileType);
+      }
+
+      if (selectedSecurity !== "Tümü") {
+        query = query.eq("security_status", selectedSecurity);
+      }
+
+      if (selectedLicense !== "Tümü") {
+        query = query.eq("license_type", selectedLicense);
+      }
+
+      if (selectedPreview !== "Tümü") {
+        query = query.eq("preview_type", selectedPreview);
+      }
+
+      if (sortBy === "title_az") {
+        query = query.order("title", { ascending: true });
+      } else if (sortBy === "newest") {
+        query = query.order("created_at", { ascending: false });
       } else {
-        setProducts(result.data || []);
-        setMessage("");
-        setLastUpdated(
-          new Date().toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })
+        query = query.order("created_at", { ascending: false });
+      }
+
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        setProducts([]);
+        setTotalCount(0);
+        setMessage("Ürünler yüklenemedi: " + error.message);
+        return;
+      }
+
+      let productData = data || [];
+
+      if (sortBy === "price_low") {
+        productData = [...productData].sort(
+          (a, b) => parsePrice(a.price) - parsePrice(b.price)
         );
       }
+
+      if (sortBy === "price_high") {
+        productData = [...productData].sort(
+          (a, b) => parsePrice(b.price) - parsePrice(a.price)
+        );
+      }
+
+      setProducts(productData);
+      setTotalCount(count || 0);
+
+      setLastUpdated(
+        new Date().toLocaleTimeString("tr-TR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
     } catch (error) {
+      setProducts([]);
+      setTotalCount(0);
       setMessage(
         error instanceof Error
           ? error.message
-          : "Ürünler yenilenirken bilinmeyen bir hata oluştu."
+          : "Ürünler yüklenirken bilinmeyen hata oluştu."
       );
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
   }
@@ -149,39 +240,30 @@ export default function ProductsPage({
   useEffect(() => {
     if (typeof router.query.search === "string") {
       setSearch(router.query.search);
+      setPage(1);
     }
   }, [router.query.search]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel("products-live-list")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "products",
-        },
-        () => {
-          loadProducts(false);
-        }
-      )
-      .subscribe();
+    const timer = setTimeout(() => {
+      setPage(1);
+      loadProducts(1, true);
+    }, 350);
 
-    const interval = setInterval(() => {
-      loadProducts(false);
-    }, 15000);
+    return () => clearTimeout(timer);
+  }, [
+    search,
+    selectedCategory,
+    sortBy,
+    selectedFileType,
+    selectedSecurity,
+    selectedLicense,
+    selectedPreview,
+  ]);
 
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
-
-  function parsePrice(price: string) {
-    const numberText = price.replace(/[^\d]/g, "");
-    return Number(numberText || 0);
-  }
+  useEffect(() => {
+    loadProducts(page, true);
+  }, [page]);
 
   function clearFilters() {
     setSearch("");
@@ -191,79 +273,15 @@ export default function ProductsPage({
     setSelectedSecurity("Tümü");
     setSelectedLicense("Tümü");
     setSelectedPreview("Tümü");
+    setPage(1);
   }
 
-  const activeAdvancedCount = [
-    selectedFileType !== "Tümü",
-    selectedSecurity !== "Tümü",
-    selectedLicense !== "Tümü",
-    selectedPreview !== "Tümü",
-  ].filter(Boolean).length;
-
-  const filteredProducts = useMemo(() => {
-    const filtered = products.filter((product) => {
-      const searchText = `${product.title} ${product.seller} ${product.category} ${
-        product.description || ""
-      } ${(product.tags || []).join(" ")} ${product.file_type || ""} ${
-        product.license_type || ""
-      } ${product.preview_type || ""} ${product.security_status || ""}`.toLowerCase();
-
-      const matchesSearch = searchText.includes(search.toLowerCase());
-
-      const matchesCategory =
-        selectedCategory === "Tümü" || product.category === selectedCategory;
-
-      const matchesFileType =
-        selectedFileType === "Tümü" || product.file_type === selectedFileType;
-
-      const matchesSecurity =
-        selectedSecurity === "Tümü" ||
-        (product.security_status || "Taranmadı") === selectedSecurity;
-
-      const matchesLicense =
-        selectedLicense === "Tümü" || product.license_type === selectedLicense;
-
-      const matchesPreview =
-        selectedPreview === "Tümü" || product.preview_type === selectedPreview;
-
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesFileType &&
-        matchesSecurity &&
-        matchesLicense &&
-        matchesPreview
-      );
-    });
-
-    return filtered.sort((a, b) => {
-      if (sortBy === "price_low") {
-        return parsePrice(a.price) - parsePrice(b.price);
-      }
-
-      if (sortBy === "price_high") {
-        return parsePrice(b.price) - parsePrice(a.price);
-      }
-
-      if (sortBy === "title_az") {
-        return a.title.localeCompare(b.title, "tr");
-      }
-
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-
-      return dateB - dateA;
-    });
-  }, [
-    products,
-    search,
-    selectedCategory,
-    selectedFileType,
-    selectedSecurity,
-    selectedLicense,
-    selectedPreview,
-    sortBy,
-  ]);
+  const visibleRange = useMemo(() => {
+    if (totalCount === 0) return "0";
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, totalCount);
+    return `${start}-${end}`;
+  }, [page, totalCount]);
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -281,16 +299,16 @@ export default function ProductsPage({
 
             <div className="grid gap-2 md:text-right">
               <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-                Yayındaki ürün:{" "}
-                <span className="font-bold text-white">{products.length}</span>
+                Toplam ürün:{" "}
+                <span className="font-bold text-white">{totalCount}</span>
               </div>
 
               <div className="text-xs text-gray-500">
                 {refreshing
-                  ? "Canlı yenileniyor..."
+                  ? "Yenileniyor..."
                   : lastUpdated
                   ? `Son güncelleme: ${lastUpdated}`
-                  : "Canlı takip aktif"}
+                  : "Sayfalı ürün sistemi aktif"}
               </div>
             </div>
           </div>
@@ -326,6 +344,7 @@ export default function ProductsPage({
             </select>
 
             <button
+              type="button"
               onClick={() => setAdvancedOpen(!advancedOpen)}
               className="rounded-2xl border border-blue-500/30 px-5 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
             >
@@ -398,7 +417,7 @@ export default function ProductsPage({
             <p>{message}</p>
 
             <button
-              onClick={() => loadProducts(true)}
+              onClick={() => loadProducts(page, true)}
               className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500"
             >
               Tekrar Dene
@@ -407,7 +426,9 @@ export default function ProductsPage({
         )}
 
         <div className="mb-5 flex flex-col gap-2 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
-          <p>Gösterilen ürün sayısı: {filteredProducts.length}</p>
+          <p>
+            Gösterilen: {visibleRange} / {totalCount}
+          </p>
 
           <div className="flex flex-wrap gap-3">
             {(search ||
@@ -424,52 +445,64 @@ export default function ProductsPage({
           </div>
         </div>
 
-        <section className="grid gap-6 md:grid-cols-2">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 transition hover:border-blue-500/40 hover:bg-white/[0.07]"
-            >
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.title}
-                  className="h-56 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-56 w-full items-center justify-center bg-black/30 text-gray-500">
-                  Görsel yok
-                </div>
-              )}
+        {loading ? (
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+            Ürünler yükleniyor...
+          </section>
+        ) : (
+          <>
+            <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 transition hover:border-blue-500/40 hover:bg-white/[0.07]"
+                >
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.title}
+                      className="h-52 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-52 w-full items-center justify-center bg-black/30 text-gray-500">
+                      Görsel yok
+                    </div>
+                  )}
 
-              <div className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
-                      {product.category}
-                    </span>
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
+                          {product.category}
+                        </span>
 
-                    <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
+                        <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
 
-                    <p className="mt-2 text-sm text-gray-400">
-                      Satıcı:{" "}
-                      {product.seller_id ? (
-                        <a
-                          href={`/seller-store/${product.seller_id}`}
-                          className="text-blue-300 hover:text-blue-200"
-                        >
-                          {product.seller}
-                        </a>
-                      ) : (
-                        <span>{product.seller}</span>
-                      )}
-                    </p>
+                        <p className="mt-2 text-sm text-gray-400">
+                          Satıcı:{" "}
+                          {product.seller_id ? (
+                            <a
+                              href={`/seller-store/${product.seller_id}`}
+                              className="text-blue-300 hover:text-blue-200"
+                            >
+                              {product.seller}
+                            </a>
+                          ) : (
+                            <span>{product.seller}</span>
+                          )}
+                        </p>
 
-                    {product.description && (
-                      <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-400">
-                        {product.description}
-                      </p>
-                    )}
+                        {product.description && (
+                          <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-400">
+                            {product.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
+                        {product.status}
+                      </span>
+                    </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {product.file_type && (
@@ -503,79 +536,66 @@ export default function ProductsPage({
                         ))}
                       </div>
                     )}
+
+                    <div className="mt-8 flex items-center justify-between">
+                      <p className="text-3xl font-bold">{product.price}</p>
+
+                      <a
+                        href={`/product/${product.id}`}
+                        className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
+                      >
+                        İncele
+                      </a>
+                    </div>
                   </div>
-
-                  <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
-                    {product.status}
-                  </span>
                 </div>
+              ))}
+            </section>
 
-                <div className="mt-8 flex items-center justify-between">
-                  <p className="text-3xl font-bold">{product.price}</p>
+            {products.length === 0 && (
+              <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+                <h3 className="text-2xl font-bold">Ürün bulunamadı</h3>
+                <p className="mt-2 text-gray-400">
+                  Arama veya filtrelere uygun yayında ürün bulunamadı.
+                </p>
 
-                  <a
-                    href={`/product/${product.id}`}
-                    className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-                  >
-                    İncele
-                  </a>
-                </div>
+                <button
+                  onClick={clearFilters}
+                  className="mt-6 rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
+                >
+                  Filtreleri Temizle
+                </button>
               </div>
-            </div>
-          ))}
-        </section>
+            )}
 
-        {filteredProducts.length === 0 && (
-          <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h3 className="text-2xl font-bold">Ürün bulunamadı</h3>
-            <p className="mt-2 text-gray-400">
-              Arama veya filtrelere uygun yayında ürün bulunamadı.
-            </p>
+            <section className="mt-10 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-400">
+                Sayfa {page} / {totalPages}
+              </p>
 
-            <button
-              onClick={clearFilters}
-              className="mt-6 rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
-            >
-              Filtreleri Temizle
-            </button>
-          </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Önceki
+                </button>
+
+                <button
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
+                  disabled={page >= totalPages}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Sonraki
+                </button>
+              </div>
+            </section>
+          </>
         )}
       </section>
     </main>
   );
 }
-
-export const getServerSideProps: GetServerSideProps<ProductsPageProps> = async () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return {
-      props: {
-        initialProducts: [],
-        initialError:
-          "Supabase bağlantı bilgileri eksik. Vercel Environment Variables kontrol edilmeli.",
-      },
-    };
-  }
-
-  const serverSupabase = createClient(supabaseUrl, supabaseKey);
-
-  const { data, error } = await serverSupabase
-    .from("products")
-    .select(
-      "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags"
-    )
-    .eq("status", "Yayında")
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  return {
-    props: {
-      initialProducts: data || [],
-      initialError: error ? "Ürünler yüklenemedi: " + error.message : "",
-    },
-  };
-};
