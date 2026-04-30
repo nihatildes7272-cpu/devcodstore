@@ -5,6 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategoryFilters } from "@/lib/productCategories";
+import { productLicenses } from "@/lib/productLicenses";
+import { productPreviewTypes } from "@/lib/productPreviewTypes";
 
 type Product = {
   id: string;
@@ -15,9 +17,14 @@ type Product = {
   seller_id: string | null;
   status: string;
   description: string | null;
-  created_at?: string;
   image_url?: string | null;
+  file_type?: string | null;
+  file_name?: string | null;
+  license_type?: string | null;
+  preview_type?: string | null;
+  security_status?: string | null;
   tags?: string[] | null;
+  created_at?: string;
 };
 
 type ProductsPageProps = {
@@ -25,13 +32,41 @@ type ProductsPageProps = {
   initialError: string;
 };
 
-const categories = productCategoryFilters;
-
 const sortOptions = [
   { value: "newest", label: "En Yeni" },
   { value: "price_low", label: "En Düşük Fiyat" },
   { value: "price_high", label: "En Yüksek Fiyat" },
   { value: "title_az", label: "A-Z" },
+];
+
+const fileTypeFilters = [
+  "Tümü",
+  "ZIP Proje Dosyası",
+  "PDF Doküman",
+  "Ders Slaytı / Sunum",
+  "Word Dokümanı",
+  "Excel Dosyası",
+  "Görsel Dosyası",
+  "JSON Dosyası",
+  "Dijital Dosya",
+];
+
+const securityFilters = [
+  "Tümü",
+  "Güvenli",
+  "Manuel İnceleme",
+  "Taranmadı",
+  "Riskli",
+];
+
+const previewFilters = [
+  "Tümü",
+  ...productPreviewTypes.map((item) => item.type),
+];
+
+const licenseFilters = [
+  "Tümü",
+  ...productLicenses.map((item) => item.type),
 ];
 
 function withTimeout<T>(
@@ -52,10 +87,18 @@ export default function ProductsPage({
   initialError,
 }: ProductsPageProps) {
   const router = useRouter();
+
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
   const [sortBy, setSortBy] = useState("newest");
+
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [selectedFileType, setSelectedFileType] = useState("Tümü");
+  const [selectedSecurity, setSelectedSecurity] = useState("Tümü");
+  const [selectedLicense, setSelectedLicense] = useState("Tümü");
+  const [selectedPreview, setSelectedPreview] = useState("Tümü");
+
   const [message, setMessage] = useState(initialError);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
@@ -69,7 +112,9 @@ export default function ProductsPage({
       const result = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,category,price,seller,seller_id,status,description,created_at,tags,image_url,tags")
+          .select(
+            "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags"
+          )
           .eq("status", "Yayında")
           .order("created_at", { ascending: false })
           .limit(100),
@@ -138,18 +183,57 @@ export default function ProductsPage({
     return Number(numberText || 0);
   }
 
+  function clearFilters() {
+    setSearch("");
+    setSelectedCategory("Tümü");
+    setSortBy("newest");
+    setSelectedFileType("Tümü");
+    setSelectedSecurity("Tümü");
+    setSelectedLicense("Tümü");
+    setSelectedPreview("Tümü");
+  }
+
+  const activeAdvancedCount = [
+    selectedFileType !== "Tümü",
+    selectedSecurity !== "Tümü",
+    selectedLicense !== "Tümü",
+    selectedPreview !== "Tümü",
+  ].filter(Boolean).length;
+
   const filteredProducts = useMemo(() => {
     const filtered = products.filter((product) => {
       const searchText = `${product.title} ${product.seller} ${product.category} ${
         product.description || ""
-      } ${(product.tags || []).join(" ")}`.toLowerCase();
+      } ${(product.tags || []).join(" ")} ${product.file_type || ""} ${
+        product.license_type || ""
+      } ${product.preview_type || ""} ${product.security_status || ""}`.toLowerCase();
 
       const matchesSearch = searchText.includes(search.toLowerCase());
 
       const matchesCategory =
         selectedCategory === "Tümü" || product.category === selectedCategory;
 
-      return matchesSearch && matchesCategory;
+      const matchesFileType =
+        selectedFileType === "Tümü" || product.file_type === selectedFileType;
+
+      const matchesSecurity =
+        selectedSecurity === "Tümü" ||
+        (product.security_status || "Taranmadı") === selectedSecurity;
+
+      const matchesLicense =
+        selectedLicense === "Tümü" || product.license_type === selectedLicense;
+
+      const matchesPreview =
+        selectedPreview === "Tümü" || product.preview_type === selectedPreview;
+
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesFileType &&
+        matchesSecurity &&
+        matchesLicense &&
+        matchesPreview
+      );
     });
 
     return filtered.sort((a, b) => {
@@ -170,13 +254,16 @@ export default function ProductsPage({
 
       return dateB - dateA;
     });
-  }, [products, search, selectedCategory, sortBy]);
-
-  function clearFilters() {
-    setSearch("");
-    setSelectedCategory("Tümü");
-    setSortBy("newest");
-  }
+  }, [
+    products,
+    search,
+    selectedCategory,
+    selectedFileType,
+    selectedSecurity,
+    selectedLicense,
+    selectedPreview,
+    sortBy,
+  ]);
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -188,7 +275,7 @@ export default function ProductsPage({
             <div>
               <h2 className="text-3xl font-bold">Tüm Ürünler</h2>
               <p className="mt-2 text-gray-400">
-                Kod paketleri, paneller, arayüzler ve hazır web sistemleri.
+                Kod paketleri, PDF dosyaları, slaytlar, şablonlar ve dijital ürünler.
               </p>
             </div>
 
@@ -212,7 +299,7 @@ export default function ProductsPage({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ürün, satıcı, açıklama veya kategori ara..."
+              placeholder="Ürün, satıcı, etiket, açıklama veya dosya türü ara..."
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
             />
 
@@ -221,7 +308,7 @@ export default function ProductsPage({
               onChange={(event) => setSelectedCategory(event.target.value)}
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
             >
-              {categories.map((category) => (
+              {productCategoryFilters.map((category) => (
                 <option key={category}>{category}</option>
               ))}
             </select>
@@ -239,12 +326,71 @@ export default function ProductsPage({
             </select>
 
             <button
-              onClick={clearFilters}
-              className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              className="rounded-2xl border border-blue-500/30 px-5 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
             >
-              Temizle
+              Gelişmiş Filtreler
+              {activeAdvancedCount > 0 ? ` (${activeAdvancedCount})` : ""}
             </button>
           </div>
+
+          {advancedOpen && (
+            <section className="mt-5 rounded-3xl border border-white/10 bg-black/30 p-5">
+              <div className="grid gap-4 md:grid-cols-4">
+                <label className="grid gap-2 text-sm text-gray-400">
+                  Dosya Türü
+                  <select
+                    value={selectedFileType}
+                    onChange={(event) => setSelectedFileType(event.target.value)}
+                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  >
+                    {fileTypeFilters.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-gray-400">
+                  Güvenlik
+                  <select
+                    value={selectedSecurity}
+                    onChange={(event) => setSelectedSecurity(event.target.value)}
+                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  >
+                    {securityFilters.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-gray-400">
+                  Lisans
+                  <select
+                    value={selectedLicense}
+                    onChange={(event) => setSelectedLicense(event.target.value)}
+                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  >
+                    {licenseFilters.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-gray-400">
+                  Önizleme
+                  <select
+                    value={selectedPreview}
+                    onChange={(event) => setSelectedPreview(event.target.value)}
+                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  >
+                    {previewFilters.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </section>
+          )}
         </section>
 
         {message && (
@@ -253,7 +399,7 @@ export default function ProductsPage({
 
             <button
               onClick={() => loadProducts(true)}
-              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
+              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500"
             >
               Tekrar Dene
             </button>
@@ -263,15 +409,19 @@ export default function ProductsPage({
         <div className="mb-5 flex flex-col gap-2 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
           <p>Gösterilen ürün sayısı: {filteredProducts.length}</p>
 
-          {(search || selectedCategory !== "Tümü" || sortBy !== "newest") && (
-            <p>
-              Aktif filtre:{" "}
-              <span className="text-white">
-                {selectedCategory} /{" "}
-                {sortOptions.find((option) => option.value === sortBy)?.label}
-              </span>
-            </p>
-          )}
+          <div className="flex flex-wrap gap-3">
+            {(search ||
+              selectedCategory !== "Tümü" ||
+              sortBy !== "newest" ||
+              activeAdvancedCount > 0) && (
+              <button
+                onClick={clearFilters}
+                className="text-blue-300 hover:text-blue-200"
+              >
+                Filtreleri temizle
+              </button>
+            )}
+          </div>
         </div>
 
         <section className="grid gap-6 md:grid-cols-2">
@@ -294,61 +444,82 @@ export default function ProductsPage({
 
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
-                <div>
-                  <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
-                    {product.category}
-                  </span>
+                  <div>
+                    <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
+                      {product.category}
+                    </span>
 
-                  <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
-                  <p className="mt-2 text-sm text-gray-400">
-                    Satıcı:{" "}
-                    {product.seller_id ? (
-                      <a
-                        href={`/seller-store/${product.seller_id}`}
-                        className="text-blue-300 hover:text-blue-200"
-                      >
-                        {product.seller}
-                      </a>
-                    ) : (
-                      <span>{product.seller}</span>
-                    )}
-                  </p>
+                    <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
 
-                  {product.description && (
-                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-400">
-                      {product.description}
-                    </p>
-                  )}
-
-                  {Array.isArray(product.tags) && product.tags.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {product.tags.slice(0, 5).map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300"
+                    <p className="mt-2 text-sm text-gray-400">
+                      Satıcı:{" "}
+                      {product.seller_id ? (
+                        <a
+                          href={`/seller-store/${product.seller_id}`}
+                          className="text-blue-300 hover:text-blue-200"
                         >
-                          #{tag}
+                          {product.seller}
+                        </a>
+                      ) : (
+                        <span>{product.seller}</span>
+                      )}
+                    </p>
+
+                    {product.description && (
+                      <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-400">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {product.file_type && (
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300">
+                          {product.file_type}
                         </span>
-                      ))}
+                      )}
+
+                      {product.security_status && (
+                        <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-300">
+                          Güvenlik: {product.security_status}
+                        </span>
+                      )}
+
+                      {product.license_type && (
+                        <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs text-purple-300">
+                          {product.license_type}
+                        </span>
+                      )}
                     </div>
-                  )}
+
+                    {Array.isArray(product.tags) && product.tags.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {product.tags.slice(0, 5).map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
+                    {product.status}
+                  </span>
                 </div>
 
-                <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
-                  {product.status}
-                </span>
-              </div>
+                <div className="mt-8 flex items-center justify-between">
+                  <p className="text-3xl font-bold">{product.price}</p>
 
-              <div className="mt-8 flex items-center justify-between">
-                <p className="text-3xl font-bold">{product.price}</p>
-
-                <a
-                  href={`/product/${product.id}`}
-                  className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
-                >
-                  İncele
-                </a>
-              </div>
+                  <a
+                    href={`/product/${product.id}`}
+                    className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
+                  >
+                    İncele
+                  </a>
+                </div>
               </div>
             </div>
           ))}
@@ -356,26 +527,17 @@ export default function ProductsPage({
 
         {filteredProducts.length === 0 && (
           <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h3 className="text-2xl font-bold">Yayında ürün bulunamadı</h3>
+            <h3 className="text-2xl font-bold">Ürün bulunamadı</h3>
             <p className="mt-2 text-gray-400">
-              Admin panelinden ürünleri “Yayında” durumuna alabilirsin.
+              Arama veya filtrelere uygun yayında ürün bulunamadı.
             </p>
 
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                onClick={clearFilters}
-                className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
-              >
-                Filtreleri Temizle
-              </button>
-
-              <button
-                onClick={() => loadProducts(true)}
-                className="rounded-2xl border border-white/15 px-6 py-3 font-semibold hover:bg-white/10"
-              >
-                Yenile
-              </button>
-            </div>
+            <button
+              onClick={clearFilters}
+              className="mt-6 rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
+            >
+              Filtreleri Temizle
+            </button>
           </div>
         )}
       </section>
@@ -403,7 +565,9 @@ export const getServerSideProps: GetServerSideProps<ProductsPageProps> = async (
 
   const { data, error } = await serverSupabase
     .from("products")
-    .select("id,title,category,price,seller,seller_id,status,description,created_at,tags,image_url,tags")
+    .select(
+      "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags"
+    )
     .eq("status", "Yayında")
     .order("created_at", { ascending: false })
     .limit(100);
