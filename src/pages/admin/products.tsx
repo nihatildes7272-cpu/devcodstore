@@ -35,6 +35,10 @@ type Product = {
   license_summary?: string | null;
   license_allows_commercial?: boolean | null;
   license_allows_resale?: boolean | null;
+  demo_url?: string | null;
+  tech_stack?: string | null;
+  setup_notes?: string | null;
+  requirements?: string | null;
   strong_scan_status?: string | null;
   strong_scan_job_id?: string | null;
   strong_scan_started_at?: string | null;
@@ -583,6 +587,8 @@ export default function AdminProductsPage() {
                           Yeniden satış:{" "}
                           {product.license_allows_resale ? "İzinli" : "Yasak"}
                         </p>
+                        {product.demo_url && <p>Demo: {product.demo_url}</p>}
+                        {product.tech_stack && <p>Teknolojiler: {product.tech_stack}</p>}
                         <p>Tarama skoru: {product.security_scan_score ?? 0}</p>
                         <p>Son tarama: {formatDate(product.security_scanned_at)}</p>
                         <p>Güçlü tarama: {product.strong_scan_status || "Yok"}</p>

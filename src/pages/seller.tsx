@@ -27,6 +27,10 @@ type Product = {
   security_status?: string | null;
   security_note?: string | null;
   created_at?: string;
+  demo_url?: string | null;
+  tech_stack?: string | null;
+  setup_notes?: string | null;
+  requirements?: string | null;
 };
 
 type Order = {
@@ -123,6 +127,10 @@ export default function SellerPage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
+  const [demoUrl, setDemoUrl] = useState("");
+  const [techStack, setTechStack] = useState("");
+  const [setupNotes, setSetupNotes] = useState("");
+  const [requirements, setRequirements] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
@@ -361,6 +369,10 @@ export default function SellerPage() {
       license_summary: selectedLicense.summary,
       license_allows_commercial: selectedLicense.allowsCommercial,
       license_allows_resale: selectedLicense.allowsResale,
+      demo_url: demoUrl.trim() || null,
+      tech_stack: techStack.trim() || null,
+      setup_notes: setupNotes.trim() || null,
+      requirements: requirements.trim() || null,
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -377,6 +389,10 @@ export default function SellerPage() {
     setPrice("");
     setDescription("");
     setLicenseType("Kişisel Kullanım");
+    setDemoUrl("");
+    setTechStack("");
+    setSetupNotes("");
+    setRequirements("");
     setZipFile(null);
     setCoverImage(null);
 
@@ -662,6 +678,44 @@ export default function SellerPage() {
                 </p>
               </label>
 
+              <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+                <div>
+                  <h3 className="text-lg font-bold">Teknik Bilgiler</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Kod projeleri için demo, teknoloji ve kurulum bilgisi ekleyebilirsin.
+                    PDF/slayt gibi ürünlerde boş bırakabilirsin.
+                  </p>
+                </div>
+
+                <input
+                  value={demoUrl}
+                  onChange={(event) => setDemoUrl(event.target.value)}
+                  placeholder="Canlı demo linki örnek: https://demo-site.com"
+                  className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                />
+
+                <input
+                  value={techStack}
+                  onChange={(event) => setTechStack(event.target.value)}
+                  placeholder="Teknolojiler örnek: Next.js, Tailwind, Supabase"
+                  className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                />
+
+                <textarea
+                  value={requirements}
+                  onChange={(event) => setRequirements(event.target.value)}
+                  placeholder="Gereksinimler örnek: Node.js 20, npm, Supabase hesabı"
+                  className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                />
+
+                <textarea
+                  value={setupNotes}
+                  onChange={(event) => setSetupNotes(event.target.value)}
+                  placeholder="Kurulum notları örnek: npm install, npm run dev"
+                  className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                />
+              </div>
+
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
                 <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
                 <input
@@ -742,6 +796,23 @@ export default function SellerPage() {
                   <p className="mt-1 text-xs text-gray-500">
                     Lisans: {product.license_type || "Kişisel Kullanım"}
                   </p>
+
+                  {product.tech_stack && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Teknolojiler: {product.tech_stack}
+                    </p>
+                  )}
+
+                  {product.demo_url && (
+                    <a
+                      href={product.demo_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs text-blue-300 hover:text-blue-200"
+                    >
+                      Canlı demo aç
+                    </a>
+                  )}
 
                   <div className="mt-5 flex flex-wrap gap-3">
                     <a

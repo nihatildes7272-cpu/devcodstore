@@ -26,6 +26,10 @@ type Product = {
   security_note?: string | null;
   security_checked_at?: string | null;
   created_at?: string;
+  demo_url?: string | null;
+  tech_stack?: string | null;
+  setup_notes?: string | null;
+  requirements?: string | null;
 };
 
 type GalleryImage = {
@@ -484,6 +488,72 @@ export default function ProductDetailPage() {
               </section>
             )}
 
+            {(product.demo_url || product.tech_stack || product.setup_notes || product.requirements) && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                <h2 className="text-2xl font-bold">Teknik Bilgiler ve Demo</h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  Ürünü satın almadan önce demo, teknoloji ve kurulum bilgilerini inceleyebilirsin.
+                </p>
+
+                {product.demo_url && (
+                  <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/30">
+                    <div className="flex flex-col gap-3 border-b border-white/10 p-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <h3 className="font-bold">Canlı Önizleme</h3>
+                        <p className="mt-1 break-all text-sm text-gray-400">
+                          {product.demo_url}
+                        </p>
+                      </div>
+
+                      <a
+                        href={product.demo_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-2xl bg-blue-600 px-5 py-2 text-center text-sm font-semibold hover:bg-blue-500"
+                      >
+                        Tam Ekran Aç
+                      </a>
+                    </div>
+
+                    <iframe
+                      src={product.demo_url}
+                      className="h-[520px] w-full bg-white"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    />
+                  </div>
+                )}
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {product.tech_stack && (
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Kullanılan Teknolojiler</p>
+                      <p className="mt-2 leading-7 text-gray-300">
+                        {product.tech_stack}
+                      </p>
+                    </div>
+                  )}
+
+                  {product.requirements && (
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Gereksinimler</p>
+                      <p className="mt-2 whitespace-pre-line leading-7 text-gray-300">
+                        {product.requirements}
+                      </p>
+                    </div>
+                  )}
+
+                  {product.setup_notes && (
+                    <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
+                      <p className="text-sm text-gray-400">Kurulum Notları</p>
+                      <p className="mt-2 whitespace-pre-line leading-7 text-gray-300">
+                        {product.setup_notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
               <h2 className="text-2xl font-bold">Ürün Bilgileri</h2>
 
@@ -748,6 +818,29 @@ export default function ProductDetailPage() {
               <p className="mt-1 text-xs text-gray-500">
                 {product.file_name || fileName(product.file_path)}
               </p>
+
+              {product.demo_url && (
+                <>
+                  <p className="mt-4 text-sm text-gray-400">Demo</p>
+                  <a
+                    href={product.demo_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 block font-bold text-blue-300 hover:text-blue-200"
+                  >
+                    Canlı demo aç
+                  </a>
+                </>
+              )}
+
+              {product.tech_stack && (
+                <>
+                  <p className="mt-4 text-sm text-gray-400">Teknolojiler</p>
+                  <p className="mt-2 text-sm leading-6 text-gray-300">
+                    {product.tech_stack}
+                  </p>
+                </>
+              )}
 
               <p className="mt-4 text-sm text-gray-400">Lisans</p>
               <p className="mt-2 font-bold text-blue-300">

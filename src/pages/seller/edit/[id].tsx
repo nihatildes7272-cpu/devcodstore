@@ -24,6 +24,10 @@ type Product = {
   license_summary: string | null;
   license_allows_commercial: boolean | null;
   license_allows_resale: boolean | null;
+  demo_url: string | null;
+  tech_stack: string | null;
+  setup_notes: string | null;
+  requirements: string | null;
 };
 
 type GalleryImage = {
@@ -104,6 +108,10 @@ export default function SellerEditProductPage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
+  const [demoUrl, setDemoUrl] = useState("");
+  const [techStack, setTechStack] = useState("");
+  const [setupNotes, setSetupNotes] = useState("");
+  const [requirements, setRequirements] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -161,6 +169,10 @@ export default function SellerEditProductPage() {
       setPrice(data.price);
       setDescription(data.description || "");
       setLicenseType(data.license_type || "Kişisel Kullanım");
+      setDemoUrl(data.demo_url || "");
+      setTechStack(data.tech_stack || "");
+      setSetupNotes(data.setup_notes || "");
+      setRequirements(data.requirements || "");
 
       const { data: galleryData } = await supabase
         .from("product_images")
@@ -287,6 +299,10 @@ export default function SellerEditProductPage() {
         license_summary: selectedLicense.summary,
         license_allows_commercial: selectedLicense.allowsCommercial,
         license_allows_resale: selectedLicense.allowsResale,
+        demo_url: demoUrl.trim() || null,
+        tech_stack: techStack.trim() || null,
+        setup_notes: setupNotes.trim() || null,
+        requirements: requirements.trim() || null,
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -497,6 +513,43 @@ export default function SellerEditProductPage() {
                 {getLicenseInfo(licenseType).summary}
               </p>
             </label>
+
+            <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <div>
+                <h3 className="text-lg font-bold">Teknik Bilgiler</h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Canlı demo, teknoloji, gereksinim ve kurulum bilgilerini güncelle.
+                </p>
+              </div>
+
+              <input
+                value={demoUrl}
+                onChange={(event) => setDemoUrl(event.target.value)}
+                placeholder="Canlı demo linki"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <input
+                value={techStack}
+                onChange={(event) => setTechStack(event.target.value)}
+                placeholder="Teknolojiler örnek: React, Firebase, Tailwind"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <textarea
+                value={requirements}
+                onChange={(event) => setRequirements(event.target.value)}
+                placeholder="Gereksinimler"
+                className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <textarea
+                value={setupNotes}
+                onChange={(event) => setSetupNotes(event.target.value)}
+                placeholder="Kurulum notları"
+                className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+            </div>
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">
