@@ -15,6 +15,9 @@ type Product = {
   description: string | null;
   file_path: string | null;
   image_url?: string | null;
+  security_status?: string | null;
+  security_note?: string | null;
+  security_checked_at?: string | null;
   created_at?: string;
 };
 
@@ -286,6 +289,22 @@ export default function ProductDetailPage() {
     return path.split("/").pop() || "proje-dosyasi.zip";
   }
 
+  function securityClass(status?: string | null) {
+    if (status === "Güvenli") {
+      return "rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
+    }
+
+    if (status === "Riskli") {
+      return "rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+    }
+
+    if (status === "Manuel İnceleme") {
+      return "rounded-full bg-blue-500/20 px-4 py-2 text-sm text-blue-300";
+    }
+
+    return "rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+  }
+
   function statusClass(status: string) {
     if (status === "Yayında") {
       return "rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
@@ -368,6 +387,10 @@ export default function ProductDetailPage() {
 
                 <span className={statusClass(product.status)}>
                   {product.status}
+                </span>
+
+                <span className={securityClass(product.security_status)}>
+                  Güvenlik: {product.security_status || "Taranmadı"}
                 </span>
 
                 {reviews.length > 0 && (
@@ -475,6 +498,16 @@ export default function ProductDetailPage() {
                   </p>
                   <p className="mt-2 text-sm text-gray-500">
                     {fileName(product.file_path)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
+                  <p className="text-sm text-gray-400">Admin Güvenlik İncelemesi</p>
+                  <p className="mt-2 font-bold">
+                    {product.security_status || "Taranmadı"}
+                  </p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {product.security_note || "Bu ürün için henüz güvenlik notu eklenmemiş."}
                   </p>
                 </div>
               </div>
@@ -644,6 +677,19 @@ export default function ProductDetailPage() {
                 }
               >
                 {product.file_path ? "Hazır" : "Bekleniyor"}
+              </p>
+
+              <p className="mt-4 text-sm text-gray-400">Güvenlik</p>
+              <p
+                className={
+                  product.security_status === "Güvenli"
+                    ? "mt-2 font-bold text-green-300"
+                    : product.security_status === "Riskli"
+                    ? "mt-2 font-bold text-red-300"
+                    : "mt-2 font-bold text-yellow-300"
+                }
+              >
+                {product.security_status || "Taranmadı"}
               </p>
 
               <p className="mt-4 text-sm text-gray-400">Puan</p>

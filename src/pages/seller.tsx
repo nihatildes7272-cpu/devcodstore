@@ -15,6 +15,8 @@ type Product = {
   description: string | null;
   file_path: string | null;
   image_url: string | null;
+  security_status?: string | null;
+  security_note?: string | null;
   created_at?: string;
 };
 
@@ -322,6 +324,8 @@ export default function SellerPage() {
       description,
       file_path: filePath,
       image_url: publicImage.publicUrl,
+      security_status: "Taranmadı",
+      security_note: "Satıcı tarafından gönderildi. Admin güvenlik incelemesi bekleniyor.",
     };
 
     const { error } = await supabase.from("products").insert(newProduct);

@@ -34,6 +34,7 @@ const entityFilters = [
 const actionFilters = [
   { value: "all", label: "Tüm İşlemler" },
   { value: "product_status_changed", label: "Ürün Durumu" },
+  { value: "product_security_changed", label: "Ürün Güvenliği" },
   { value: "order_status_changed", label: "Sipariş Durumu" },
   { value: "profile_role_changed", label: "Rol Değişimi" },
   { value: "review_deleted", label: "Yorum Silme" },
@@ -183,6 +184,7 @@ export default function AdminLogsPage() {
 
   function actionLabel(action: string) {
     if (action === "product_status_changed") return "Ürün Durumu";
+    if (action === "product_security_changed") return "Ürün Güvenliği";
     if (action === "order_status_changed") return "Sipariş Durumu";
     if (action === "profile_role_changed") return "Rol Değişimi";
     if (action === "review_deleted") return "Yorum Silindi";

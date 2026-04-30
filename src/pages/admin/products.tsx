@@ -12,6 +12,9 @@ type Product = {
   status: string;
   description: string | null;
   file_path?: string | null;
+  security_status?: string | null;
+  security_note?: string | null;
+  security_checked_at?: string | null;
   created_at?: string;
 };
 
@@ -159,6 +162,55 @@ export default function AdminProductsPage() {
     }
 
     return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+  }
+
+  function securityClass(status?: string | null) {
+    if (status === "Güvenli") {
+      return "w-fit rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
+    }
+
+    if (status === "Riskli") {
+      return "w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+    }
+
+    if (status === "Manuel İnceleme") {
+      return "w-fit rounded-full bg-blue-500/20 px-4 py-2 text-sm text-blue-300";
+    }
+
+    return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+  }
+
+  async function updateSecurityStatus(productId: string, securityStatus: string) {
+    const note = window.prompt(
+      "Güvenlik notu yaz:",
+      securityStatus === "Güvenli"
+        ? "Manuel inceleme sonucu güvenli bulundu."
+        : securityStatus === "Riskli"
+        ? "Riskli içerik tespit edildi."
+        : "Manuel inceleme gerekiyor."
+    );
+
+    if (note === null) {
+      return;
+    }
+
+    setMessage("");
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        security_status: securityStatus,
+        security_note: note,
+        security_checked_at: new Date().toISOString(),
+      })
+      .eq("id", productId);
+
+    if (error) {
+      setMessage("Güvenlik durumu güncellenemedi: " + error.message);
+      return;
+    }
+
+    await loadProducts(false);
   }
 
   function formatDate(date?: string) {
@@ -350,6 +402,15 @@ export default function AdminProductsPage() {
                     <p>Fiyat: {product.price}</p>
                     <p>Eklenme: {formatDate(product.created_at)}</p>
                     <p>Dosya: {product.file_path ? "Yüklendi" : "Dosya yok"}</p>
+                    <p>
+                      Güvenlik:{" "}
+                      <span className={securityClass(product.security_status)}>
+                        {product.security_status || "Taranmadı"}
+                      </span>
+                    </p>
+                    {product.security_note && (
+                      <p>Güvenlik notu: {product.security_note}</p>
+                    )}
                   </div>
 
                   {product.description && (
@@ -360,6 +421,27 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="grid gap-2 lg:min-w-60">
+                  <button
+                    onClick={() => updateSecurityStatus(product.id, "Güvenli")}
+                    className="rounded-2xl border border-green-500/30 px-4 py-2 text-sm font-semibold text-green-300 hover:bg-green-500/10"
+                  >
+                    Güvenli İşaretle
+                  </button>
+
+                  <button
+                    onClick={() => updateSecurityStatus(product.id, "Manuel İnceleme")}
+                    className="rounded-2xl border border-blue-500/30 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+                  >
+                    İncelemeye Al
+                  </button>
+
+                  <button
+                    onClick={() => updateSecurityStatus(product.id, "Riskli")}
+                    className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                  >
+                    Riskli İşaretle
+                  </button>
+
                   <button
                     onClick={() => updateProductStatus(product.id, "Yayında")}
                     className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
