@@ -18,21 +18,22 @@ type Product = {
   file_type?: string | null;
   file_size?: number | null;
   image_url?: string | null;
-  license_type?: string | null;
-  license_summary?: string | null;
-  license_allows_commercial?: boolean | null;
-  license_allows_resale?: boolean | null;
   security_status?: string | null;
   security_note?: string | null;
   security_checked_at?: string | null;
-  created_at?: string;
+  security_scan_score?: number | null;
   demo_url?: string | null;
   tech_stack?: string | null;
   setup_notes?: string | null;
   requirements?: string | null;
+  license_type?: string | null;
+  license_summary?: string | null;
+  license_allows_commercial?: boolean | null;
+  license_allows_resale?: boolean | null;
   preview_type?: string | null;
   preview_note?: string | null;
   tags?: string[] | null;
+  created_at?: string;
 };
 
 type GalleryImage = {
@@ -54,9 +55,13 @@ type ProductReview = {
   updated_at: string;
 };
 
+type DetailTab = "overview" | "technical" | "security" | "license" | "reviews";
+
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id } = router.query;
+
+  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
 
   const [user, setUser] = useState<User | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
@@ -99,77 +104,76 @@ export default function ProductDetailPage() {
     }
   }
 
-  useEffect(() => {
-    async function loadProduct() {
-      if (!router.isReady || !id) return;
+  async function loadProduct() {
+    if (!router.isReady || !id) return;
 
-      setLoading(true);
-      setMessage("");
-      setReviewMessage("");
+    setLoading(true);
+    setMessage("");
+    setReviewMessage("");
 
-      const { data: userData } = await supabase.auth.getUser();
-      const currentUser = userData.user;
-      setUser(currentUser);
+    const { data: userData } = await supabase.auth.getUser();
+    const currentUser = userData.user;
+    setUser(currentUser);
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", String(id))
-        .single();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", String(id))
+      .maybeSingle();
 
-      if (error || !data) {
-        setMessage("Ürün bilgisi yüklenirken hata oluştu.");
-        setProduct(null);
-        setLoading(false);
-        return;
-      }
-
-      setProduct(data);
-
-      const { data: galleryData } = await supabase
-        .from("product_images")
-        .select("*")
-        .eq("product_id", data.id)
-        .order("created_at", { ascending: true });
-
-      setGalleryImages(galleryData || []);
-
-      const { data: relatedData } = await supabase
-        .from("products")
-        .select("*")
-        .eq("status", "Yayında")
-        .eq("category", data.category)
-        .neq("id", data.id)
-        .limit(3);
-
-      setRelatedProducts(relatedData || []);
-
-      if (currentUser) {
-        const { data: orderData } = await supabase
-          .from("orders")
-          .select("id")
-          .eq("user_id", currentUser.id)
-          .eq("product_id", data.id)
-          .neq("status", "İade Edildi")
-          .limit(1)
-          .maybeSingle();
-
-        setHasPurchased(Boolean(orderData));
-      } else {
-        setHasPurchased(false);
-      }
-
-      await loadReviews(data.id, currentUser);
-
+    if (error || !data) {
+      setMessage("Ürün bilgisi yüklenirken hata oluştu.");
+      setProduct(null);
       setLoading(false);
+      return;
     }
 
+    setProduct(data);
+
+    const { data: galleryData } = await supabase
+      .from("product_images")
+      .select("*")
+      .eq("product_id", data.id)
+      .order("created_at", { ascending: true });
+
+    setGalleryImages(galleryData || []);
+
+    const { data: relatedData } = await supabase
+      .from("products")
+      .select("*")
+      .eq("status", "Yayında")
+      .eq("category", data.category)
+      .neq("id", data.id)
+      .limit(3);
+
+    setRelatedProducts(relatedData || []);
+
+    if (currentUser) {
+      const { data: orderData } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .eq("product_id", data.id)
+        .neq("status", "İade Edildi")
+        .limit(1)
+        .maybeSingle();
+
+      setHasPurchased(Boolean(orderData));
+    } else {
+      setHasPurchased(false);
+    }
+
+    await loadReviews(data.id, currentUser);
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
     loadProduct();
   }, [router.isReady, id]);
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
-
     const total = reviews.reduce((sum, review) => sum + review.rating, 0);
     return total / reviews.length;
   }, [reviews]);
@@ -288,7 +292,7 @@ export default function ProductDetailPage() {
     await loadReviews(product.id, user);
   }
 
-  function formatDate(date?: string) {
+  function formatDate(date?: string | null) {
     if (!date) return "Tarih yok";
 
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -309,24 +313,8 @@ export default function ProductDetailPage() {
   }
 
   function fileName(path: string | null) {
-    if (!path) return "ZIP dosyası yok";
+    if (!path) return "Dosya yok";
     return path.split("/").pop() || "proje-dosyasi.zip";
-  }
-
-  function securityClass(status?: string | null) {
-    if (status === "Güvenli") {
-      return "rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
-    }
-
-    if (status === "Riskli") {
-      return "rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
-    }
-
-    if (status === "Manuel İnceleme") {
-      return "rounded-full bg-blue-500/20 px-4 py-2 text-sm text-blue-300";
-    }
-
-    return "rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
   }
 
   function statusClass(status: string) {
@@ -345,10 +333,34 @@ export default function ProductDetailPage() {
     return "rounded-full bg-gray-500/20 px-4 py-2 text-sm text-gray-300";
   }
 
+  function securityClass(status?: string | null) {
+    if (status === "Güvenli") {
+      return "rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
+    }
+
+    if (status === "Riskli") {
+      return "rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+    }
+
+    if (status === "Manuel İnceleme") {
+      return "rounded-full bg-blue-500/20 px-4 py-2 text-sm text-blue-300";
+    }
+
+    return "rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+  }
+
   function stars(value: number) {
     const rounded = Math.round(value);
     return "★★★★★".slice(0, rounded) + "☆☆☆☆☆".slice(0, 5 - rounded);
   }
+
+  const tabs: { key: DetailTab; label: string }[] = [
+    { key: "overview", label: "Genel Bakış" },
+    { key: "technical", label: "Teknik Bilgiler" },
+    { key: "security", label: "Güvenlik" },
+    { key: "license", label: "Lisans" },
+    { key: "reviews", label: `Yorumlar (${reviews.length})` },
+  ];
 
   if (loading) {
     return (
@@ -441,6 +453,20 @@ export default function ProductDetailPage() {
                   <span className="font-semibold text-white">{product.seller}</span>
                 )}
               </p>
+
+              {Array.isArray(product.tags) && product.tags.length > 0 && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {product.tags.map((tag) => (
+                    <a
+                      key={tag}
+                      href={`/products?search=${encodeURIComponent(tag)}`}
+                      className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300 hover:bg-blue-500/20 hover:text-blue-200"
+                    >
+                      #{tag}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-black/30 p-6 md:min-w-72">
@@ -456,46 +482,135 @@ export default function ProductDetailPage() {
 
         <section className="grid gap-8 lg:grid-cols-[1fr_380px]">
           <div className="grid gap-8">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <h2 className="text-2xl font-bold">Ürün Açıklaması</h2>
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-3">
+              <div className="grid gap-3 md:grid-cols-5">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={
+                      activeTab === tab.key
+                        ? "rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white"
+                        : "rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                    }
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-              <p className="mt-5 leading-8 text-gray-300">
-                {product.description || "Bu ürün için henüz açıklama eklenmemiş."}
-              </p>
-            </div>
+            {activeTab === "overview" && (
+              <section className="grid gap-8">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Ürün Açıklaması</h2>
 
-            {galleryImages.length > 0 && (
-              <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-                <h2 className="text-2xl font-bold">Ürün Galerisi</h2>
-                <p className="mt-2 text-sm text-gray-400">
-                  Ürüne ait ekran görüntüleri ve ön izleme görselleri.
-                </p>
+                  <p className="mt-5 leading-8 text-gray-300">
+                    {product.description || "Bu ürün için henüz açıklama eklenmemiş."}
+                  </p>
+                </div>
 
-                <div className="mt-6 grid gap-5 md:grid-cols-3">
-                  {galleryImages.map((image) => (
-                    <a
-                      key={image.id}
-                      href={image.image_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block overflow-hidden rounded-3xl border border-white/10 bg-black/30 transition hover:border-blue-500/40"
-                    >
-                      <img
-                        src={image.image_url}
-                        alt="Ürün galeri görseli"
-                        className="h-56 w-full object-cover"
-                      />
-                    </a>
-                  ))}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Önizleme Tipi</p>
+                      <p className="mt-2 font-bold text-blue-300">
+                        {product.preview_type || "Kapak + Galeri"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
+                      <p className="text-sm text-gray-400">Açıklama</p>
+                      <p className="mt-2 leading-7 text-gray-300">
+                        {product.preview_note ||
+                          "Bu ürün kapak görseli, galeri veya demo bilgileriyle önizlenir. Tam dosya satın alma sonrası açılır."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm leading-6 text-yellow-200">
+                    Satın alınmamış ürünlerde tam dosya içeriği gösterilmez. Tam erişim satın alma sonrası Dosyalarım bölümünden sağlanır.
+                  </div>
+                </div>
+
+                {galleryImages.length > 0 && (
+                  <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                    <h2 className="text-2xl font-bold">Ürün Galerisi</h2>
+                    <p className="mt-2 text-sm text-gray-400">
+                      Ürüne ait ekran görüntüleri ve ön izleme görselleri.
+                    </p>
+
+                    <div className="mt-6 grid gap-5 md:grid-cols-3">
+                      {galleryImages.map((image) => (
+                        <a
+                          key={image.id}
+                          href={image.image_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block overflow-hidden rounded-3xl border border-white/10 bg-black/30 transition hover:border-blue-500/40"
+                        >
+                          <img
+                            src={image.image_url}
+                            alt="Ürün galeri görseli"
+                            className="h-56 w-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Ürün Bilgileri</h2>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Ürün No</p>
+                      <p className="mt-2 break-all font-bold">#{product.id}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Kategori</p>
+                      <p className="mt-2 font-bold">{product.category}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Yayın Durumu</p>
+                      <p className="mt-2 font-bold">{product.status}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Eklenme Tarihi</p>
+                      <p className="mt-2 font-bold">{formatDate(product.created_at)}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
+                      <p className="text-sm text-gray-400">Dosya Durumu</p>
+                      <p className="mt-2 break-all font-bold">
+                        {product.file_path ? "Ürün dosyası hazır" : "Henüz dosya yok"}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Dosya adı: {product.file_name || fileName(product.file_path)}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Dosya türü: {product.file_type || "Dijital Dosya"}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Boyut: {formatFileSize(product.file_size)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </section>
             )}
 
-            {(product.demo_url || product.tech_stack || product.setup_notes || product.requirements) && (
+            {activeTab === "technical" && (
               <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
                 <h2 className="text-2xl font-bold">Teknik Bilgiler ve Demo</h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  Ürünü satın almadan önce demo, teknoloji ve kurulum bilgilerini inceleyebilirsin.
+                  Demo, teknoloji, gereksinim ve kurulum bilgileri.
                 </p>
 
                 {product.demo_url && (
@@ -553,284 +668,237 @@ export default function ProductDetailPage() {
                       </p>
                     </div>
                   )}
+
+                  {!product.demo_url &&
+                    !product.tech_stack &&
+                    !product.requirements &&
+                    !product.setup_notes && (
+                      <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400 md:col-span-2">
+                        Bu ürün için teknik bilgi eklenmemiş.
+                      </div>
+                    )}
                 </div>
               </section>
             )}
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <h2 className="text-2xl font-bold">Ürün Bilgileri</h2>
+            {activeTab === "security" && (
+              <section className="grid gap-8">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Admin Güvenlik İncelemesi</h2>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Ürün No</p>
-                  <p className="mt-2 break-all font-bold">#{product.id}</p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Kategori</p>
-                  <p className="mt-2 font-bold">{product.category}</p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Yayın Durumu</p>
-                  <p className="mt-2 font-bold">{product.status}</p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Eklenme Tarihi</p>
-                  <p className="mt-2 font-bold">{formatDate(product.created_at)}</p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
-                  <p className="text-sm text-gray-400">Dosya Durumu</p>
-                  <p className="mt-2 break-all font-bold">
-                    {product.file_path ? "ZIP dosyası hazır" : "Henüz ZIP dosyası yok"}
-                  </p>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Dosya adı: {product.file_name || fileName(product.file_path)}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Dosya türü: {product.file_type || "Dijital Dosya"}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Boyut: {formatFileSize(product.file_size)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
-                  <p className="text-sm text-gray-400">Admin Güvenlik İncelemesi</p>
-                  <p className="mt-2 font-bold">
-                    {product.security_status || "Taranmadı"}
-                  </p>
-                  <p className="mt-2 text-sm text-gray-500">
-                    {product.security_note || "Bu ürün için henüz güvenlik notu eklenmemiş."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {Array.isArray(product.tags) && product.tags.length > 0 && (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-                <h2 className="text-2xl font-bold">Ürün Etiketleri</h2>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {product.tags.map((tag) => (
-                    <a
-                      key={tag}
-                      href={`/products?search=${encodeURIComponent(tag)}`}
-                      className="rounded-full bg-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-blue-500/20 hover:text-blue-200"
-                    >
-                      #{tag}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Önizleme Tipi</p>
-                  <p className="mt-2 font-bold text-blue-300">
-                    {product.preview_type || "Kapak + Galeri"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
-                  <p className="text-sm text-gray-400">Açıklama</p>
-                  <p className="mt-2 leading-7 text-gray-300">
-                    {product.preview_note ||
-                      "Bu ürün kapak görseli, galeri veya demo bilgileriyle önizlenir. Tam dosya satın alma sonrası açılır."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm leading-6 text-yellow-200">
-                Satın alınmamış ürünlerde tam dosya içeriği gösterilmez. Tam erişim satın alma sonrası Dosyalarım bölümünden sağlanır.
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <h2 className="text-2xl font-bold">Lisans ve Kullanım Hakkı</h2>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Lisans Türü</p>
-                  <p className="mt-2 font-bold">
-                    {product.license_type || "Kişisel Kullanım"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Ticari Kullanım</p>
-                  <p
-                    className={
-                      product.license_allows_commercial
-                        ? "mt-2 font-bold text-green-300"
-                        : "mt-2 font-bold text-red-300"
-                    }
-                  >
-                    {product.license_allows_commercial ? "İzinli" : "İzinli Değil"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Yeniden Satış</p>
-                  <p
-                    className={
-                      product.license_allows_resale
-                        ? "mt-2 font-bold text-green-300"
-                        : "mt-2 font-bold text-red-300"
-                    }
-                  >
-                    {product.license_allows_resale ? "İzinli" : "Yasak"}
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-5 leading-7 text-gray-300">
-                {product.license_summary ||
-                  "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
-              </p>
-            </div>
-
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Yorumlar ve Puanlama</h2>
-                  <p className="mt-2 text-sm text-gray-400">
-                    Satın alan kullanıcılar bu ürüne yorum ve puan verebilir.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm">
-                  {reviews.length > 0 ? (
-                    <span className="text-yellow-300">
-                      {stars(averageRating)} {averageRating.toFixed(1)} / 5
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">Henüz yorum yok</span>
-                  )}
-                </div>
-              </div>
-
-              {reviewMessage && (
-                <div className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
-                  {reviewMessage}
-                </div>
-              )}
-
-              {user && hasPurchased ? (
-                <form onSubmit={submitReview} className="mt-8 grid gap-4 rounded-3xl bg-black/30 p-5">
-                  <h3 className="text-xl font-bold">
-                    {myReview ? "Yorumunu Güncelle" : "Yorum Yap"}
-                  </h3>
-
-                  <select
-                    value={rating}
-                    onChange={(event) => setRating(Number(event.target.value))}
-                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-                  >
-                    <option value={5}>5 yıldız</option>
-                    <option value={4}>4 yıldız</option>
-                    <option value={3}>3 yıldız</option>
-                    <option value={2}>2 yıldız</option>
-                    <option value={1}>1 yıldız</option>
-                  </select>
-
-                  <textarea
-                    value={comment}
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder="Ürün hakkındaki deneyimini yaz..."
-                    className="min-h-32 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-                  />
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="submit"
-                      disabled={savingReview}
-                      className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
-                    >
-                      {savingReview ? "Kaydediliyor..." : "Yorumu Kaydet"}
-                    </button>
-
-                    {myReview && (
-                      <button
-                        type="button"
-                        onClick={() => deleteReview(myReview.id)}
-                        className="rounded-2xl border border-red-500/30 px-5 py-3 font-semibold text-red-200 hover:bg-red-500/10"
-                      >
-                        Yorumu Sil
-                      </button>
-                    )}
-                  </div>
-                </form>
-              ) : (
-                <div className="mt-8 rounded-3xl bg-black/30 p-5 text-sm text-gray-400">
-                  {!user
-                    ? "Yorum yapmak için giriş yapmalısın."
-                    : "Yorum yapabilmek için bu ürünü satın almış olmalısın."}
-                </div>
-              )}
-
-              <div className="mt-8 grid gap-4">
-                {reviews.map((review) => (
-                  <div key={review.id} className="rounded-3xl bg-black/30 p-5">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <h3 className="font-bold">{review.author_name}</h3>
-                        <p className="mt-1 text-sm text-yellow-300">
-                          {stars(review.rating)} {review.rating}/5
-                        </p>
-                      </div>
-
-                      <p className="text-sm text-gray-500">
-                        {formatDate(review.created_at)}
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Güvenlik Durumu</p>
+                      <p className="mt-2 font-bold">
+                        {product.security_status || "Taranmadı"}
                       </p>
                     </div>
 
-                    <p className="mt-4 leading-7 text-gray-300">
-                      {review.comment}
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Tarama Skoru</p>
+                      <p className="mt-2 font-bold">
+                        {product.security_scan_score ?? 0}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Kontrol Tarihi</p>
+                      <p className="mt-2 font-bold">
+                        {formatDate(product.security_checked_at)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-5 leading-7 text-gray-300">
+                    {product.security_note || "Bu ürün için henüz güvenlik notu eklenmemiş."}
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Satın Alma Güvencesi</h2>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <h3 className="font-bold text-green-300">Erişim Kontrolü</h3>
+                      <p className="mt-2 text-sm leading-6 text-gray-400">
+                        Dosya indirme sadece satın alan kullanıcıya açılır.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <h3 className="font-bold text-blue-300">Admin Onayı</h3>
+                      <p className="mt-2 text-sm leading-6 text-gray-400">
+                        Yayındaki ürünler admin kontrolünden geçer.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <h3 className="font-bold text-purple-300">Dijital Teslimat</h3>
+                      <p className="mt-2 text-sm leading-6 text-gray-400">
+                        Satın alma sonrası Dosyalarım bölümünden erişim sağlanır.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "license" && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                <h2 className="text-2xl font-bold">Lisans ve Kullanım Hakkı</h2>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl bg-black/30 p-5">
+                    <p className="text-sm text-gray-400">Lisans Türü</p>
+                    <p className="mt-2 font-bold">
+                      {product.license_type || "Kişisel Kullanım"}
                     </p>
                   </div>
-                ))}
 
-                {reviews.length === 0 && (
-                  <div className="rounded-3xl bg-black/30 p-6 text-center text-gray-400">
-                    Bu ürün için henüz yorum yapılmamış.
+                  <div className="rounded-2xl bg-black/30 p-5">
+                    <p className="text-sm text-gray-400">Ticari Kullanım</p>
+                    <p
+                      className={
+                        product.license_allows_commercial
+                          ? "mt-2 font-bold text-green-300"
+                          : "mt-2 font-bold text-red-300"
+                      }
+                    >
+                      {product.license_allows_commercial ? "İzinli" : "İzinli Değil"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-black/30 p-5">
+                    <p className="text-sm text-gray-400">Yeniden Satış</p>
+                    <p
+                      className={
+                        product.license_allows_resale
+                          ? "mt-2 font-bold text-green-300"
+                          : "mt-2 font-bold text-red-300"
+                      }
+                    >
+                      {product.license_allows_resale ? "İzinli" : "Yasak"}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-5 leading-7 text-gray-300">
+                  {product.license_summary ||
+                    "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
+                </p>
+              </section>
+            )}
+
+            {activeTab === "reviews" && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Yorumlar ve Puanlama</h2>
+                    <p className="mt-2 text-sm text-gray-400">
+                      Satın alan kullanıcılar bu ürüne yorum ve puan verebilir.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm">
+                    {reviews.length > 0 ? (
+                      <span className="text-yellow-300">
+                        {stars(averageRating)} {averageRating.toFixed(1)} / 5
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Henüz yorum yok</span>
+                    )}
+                  </div>
+                </div>
+
+                {reviewMessage && (
+                  <div className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
+                    {reviewMessage}
                   </div>
                 )}
-              </div>
-            </section>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <h2 className="text-2xl font-bold">Satın Alma Güvencesi</h2>
+                {user && hasPurchased ? (
+                  <form onSubmit={submitReview} className="mt-8 grid gap-4 rounded-3xl bg-black/30 p-5">
+                    <h3 className="text-xl font-bold">
+                      {myReview ? "Yorumunu Güncelle" : "Yorum Yap"}
+                    </h3>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <h3 className="font-bold text-green-300">Erişim Kontrolü</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-400">
-                    Dosya indirme sadece satın alan kullanıcıya açılır.
-                  </p>
+                    <select
+                      value={rating}
+                      onChange={(event) => setRating(Number(event.target.value))}
+                      className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    >
+                      <option value={5}>5 yıldız</option>
+                      <option value={4}>4 yıldız</option>
+                      <option value={3}>3 yıldız</option>
+                      <option value={2}>2 yıldız</option>
+                      <option value={1}>1 yıldız</option>
+                    </select>
+
+                    <textarea
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                      placeholder="Ürün hakkındaki deneyimini yaz..."
+                      className="min-h-32 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                    />
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="submit"
+                        disabled={savingReview}
+                        className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
+                      >
+                        {savingReview ? "Kaydediliyor..." : "Yorumu Kaydet"}
+                      </button>
+
+                      {myReview && (
+                        <button
+                          type="button"
+                          onClick={() => deleteReview(myReview.id)}
+                          className="rounded-2xl border border-red-500/30 px-5 py-3 font-semibold text-red-200 hover:bg-red-500/10"
+                        >
+                          Yorumu Sil
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                ) : (
+                  <div className="mt-8 rounded-3xl bg-black/30 p-5 text-sm text-gray-400">
+                    {!user
+                      ? "Yorum yapmak için giriş yapmalısın."
+                      : "Yorum yapabilmek için bu ürünü satın almış olmalısın."}
+                  </div>
+                )}
+
+                <div className="mt-8 grid gap-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="rounded-3xl bg-black/30 p-5">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <h3 className="font-bold">{review.author_name}</h3>
+                          <p className="mt-1 text-sm text-yellow-300">
+                            {stars(review.rating)} {review.rating}/5
+                          </p>
+                        </div>
+
+                        <p className="text-sm text-gray-500">
+                          {formatDate(review.created_at)}
+                        </p>
+                      </div>
+
+                      <p className="mt-4 leading-7 text-gray-300">
+                        {review.comment}
+                      </p>
+                    </div>
+                  ))}
+
+                  {reviews.length === 0 && (
+                    <div className="rounded-3xl bg-black/30 p-6 text-center text-gray-400">
+                      Bu ürün için henüz yorum yapılmamış.
+                    </div>
+                  )}
                 </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <h3 className="font-bold text-blue-300">Admin Onayı</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-400">
-                    Yayındaki ürünler admin kontrolünden geçer.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <h3 className="font-bold text-purple-300">Dijital Teslimat</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-400">
-                    Satın alma sonrası Dosyalarım bölümünden erişim sağlanır.
-                  </p>
-                </div>
-              </div>
-            </div>
+              </section>
+            )}
           </div>
 
           <aside className="h-fit rounded-3xl border border-white/10 bg-white/5 p-8">
@@ -851,20 +919,6 @@ export default function ProductDetailPage() {
                 <p className="mt-2 font-bold">{product.seller}</p>
               )}
 
-              <p className="mt-4 text-sm text-gray-400">Dosya</p>
-              <p
-                className={
-                  product.file_path
-                    ? "mt-2 font-bold text-green-300"
-                    : "mt-2 font-bold text-yellow-300"
-                }
-              >
-                {product.file_path ? product.file_type || "Hazır" : "Bekleniyor"}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {product.file_name || fileName(product.file_path)}
-              </p>
-
               {product.demo_url && (
                 <>
                   <p className="mt-4 text-sm text-gray-400">Demo</p>
@@ -879,14 +933,19 @@ export default function ProductDetailPage() {
                 </>
               )}
 
-              {product.tech_stack && (
-                <>
-                  <p className="mt-4 text-sm text-gray-400">Teknolojiler</p>
-                  <p className="mt-2 text-sm leading-6 text-gray-300">
-                    {product.tech_stack}
-                  </p>
-                </>
-              )}
+              <p className="mt-4 text-sm text-gray-400">Dosya</p>
+              <p
+                className={
+                  product.file_path
+                    ? "mt-2 font-bold text-green-300"
+                    : "mt-2 font-bold text-yellow-300"
+                }
+              >
+                {product.file_path ? product.file_type || "Hazır" : "Bekleniyor"}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {product.file_name || fileName(product.file_path)}
+              </p>
 
               <p className="mt-4 text-sm text-gray-400">Önizleme</p>
               <p className="mt-2 font-bold text-blue-300">
