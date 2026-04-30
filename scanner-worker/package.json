@@ -1,0 +1,17 @@
+{
+  "name": "devcodstore-scanner-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node worker.js",
+    "dev": "node worker.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^17.4.2",
+    "fs-extra": "^11.2.0",
+    "node-stream-zip": "^1.15.0",
+    "uuid": "^10.0.0"
+  }
+}

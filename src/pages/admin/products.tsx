@@ -153,6 +153,14 @@ export default function AdminProductsPage() {
 
   async function queueStrongScan(productId: string) {
     setMessage("");
+
+    const targetProduct = products.find((item) => item.id === productId);
+
+    if (!targetProduct?.file_path) {
+      setMessage("Bu üründe ZIP dosyası yok. Güçlü tarama yapılamaz.");
+      return;
+    }
+
     setQueuingStrongScanProductId(productId);
 
     try {
@@ -576,11 +584,22 @@ export default function AdminProductsPage() {
 
                     <div className="grid gap-2 lg:min-w-60">
                       <button
-                        onClick={() => queueStrongScan(product.id)}
-                        disabled={queuingStrongScanProductId === product.id}
+                        onClick={() => {
+                          if (!product.file_path) {
+                            setMessage("Bu üründe ZIP dosyası yok. Güçlü tarama yapılamaz.");
+                            return;
+                          }
+
+                          queueStrongScan(product.id);
+                        }}
+                        disabled={queuingStrongScanProductId === product.id || !product.file_path}
                         className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
                       >
-                        {queuingStrongScanProductId === product.id ? "Kuyruğa Alınıyor..." : "Güçlü Tara"}
+                        {!product.file_path
+                          ? "ZIP Yok"
+                          : queuingStrongScanProductId === product.id
+                          ? "Kuyruğa Alınıyor..."
+                          : "Güçlü Tara"}
                       </button>
 
                       <button
