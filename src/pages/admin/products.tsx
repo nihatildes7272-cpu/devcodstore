@@ -2,6 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AdminNavbar from "@/components/AdminNavbar";
 
+type ScanIssue = {
+  level: "low" | "medium" | "high" | "critical";
+  file: string;
+  message: string;
+};
+
+type ScanReport = {
+  checkedFiles?: number;
+  scannedTextFiles?: number;
+  issues?: ScanIssue[];
+  summary?: string;
+};
+
 type Product = {
   id: string;
   title: string;
@@ -16,7 +29,8 @@ type Product = {
   security_note?: string | null;
   security_checked_at?: string | null;
   security_scan_score?: number | null;
-  security_scan_report?: Record<string, unknown> | null;
+  security_scan_report?: ScanReport | null;
+  security_scanned_at?: string | null;
   created_at?: string;
 };
 
@@ -54,9 +68,10 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [scanningProductId, setScanningProductId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
+  const [scanningProductId, setScanningProductId] = useState<string | null>(null);
+  const [openReportProductId, setOpenReportProductId] = useState<string | null>(null);
 
   async function loadProducts(showLoading = true) {
     if (showLoading) {
@@ -166,6 +181,7 @@ export default function AdminProductsPage() {
         `Otomatik tarama tamamlandı. Sonuç: ${result.securityStatus}. Skor: ${result.score}.`
       );
 
+      setOpenReportProductId(productId);
       await loadProducts(false);
     } catch (error) {
       setMessage(
@@ -188,6 +204,39 @@ export default function AdminProductsPage() {
 
     if (error) {
       setMessage("Ürün durumu güncellenemedi: " + error.message);
+      return;
+    }
+
+    await loadProducts(false);
+  }
+
+  async function updateSecurityStatus(productId: string, securityStatus: string) {
+    const note = window.prompt(
+      "Güvenlik notu yaz:",
+      securityStatus === "Güvenli"
+        ? "Manuel inceleme sonucu güvenli bulundu."
+        : securityStatus === "Riskli"
+        ? "Riskli içerik tespit edildi."
+        : "Manuel inceleme gerekiyor."
+    );
+
+    if (note === null) {
+      return;
+    }
+
+    setMessage("");
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        security_status: securityStatus,
+        security_note: note,
+        security_checked_at: new Date().toISOString(),
+      })
+      .eq("id", productId);
+
+    if (error) {
+      setMessage("Güvenlik durumu güncellenemedi: " + error.message);
       return;
     }
 
@@ -230,40 +279,23 @@ export default function AdminProductsPage() {
     return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
   }
 
-  async function updateSecurityStatus(productId: string, securityStatus: string) {
-    const note = window.prompt(
-      "Güvenlik notu yaz:",
-      securityStatus === "Güvenli"
-        ? "Manuel inceleme sonucu güvenli bulundu."
-        : securityStatus === "Riskli"
-        ? "Riskli içerik tespit edildi."
-        : "Manuel inceleme gerekiyor."
-    );
-
-    if (note === null) {
-      return;
+  function issueClass(level: string) {
+    if (level === "critical") {
+      return "rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white";
     }
 
-    setMessage("");
-
-    const { error } = await supabase
-      .from("products")
-      .update({
-        security_status: securityStatus,
-        security_note: note,
-        security_checked_at: new Date().toISOString(),
-      })
-      .eq("id", productId);
-
-    if (error) {
-      setMessage("Güvenlik durumu güncellenemedi: " + error.message);
-      return;
+    if (level === "high") {
+      return "rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300";
     }
 
-    await loadProducts(false);
+    if (level === "medium") {
+      return "rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300";
+    }
+
+    return "rounded-full bg-gray-500/20 px-3 py-1 text-xs font-semibold text-gray-300";
   }
 
-  function formatDate(date?: string) {
+  function formatDate(date?: string | null) {
     if (!date) return "Tarih yok";
 
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -289,7 +321,7 @@ export default function AdminProductsPage() {
 
       const searchText = `${product.title} ${product.seller} ${product.category} ${
         product.description || ""
-      } ${product.status}`.toLowerCase();
+      } ${product.status} ${product.security_status || ""}`.toLowerCase();
 
       const matchesSearch = searchText.includes(search.toLowerCase());
 
@@ -315,7 +347,7 @@ export default function AdminProductsPage() {
             <div>
               <h1 className="text-4xl font-bold">Admin Ürün Yönetimi</h1>
               <p className="mt-3 text-gray-400">
-                Ürünleri durumlarına göre yönet, onayla, reddet veya yayından kaldır.
+                Ürünleri yönet, güvenlik taraması yap, onayla veya yayından kaldır.
               </p>
             </div>
 
@@ -336,7 +368,7 @@ export default function AdminProductsPage() {
         </section>
 
         {message && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+          <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
             <p>{message}</p>
 
             <button
@@ -422,126 +454,214 @@ export default function AdminProductsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ürün, satıcı, kategori veya durum ara..."
+              placeholder="Ürün, satıcı, kategori, güvenlik durumu ara..."
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
             />
           </div>
 
           <div className="mt-6 grid gap-4">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="flex flex-col gap-5 rounded-2xl bg-black/30 p-5 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div className="max-w-3xl">
-                  <div className="flex flex-wrap gap-3">
-                    <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
-                      {product.category}
-                    </span>
+            {filteredProducts.map((product) => {
+              const report = product.security_scan_report || {};
+              const issues = Array.isArray(report.issues) ? report.issues : [];
+              const isReportOpen = openReportProductId === product.id;
 
-                    <span className={statusClass(product.status)}>
-                      {product.status}
-                    </span>
+              return (
+                <div
+                  key={product.id}
+                  className="rounded-3xl bg-black/30 p-5"
+                >
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
+                      <div className="flex flex-wrap gap-3">
+                        <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
+                          {product.category}
+                        </span>
+
+                        <span className={statusClass(product.status)}>
+                          {product.status}
+                        </span>
+
+                        <span className={securityClass(product.security_status)}>
+                          Güvenlik: {product.security_status || "Taranmadı"}
+                        </span>
+                      </div>
+
+                      <h3 className="mt-4 text-xl font-semibold">{product.title}</h3>
+
+                      <div className="mt-2 grid gap-1 text-sm text-gray-400">
+                        <p>Ürün No: {product.id}</p>
+                        <p>Satıcı: {product.seller}</p>
+                        <p>Fiyat: {product.price}</p>
+                        <p>Eklenme: {formatDate(product.created_at)}</p>
+                        <p>Dosya: {product.file_path ? "Yüklendi" : "Dosya yok"}</p>
+                        <p>Güvenlik notu: {product.security_note || "Not yok"}</p>
+                        <p>Tarama skoru: {product.security_scan_score ?? 0}</p>
+                        <p>Son tarama: {formatDate(product.security_scanned_at)}</p>
+                      </div>
+
+                      {product.description && (
+                        <p className="mt-4 text-sm leading-6 text-gray-400">
+                          {product.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2 lg:min-w-60">
+                      <button
+                        onClick={() => scanProduct(product.id)}
+                        disabled={scanningProductId === product.id}
+                        className="rounded-2xl bg-purple-600 px-4 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-60"
+                      >
+                        {scanningProductId === product.id ? "Taranıyor..." : "Otomatik Tara"}
+                      </button>
+
+                      <button
+                        onClick={() => updateSecurityStatus(product.id, "Güvenli")}
+                        className="rounded-2xl border border-green-500/30 px-4 py-2 text-sm font-semibold text-green-300 hover:bg-green-500/10"
+                      >
+                        Güvenli İşaretle
+                      </button>
+
+                      <button
+                        onClick={() => updateSecurityStatus(product.id, "Manuel İnceleme")}
+                        className="rounded-2xl border border-blue-500/30 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+                      >
+                        İncelemeye Al
+                      </button>
+
+                      <button
+                        onClick={() => updateSecurityStatus(product.id, "Riskli")}
+                        className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                      >
+                        Riskli İşaretle
+                      </button>
+
+                      <button
+                        onClick={() => updateProductStatus(product.id, "Yayında")}
+                        className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
+                      >
+                        Onayla / Yayına Al
+                      </button>
+
+                      <button
+                        onClick={() => updateProductStatus(product.id, "Onay Bekliyor")}
+                        className="rounded-2xl border border-yellow-500/30 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
+                      >
+                        Beklemeye Al
+                      </button>
+
+                      <button
+                        onClick={() => updateProductStatus(product.id, "Reddedildi")}
+                        className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500"
+                      >
+                        Reddet
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          updateProductStatus(product.id, "Yayından Kaldırıldı")
+                        }
+                        className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10"
+                      >
+                        Yayından Kaldır
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setOpenReportProductId(isReportOpen ? null : product.id)
+                        }
+                        className="rounded-2xl border border-purple-500/30 px-4 py-2 text-sm font-semibold text-purple-300 hover:bg-purple-500/10"
+                      >
+                        {isReportOpen ? "Raporu Kapat" : "Tarama Raporu"}
+                      </button>
+
+                      <a
+                        href={`/product/${product.id}`}
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                      >
+                        Detay Aç
+                      </a>
+                    </div>
                   </div>
 
-                  <h3 className="mt-4 text-xl font-semibold">{product.title}</h3>
+                  {isReportOpen && (
+                    <section className="mt-6 rounded-3xl border border-purple-500/20 bg-purple-500/10 p-5">
+                      <h4 className="text-xl font-bold">Otomatik Tarama Raporu</h4>
 
-                  <div className="mt-2 grid gap-1 text-sm text-gray-400">
-                    <p>Ürün No: {product.id}</p>
-                    <p>Satıcı: {product.seller}</p>
-                    <p>Fiyat: {product.price}</p>
-                    <p>Eklenme: {formatDate(product.created_at)}</p>
-                    <p>Dosya: {product.file_path ? "Yüklendi" : "Dosya yok"}</p>
-                    <p>
-                      Güvenlik:{" "}
-                      <span className={securityClass(product.security_status)}>
-                        {product.security_status || "Taranmadı"}
-                      </span>
-                    </p>
-                    {product.security_note && (
-                      <p>Güvenlik notu: {product.security_note}</p>
-                    )}
-                    {typeof product.security_scan_score === "number" && (
-                      <p>Tarama skoru: {product.security_scan_score}</p>
-                    )}
-                  </div>
+                      <div className="mt-5 grid gap-4 md:grid-cols-4">
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Sonuç</p>
+                          <p className="mt-2 font-bold">
+                            {product.security_status || "Taranmadı"}
+                          </p>
+                        </div>
 
-                  {product.description && (
-                    <p className="mt-4 text-sm leading-6 text-gray-400">
-                      {product.description}
-                    </p>
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Skor</p>
+                          <p className="mt-2 font-bold">
+                            {product.security_scan_score ?? 0}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Kontrol Edilen Dosya</p>
+                          <p className="mt-2 font-bold">
+                            {report.checkedFiles ?? 0}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Taranan Metin Dosyası</p>
+                          <p className="mt-2 font-bold">
+                            {report.scannedTextFiles ?? 0}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-2xl bg-black/30 p-4">
+                        <p className="text-sm text-gray-400">Özet</p>
+                        <p className="mt-2 leading-7 text-gray-300">
+                          {report.summary || product.security_note || "Tarama raporu yok."}
+                        </p>
+                      </div>
+
+                      <div className="mt-5">
+                        <h5 className="font-bold">Bulunan Riskler</h5>
+
+                        <div className="mt-4 grid gap-3">
+                          {issues.map((issue, index) => (
+                            <div
+                              key={`${issue.file}-${index}`}
+                              className="rounded-2xl border border-white/10 bg-black/30 p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span className={issueClass(issue.level)}>
+                                  {issue.level.toUpperCase()}
+                                </span>
+
+                                <span className="break-all text-sm text-gray-400">
+                                  {issue.file}
+                                </span>
+                              </div>
+
+                              <p className="mt-3 text-sm leading-6 text-gray-300">
+                                {issue.message}
+                              </p>
+                            </div>
+                          ))}
+
+                          {issues.length === 0 && (
+                            <div className="rounded-2xl bg-black/30 p-4 text-sm text-green-300">
+                              Otomatik taramada riskli bulgu bulunmadı.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </section>
                   )}
                 </div>
-
-                <div className="grid gap-2 lg:min-w-60">
-                  <button
-                    onClick={() => scanProduct(product.id)}
-                    disabled={scanningProductId === product.id}
-                    className="rounded-2xl bg-purple-600 px-4 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-60"
-                  >
-                    {scanningProductId === product.id ? "Taranıyor..." : "Otomatik Tara"}
-                  </button>
-
-                  <button
-                    onClick={() => updateSecurityStatus(product.id, "Güvenli")}
-                    className="rounded-2xl border border-green-500/30 px-4 py-2 text-sm font-semibold text-green-300 hover:bg-green-500/10"
-                  >
-                    Güvenli İşaretle
-                  </button>
-
-                  <button
-                    onClick={() => updateSecurityStatus(product.id, "Manuel İnceleme")}
-                    className="rounded-2xl border border-blue-500/30 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
-                  >
-                    İncelemeye Al
-                  </button>
-
-                  <button
-                    onClick={() => updateSecurityStatus(product.id, "Riskli")}
-                    className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
-                  >
-                    Riskli İşaretle
-                  </button>
-
-                  <button
-                    onClick={() => updateProductStatus(product.id, "Yayında")}
-                    className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
-                  >
-                    Onayla / Yayına Al
-                  </button>
-
-                  <button
-                    onClick={() => updateProductStatus(product.id, "Onay Bekliyor")}
-                    className="rounded-2xl border border-yellow-500/30 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
-                  >
-                    Beklemeye Al
-                  </button>
-
-                  <button
-                    onClick={() => updateProductStatus(product.id, "Reddedildi")}
-                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500"
-                  >
-                    Reddet
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      updateProductStatus(product.id, "Yayından Kaldırıldı")
-                    }
-                    className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10"
-                  >
-                    Yayından Kaldır
-                  </button>
-
-                  <a
-                    href={`/product/${product.id}`}
-                    className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
-                  >
-                    Detay Aç
-                  </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {filteredProducts.length === 0 && (
               <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center">
