@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
 import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
+import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
 
 type Product = {
   id: string;
@@ -28,6 +29,8 @@ type Product = {
   tech_stack: string | null;
   setup_notes: string | null;
   requirements: string | null;
+  preview_type: string | null;
+  preview_note: string | null;
 };
 
 type GalleryImage = {
@@ -112,6 +115,8 @@ export default function SellerEditProductPage() {
   const [techStack, setTechStack] = useState("");
   const [setupNotes, setSetupNotes] = useState("");
   const [requirements, setRequirements] = useState("");
+  const [previewType, setPreviewType] = useState("Kapak + Galeri");
+  const [previewNote, setPreviewNote] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -173,6 +178,8 @@ export default function SellerEditProductPage() {
       setTechStack(data.tech_stack || "");
       setSetupNotes(data.setup_notes || "");
       setRequirements(data.requirements || "");
+      setPreviewType(data.preview_type || "Kapak + Galeri");
+      setPreviewNote(data.preview_note || "");
 
       const { data: galleryData } = await supabase
         .from("product_images")
@@ -303,6 +310,8 @@ export default function SellerEditProductPage() {
         tech_stack: techStack.trim() || null,
         setup_notes: setupNotes.trim() || null,
         requirements: requirements.trim() || null,
+        preview_type: previewType,
+        preview_note: previewNote.trim() || getPreviewInfo(previewType).description,
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -550,6 +559,33 @@ export default function SellerEditProductPage() {
                 className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
               />
             </div>
+
+            <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+              <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
+
+              <select
+                value={previewType}
+                onChange={(event) => setPreviewType(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              >
+                {productPreviewTypes.map((item) => (
+                  <option key={item.type} value={item.type}>
+                    {item.type}
+                  </option>
+                ))}
+              </select>
+
+              <p className="mt-2 text-xs text-gray-500">
+                {getPreviewInfo(previewType).description}
+              </p>
+            </label>
+
+            <textarea
+              value={previewNote}
+              onChange={(event) => setPreviewNote(event.target.value)}
+              placeholder="Önizleme açıklaması"
+              className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">

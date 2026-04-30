@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
 import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
+import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
 
 type Product = {
   id: string;
@@ -31,6 +32,8 @@ type Product = {
   tech_stack?: string | null;
   setup_notes?: string | null;
   requirements?: string | null;
+  preview_type?: string | null;
+  preview_note?: string | null;
 };
 
 type Order = {
@@ -131,6 +134,8 @@ export default function SellerPage() {
   const [techStack, setTechStack] = useState("");
   const [setupNotes, setSetupNotes] = useState("");
   const [requirements, setRequirements] = useState("");
+  const [previewType, setPreviewType] = useState("Kapak + Galeri");
+  const [previewNote, setPreviewNote] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
@@ -373,6 +378,8 @@ export default function SellerPage() {
       tech_stack: techStack.trim() || null,
       setup_notes: setupNotes.trim() || null,
       requirements: requirements.trim() || null,
+      preview_type: previewType,
+      preview_note: previewNote.trim() || getPreviewInfo(previewType).description,
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -393,6 +400,8 @@ export default function SellerPage() {
     setTechStack("");
     setSetupNotes("");
     setRequirements("");
+    setPreviewType("Kapak + Galeri");
+    setPreviewNote("");
     setZipFile(null);
     setCoverImage(null);
 
@@ -717,6 +726,33 @@ export default function SellerPage() {
               </div>
 
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
+
+                <select
+                  value={previewType}
+                  onChange={(event) => setPreviewType(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  {productPreviewTypes.map((item) => (
+                    <option key={item.type} value={item.type}>
+                      {item.type}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  {getPreviewInfo(previewType).description}
+                </p>
+              </label>
+
+              <textarea
+                value={previewNote}
+                onChange={(event) => setPreviewNote(event.target.value)}
+                placeholder="Önizleme açıklaması örnek: Bu ürün kapak görseli ve 3 ekran görüntüsüyle tanıtılır."
+                className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
                 <p className="mb-2 text-sm text-gray-400">Kapak görseli</p>
                 <input
                   type="file"
@@ -802,6 +838,10 @@ export default function SellerPage() {
                       Teknolojiler: {product.tech_stack}
                     </p>
                   )}
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Önizleme: {product.preview_type || "Kapak + Galeri"}
+                  </p>
 
                   {product.demo_url && (
                     <a

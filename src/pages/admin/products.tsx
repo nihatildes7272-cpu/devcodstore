@@ -44,6 +44,8 @@ type Product = {
   strong_scan_started_at?: string | null;
   strong_scan_finished_at?: string | null;
   created_at?: string;
+  preview_type?: string | null;
+  preview_note?: string | null;
 };
 
 type ProductTab =
@@ -588,6 +590,8 @@ export default function AdminProductsPage() {
                           {product.license_allows_resale ? "İzinli" : "Yasak"}
                         </p>
                         {product.demo_url && <p>Demo: {product.demo_url}</p>}
+                        <p>Önizleme: {product.preview_type || "Kapak + Galeri"}</p>
+                        {product.preview_note && <p>Önizleme notu: {product.preview_note}</p>}
                         {product.tech_stack && <p>Teknolojiler: {product.tech_stack}</p>}
                         <p>Tarama skoru: {product.security_scan_score ?? 0}</p>
                         <p>Son tarama: {formatDate(product.security_scanned_at)}</p>

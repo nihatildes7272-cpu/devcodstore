@@ -30,6 +30,8 @@ type Product = {
   tech_stack?: string | null;
   setup_notes?: string | null;
   requirements?: string | null;
+  preview_type?: string | null;
+  preview_note?: string | null;
 };
 
 type GalleryImage = {
@@ -607,6 +609,31 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+              <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-black/30 p-5">
+                  <p className="text-sm text-gray-400">Önizleme Tipi</p>
+                  <p className="mt-2 font-bold text-blue-300">
+                    {product.preview_type || "Kapak + Galeri"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-black/30 p-5 md:col-span-2">
+                  <p className="text-sm text-gray-400">Açıklama</p>
+                  <p className="mt-2 leading-7 text-gray-300">
+                    {product.preview_note ||
+                      "Bu ürün kapak görseli, galeri veya demo bilgileriyle önizlenir. Tam dosya satın alma sonrası açılır."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm leading-6 text-yellow-200">
+                Satın alınmamış ürünlerde tam dosya içeriği gösterilmez. Tam erişim satın alma sonrası Dosyalarım bölümünden sağlanır.
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
               <h2 className="text-2xl font-bold">Lisans ve Kullanım Hakkı</h2>
 
               <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -841,6 +868,11 @@ export default function ProductDetailPage() {
                   </p>
                 </>
               )}
+
+              <p className="mt-4 text-sm text-gray-400">Önizleme</p>
+              <p className="mt-2 font-bold text-blue-300">
+                {product.preview_type || "Kapak + Galeri"}
+              </p>
 
               <p className="mt-4 text-sm text-gray-400">Lisans</p>
               <p className="mt-2 font-bold text-blue-300">
