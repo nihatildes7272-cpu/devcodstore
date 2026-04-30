@@ -23,6 +23,8 @@ type BrowserSession = {
   user: LibraryUser;
 };
 
+const pageSize = 10;
+
 function timeout<T>(
   promise: PromiseLike<T>,
   ms: number,
@@ -40,7 +42,6 @@ function getStoredSupabaseSession(): BrowserSession | null {
   if (typeof window === "undefined") return null;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
   const keys: string[] = [];
 
   try {
@@ -48,9 +49,7 @@ function getStoredSupabaseSession(): BrowserSession | null {
       const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
       keys.push(`sb-${projectRef}-auth-token`);
     }
-  } catch {
-    // Devam et, aşağıda tüm sb-* auth key'leri aranacak.
-  }
+  } catch {}
 
   for (let index = 0; index < window.localStorage.length; index++) {
     const key = window.localStorage.key(index);
@@ -60,9 +59,7 @@ function getStoredSupabaseSession(): BrowserSession | null {
     }
   }
 
-  const uniqueKeys = Array.from(new Set(keys));
-
-  for (const key of uniqueKeys) {
+  for (const key of Array.from(new Set(keys))) {
     try {
       const raw = window.localStorage.getItem(key);
       if (!raw) continue;
@@ -80,15 +77,22 @@ function getStoredSupabaseSession(): BrowserSession | null {
           },
         };
       }
-    } catch {
-      // Bu key uygun değilse diğerine geç.
-    }
+    } catch {}
   }
 
   return null;
 }
 
-async function fetchOrdersWithToken(session: BrowserSession): Promise<Order[]> {
+function parseTotalCount(contentRange: string | null) {
+  if (!contentRange) return 0;
+
+  const parts = contentRange.split("/");
+  const total = Number(parts[1]);
+
+  return Number.isFinite(total) ? total : 0;
+}
+
+async function fetchOrdersWithToken(session: BrowserSession, page: number) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
@@ -97,6 +101,9 @@ async function fetchOrdersWithToken(session: BrowserSession): Promise<Order[]> {
   if (!supabaseUrl || !supabaseKey) {
     throw new Error("Supabase bağlantı bilgileri eksik.");
   }
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
   const query =
     "/rest/v1/orders" +
@@ -109,6 +116,9 @@ async function fetchOrdersWithToken(session: BrowserSession): Promise<Order[]> {
       headers: {
         apikey: supabaseKey,
         Authorization: `Bearer ${session.access_token}`,
+        Prefer: "count=exact",
+        "Range-Unit": "items",
+        Range: `${from}-${to}`,
       },
     }),
     12000,
@@ -120,7 +130,13 @@ async function fetchOrdersWithToken(session: BrowserSession): Promise<Order[]> {
     throw new Error(`Siparişler yüklenemedi: ${response.status} ${errorText}`);
   }
 
-  return response.json();
+  const orders = await response.json();
+  const totalCount = parseTotalCount(response.headers.get("content-range"));
+
+  return {
+    orders: orders as Order[],
+    totalCount,
+  };
 }
 
 export default function LibraryPage() {
@@ -128,11 +144,16 @@ export default function LibraryPage() {
 
   const [user, setUser] = useState<LibraryUser | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
   const [debugText, setDebugText] = useState("");
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   async function getCurrentSession(): Promise<BrowserSession | null> {
     setDebugText("Tarayıcı oturumu kontrol ediliyor...");
@@ -167,7 +188,7 @@ export default function LibraryPage() {
     return null;
   }
 
-  async function loadOrders(showMainLoading = true) {
+  async function loadOrders(targetPage = page, showMainLoading = true) {
     if (showMainLoading) {
       setLoading(true);
     } else {
@@ -195,6 +216,7 @@ export default function LibraryPage() {
       if (!session) {
         setUser(null);
         setOrders([]);
+        setTotalCount(0);
         setMessage(
           "Oturum bilgisi alınamadı. Giriş yaptıysan birkaç saniye sonra tekrar dene."
         );
@@ -202,13 +224,14 @@ export default function LibraryPage() {
       }
 
       setUser(session.user);
-      setDebugText("Siparişler yükleniyor...");
+      setDebugText("Satın alınan dosyalar yükleniyor...");
 
-      const orderData = await fetchOrdersWithToken(session);
+      const result = await fetchOrdersWithToken(session, targetPage);
 
       if (!mountedRef.current) return;
 
-      setOrders(orderData || []);
+      setOrders(result.orders || []);
+      setTotalCount(result.totalCount || 0);
       setMessage("");
       setDebugText("Dosyalarım başarıyla yüklendi.");
       setLastUpdated(
@@ -227,6 +250,7 @@ export default function LibraryPage() {
           : "Dosyalarım yüklenirken bilinmeyen bir hata oluştu."
       );
       setOrders([]);
+      setTotalCount(0);
       setDebugText("Beklenmeyen hata oluştu.");
     } finally {
       clearTimeout(hardStop);
@@ -240,12 +264,18 @@ export default function LibraryPage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    loadOrders(true);
+    loadOrders(1, true);
 
     return () => {
       mountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (page > 1) {
+      loadOrders(page, true);
+    }
+  }, [page]);
 
   function formatDate(date: string) {
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -257,6 +287,11 @@ export default function LibraryPage() {
     });
   }
 
+  const visibleRange =
+    totalCount === 0
+      ? "0"
+      : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCount)}`;
+
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
       <section className="mx-auto max-w-6xl px-6 py-10">
@@ -267,7 +302,7 @@ export default function LibraryPage() {
             <div>
               <h1 className="text-4xl font-bold">Dosyalarım</h1>
               <p className="mt-3 text-gray-400">
-                Satın aldığın proje ve kod paketleri burada görünür.
+                Satın aldığın proje ve dijital ürün dosyaları burada görünür.
               </p>
               <p className="mt-2 text-xs text-gray-500">
                 Durum: {debugText || "Hazırlanıyor..."}
@@ -276,7 +311,7 @@ export default function LibraryPage() {
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadOrders(false)}
+                onClick={() => loadOrders(page, false)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
@@ -298,7 +333,7 @@ export default function LibraryPage() {
 
             <div className="mt-4 flex flex-wrap gap-3">
               <button
-                onClick={() => loadOrders(true)}
+                onClick={() => loadOrders(page, true)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
@@ -333,20 +368,22 @@ export default function LibraryPage() {
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Satın Alınan Ürün</p>
-                <h2 className="mt-3 text-4xl font-bold">{orders.length}</h2>
+                <p className="text-sm text-gray-400">Toplam Satın Alma</p>
+                <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Erişim Durumu</p>
-                <h2 className="mt-3 text-4xl font-bold text-green-300">Aktif</h2>
+                <p className="text-sm text-gray-400">Gösterilen</p>
+                <h2 className="mt-3 text-4xl font-bold text-green-300">
+                  {visibleRange}
+                </h2>
               </div>
             </section>
 
             <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
               <h2 className="text-3xl font-bold">Satın Alınanlar</h2>
               <p className="mt-2 text-gray-400">
-                Satın aldığın ürünler sipariş kayıtlarından gelir.
+                Satın aldığın ürünler sayfa sayfa listelenir.
               </p>
 
               <div className="mt-8 grid gap-5">
@@ -426,6 +463,34 @@ export default function LibraryPage() {
                   </div>
                 )}
               </div>
+
+              {totalCount > pageSize && (
+                <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+                  <p className="text-sm text-gray-400">
+                    Sayfa {page} / {totalPages}
+                  </p>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      disabled={page <= 1}
+                      className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                    >
+                      Önceki
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setPage((current) => Math.min(totalPages, current + 1))
+                      }
+                      disabled={page >= totalPages}
+                      className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      Sonraki
+                    </button>
+                  </div>
+                </section>
+              )}
             </section>
           </>
         ) : (
@@ -437,7 +502,7 @@ export default function LibraryPage() {
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <button
-                onClick={() => loadOrders(true)}
+                onClick={() => loadOrders(page, true)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
