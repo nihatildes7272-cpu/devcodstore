@@ -9,13 +9,12 @@ type Product = {
   category: string;
   price: string;
   status: string;
-  description: string | null;
+  security_status?: string | null;
   created_at?: string;
 };
 
 type Order = {
   id: string;
-  user_id: string | null;
   product_id: string | null;
   product_title: string;
   price: string;
@@ -29,7 +28,14 @@ type Profile = {
   email: string | null;
   full_name: string | null;
   account_type: "buyer" | "seller" | "admin";
-  created_at: string | null;
+};
+
+type SupportTicket = {
+  id: string;
+  subject: string;
+  category: string;
+  status: string;
+  updated_at: string;
 };
 
 function withTimeout<T>(
@@ -49,12 +55,14 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadAdminDashboard(showLoading = true) {
+  async function loadDashboard(showLoading = true) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -64,49 +72,73 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      const [productsResult, ordersResult, profilesResult] = await Promise.all([
-        withTimeout(
-          supabase
-            .from("products")
-            .select("*")
-            .order("created_at", { ascending: false }),
-          15000,
-          "Ürünler yüklenirken sunucu geç cevap verdi."
-        ),
-        withTimeout(
-          supabase
-            .from("orders")
-            .select("*")
-            .order("created_at", { ascending: false }),
-          15000,
-          "Siparişler yüklenirken sunucu geç cevap verdi."
-        ),
-        withTimeout(
-          supabase
-            .from("profiles")
-            .select("*")
-            .order("created_at", { ascending: false }),
-          15000,
-          "Kullanıcılar yüklenirken sunucu geç cevap verdi."
-        ),
-      ]);
+      const [productsResult, ordersResult, profilesResult, ticketsResult] =
+        await Promise.all([
+          withTimeout(
+            supabase
+              .from("products")
+              .select("id,title,seller,category,price,status,security_status,created_at")
+              .order("created_at", { ascending: false })
+              .limit(100),
+            15000,
+            "Ürünler yüklenirken sunucu geç cevap verdi."
+          ),
+
+          withTimeout(
+            supabase
+              .from("orders")
+              .select("id,product_id,product_title,price,seller,status,created_at")
+              .order("created_at", { ascending: false })
+              .limit(100),
+            15000,
+            "Siparişler yüklenirken sunucu geç cevap verdi."
+          ),
+
+          withTimeout(
+            supabase
+              .from("profiles")
+              .select("id,email,full_name,account_type")
+              .limit(300),
+            15000,
+            "Kullanıcılar yüklenirken sunucu geç cevap verdi."
+          ),
+
+          withTimeout(
+            supabase
+              .from("support_tickets")
+              .select("id,subject,category,status,updated_at")
+              .order("updated_at", { ascending: false })
+              .limit(20),
+            15000,
+            "Destek talepleri yüklenirken sunucu geç cevap verdi."
+          ),
+        ]);
 
       if (productsResult.error) {
         setMessage("Ürünler yüklenemedi: " + productsResult.error.message);
+        setProducts([]);
       } else {
         setProducts(productsResult.data || []);
       }
 
       if (ordersResult.error) {
         setMessage("Siparişler yüklenemedi: " + ordersResult.error.message);
+        setOrders([]);
       } else {
         setOrders(ordersResult.data || []);
       }
 
       if (profilesResult.error) {
         setMessage("Kullanıcılar yüklenemedi: " + profilesResult.error.message);
+        setProfiles([]);
       } else {
         setProfiles(profilesResult.data || []);
+      }
+
+      if (ticketsResult.error) {
+        setTickets([]);
+      } else {
+        setTickets(ticketsResult.data || []);
       }
 
       setLastUpdated(
@@ -120,7 +152,7 @@ export default function AdminPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Admin paneli yüklenirken bilinmeyen bir hata oluştu."
+          : "Admin paneli yüklenirken bilinmeyen hata oluştu."
       );
     } finally {
       setLoading(false);
@@ -129,57 +161,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    loadAdminDashboard();
-
-    const productChannel = supabase
-      .channel("admin-dashboard-products")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "products",
-        },
-        () => loadAdminDashboard(false)
-      )
-      .subscribe();
-
-    const orderChannel = supabase
-      .channel("admin-dashboard-orders")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-        },
-        () => loadAdminDashboard(false)
-      )
-      .subscribe();
-
-    const profileChannel = supabase
-      .channel("admin-dashboard-profiles")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "profiles",
-        },
-        () => loadAdminDashboard(false)
-      )
-      .subscribe();
-
-    const interval = setInterval(() => {
-      loadAdminDashboard(false);
-    }, 20000);
-
-    return () => {
-      supabase.removeChannel(productChannel);
-      supabase.removeChannel(orderChannel);
-      supabase.removeChannel(profileChannel);
-      clearInterval(interval);
-    };
+    loadDashboard(true);
   }, []);
 
   function parsePrice(price: string) {
@@ -195,7 +177,7 @@ export default function AdminPage() {
     }).format(value);
   }
 
-  function formatDate(date: string | null | undefined) {
+  function formatDate(date?: string | null) {
     if (!date) return "Tarih yok";
 
     return new Date(date).toLocaleDateString("tr-TR", {
@@ -208,50 +190,92 @@ export default function AdminPage() {
   }
 
   function statusClass(status: string) {
-    if (status === "Yayında" || status === "Tamamlandı") {
-      return "w-fit rounded-full bg-green-500/20 px-4 py-2 text-sm text-green-300";
+    if (status === "Yayında" || status === "Tamamlandı" || status === "Çözüldü") {
+      return "w-fit rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-300";
     }
 
-    if (status === "Reddedildi" || status === "İade Edildi") {
-      return "w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm text-red-300";
+    if (status === "Reddedildi" || status === "Riskli" || status === "Kapandı") {
+      return "w-fit rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300";
     }
 
-    if (status === "Yayından Kaldırıldı") {
-      return "w-fit rounded-full bg-gray-500/20 px-4 py-2 text-sm text-gray-300";
+    if (status === "İnceleniyor" || status === "Manuel İnceleme") {
+      return "w-fit rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300";
     }
 
-    return "w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm text-yellow-300";
+    return "w-fit rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300";
   }
 
-  async function updateProductStatus(productId: string, status: string) {
-    setMessage("");
+  const pendingProducts = products.filter(
+    (product) => product.status === "Onay Bekliyor"
+  );
 
-    const { error } = await supabase
-      .from("products")
-      .update({ status })
-      .eq("id", productId);
+  const liveProducts = products.filter((product) => product.status === "Yayında");
 
-    if (error) {
-      setMessage("Ürün durumu güncellenemedi: " + error.message);
-      return;
-    }
-
-    await loadAdminDashboard(false);
-  }
+  const riskyProducts = products.filter(
+    (product) =>
+      product.security_status === "Riskli" ||
+      product.security_status === "Manuel İnceleme" ||
+      product.security_status === "Taranmadı"
+  );
 
   const totalRevenue = orders
     .filter((order) => order.status !== "İade Edildi")
-    .reduce((total, order) => total + parsePrice(order.price), 0);
+    .reduce((sum, order) => sum + parsePrice(order.price), 0);
 
-  const liveProducts = products.filter((product) => product.status === "Yayında").length;
-  const pendingProducts = products.filter((product) => product.status === "Onay Bekliyor");
-  const rejectedProducts = products.filter((product) => product.status === "Reddedildi").length;
-  const sellers = profiles.filter((profile) => profile.account_type === "seller").length;
-  const buyers = profiles.filter((profile) => profile.account_type === "buyer").length;
-  const admins = profiles.filter((profile) => profile.account_type === "admin").length;
+  const sellerCount = profiles.filter(
+    (profile) => profile.account_type === "seller"
+  ).length;
 
-  const recentOrders = orders.slice(0, 5);
-  const recentProducts = products.slice(0, 5);
+  const adminCards = [
+    {
+      title: "Ürün Yönetimi",
+      description: "Ürünleri onayla, reddet, yayına al veya güvenlik kontrolü yap.",
+      href: "/admin/products",
+      meta: `${pendingProducts.length} onay bekliyor`,
+    },
+    {
+      title: "Siparişler",
+      description: "Siparişleri, satış durumlarını ve iade süreçlerini yönet.",
+      href: "/admin/orders",
+      meta: `${orders.length} sipariş`,
+    },
+    {
+      title: "Kullanıcılar",
+      description: "Kullanıcı rollerini buyer, seller veya admin olarak yönet.",
+      href: "/admin/users",
+      meta: `${profiles.length} kullanıcı`,
+    },
+    {
+      title: "Güvenlik Taramaları",
+      description: "Otomatik ve güçlü tarama kuyruğunu takip et.",
+      href: "/admin/scan-jobs",
+      meta: `${riskyProducts.length} kontrol bekliyor`,
+    },
+    {
+      title: "Destek Talepleri",
+      description: "Kullanıcı ve satıcı destek taleplerine yanıt ver.",
+      href: "/admin/support",
+      meta: `${tickets.length} son talep`,
+    },
+    {
+      title: "Raporlar",
+      description: "Ciro, ürün, kategori, kullanıcı ve sipariş raporlarını incele.",
+      href: "/admin/reports",
+      meta: formatMoney(totalRevenue),
+    },
+    {
+      title: "Yorumlar",
+      description: "Ürün yorumlarını ve puanlamaları denetle.",
+      href: "/admin/reviews",
+      meta: "Moderasyon",
+    },
+    {
+      title: "İşlem Kayıtları",
+      description: "Admin işlemlerini ve güvenlik loglarını kontrol et.",
+      href: "/admin/logs",
+      meta: "Log sistemi",
+    },
+  ];
 
   if (loading) {
     return (
@@ -259,7 +283,7 @@ export default function AdminPage() {
         <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
           <h1 className="text-2xl font-bold">Admin paneli yükleniyor...</h1>
           <p className="mt-3 text-sm text-gray-400">
-            Ürünler, siparişler ve kullanıcılar hazırlanıyor.
+            Özet veriler hazırlanıyor.
           </p>
         </section>
       </main>
@@ -274,28 +298,27 @@ export default function AdminPage() {
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Admin Paneli</h1>
-              <p className="mt-3 text-gray-400">
-                devcodstore platformunun ürün, sipariş, kullanıcı ve rapor yönetimi.
+              <h1 className="text-4xl font-bold">Admin Merkezi</h1>
+              <p className="mt-3 max-w-3xl text-gray-400">
+                devcodstore yönetimi için sadeleştirilmiş kontrol merkezi.
+                Detaylı işlemler ilgili yönetim sayfalarında yapılır.
               </p>
             </div>
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadAdminDashboard(false)}
+                onClick={() => loadDashboard(false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
 
-              <div className="text-xs text-gray-500">
-                {lastUpdated ? (
-                  <span>Son güncelleme: {lastUpdated}</span>
-                ) : (
-                  <span>Canlı takip aktif</span>
-                )}
-              </div>
+              {lastUpdated && (
+                <p className="text-xs text-gray-500">
+                  Son güncelleme: {lastUpdated}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -305,7 +328,7 @@ export default function AdminPage() {
             <p>{message}</p>
 
             <button
-              onClick={() => loadAdminDashboard(false)}
+              onClick={() => loadDashboard(false)}
               className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
             >
               Tekrar Dene
@@ -320,13 +343,10 @@ export default function AdminPage() {
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Sipariş</p>
-            <h2 className="mt-3 text-4xl font-bold">{orders.length}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Yayındaki Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{liveProducts}</h2>
+            <h2 className="mt-3 text-4xl font-bold text-green-300">
+              {liveProducts.length}
+            </h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -335,138 +355,61 @@ export default function AdminPage() {
               {pendingProducts.length}
             </h2>
           </div>
-        </section>
-
-        <section className="mt-8 grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold">{products.length}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kullanıcı</p>
-            <h2 className="mt-3 text-4xl font-bold">{profiles.length}</h2>
-          </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">{sellers}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Admin</p>
-            <h2 className="mt-3 text-4xl font-bold text-purple-300">{admins}</h2>
+            <h2 className="mt-3 text-4xl font-bold text-blue-300">{sellerCount}</h2>
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 md:grid-cols-6">
-          <a
-            href="/admin/products"
-            className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/10 md:col-span-2"
-          >
-            <h2 className="text-2xl font-bold">Ürün Yönetimi</h2>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Ürünleri onayla, reddet, beklemeye al veya yayından kaldır.
-            </p>
-          </a>
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <h2 className="text-2xl font-bold">Yönetim Kısayolları</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Ana panel artık sade. Detaylı işlemler için ilgili bölüme git.
+          </p>
 
-          <a
-            href="/admin/orders"
-            className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/10 md:col-span-2"
-          >
-            <h2 className="text-2xl font-bold">Siparişler</h2>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Gerçek siparişleri, ciroyu ve sipariş durumlarını yönet.
-            </p>
-          </a>
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {adminCards.map((card) => (
+              <a
+                key={card.href}
+                href={card.href}
+                className="rounded-3xl border border-white/10 bg-black/30 p-6 transition hover:border-blue-500/40 hover:bg-white/10"
+              >
+                <p className="w-fit rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300">
+                  {card.meta}
+                </p>
 
-          <a
-            href="/admin/users"
-            className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/10 md:col-span-2"
-          >
-            <h2 className="text-2xl font-bold">Kullanıcılar</h2>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Kullanıcıları ve rollerini buyer / seller / admin olarak yönet.
-            </p>
-          </a>
+                <h3 className="mt-5 text-xl font-bold">{card.title}</h3>
 
-          <a
-            href="/admin/reports"
-            className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/10 md:col-span-3"
-          >
-            <h2 className="text-2xl font-bold">Raporlar</h2>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Ürün, sipariş, kullanıcı, ciro ve kategori raporlarını incele.
-            </p>
-          </a>
-
-          <a
-            href="/admin/sellers"
-            className="rounded-3xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/40 hover:bg-white/10 md:col-span-3"
-          >
-            <h2 className="text-2xl font-bold">Satıcılar</h2>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Satıcı hesaplarını ve platformdaki satıcı durumunu takip et.
-            </p>
-          </a>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  {card.description}
+                </p>
+              </a>
+            ))}
+          </div>
         </section>
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-2">
+        <section className="mt-10 grid gap-8 lg:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold">Onay Bekleyen Ürünler</h2>
-                <p className="mt-2 text-sm text-gray-400">
-                  Satıcıların gönderdiği son ürünler.
+                <h2 className="text-xl font-bold">Onay Bekleyen Ürünler</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Son gönderilen ürünler
                 </p>
               </div>
 
-              <a href="/admin/products" className="text-sm text-gray-400 hover:text-white">
-                Tümünü gör
+              <a href="/admin/products" className="text-sm text-blue-300 hover:text-blue-200">
+                Aç
               </a>
             </div>
 
             <div className="mt-6 grid gap-4">
-              {pendingProducts.slice(0, 5).map((product) => (
-                <div key={product.id} className="rounded-2xl bg-black/30 p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h3 className="font-semibold">{product.title}</h3>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Satıcı: {product.seller}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Kategori: {product.category} • {product.price}
-                      </p>
-                    </div>
-
-                    <span className={statusClass(product.status)}>
-                      {product.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <button
-                      onClick={() => updateProductStatus(product.id, "Yayında")}
-                      className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
-                    >
-                      Onayla
-                    </button>
-
-                    <button
-                      onClick={() => updateProductStatus(product.id, "Reddedildi")}
-                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500"
-                    >
-                      Reddet
-                    </button>
-
-                    <a
-                      href={`/product/${product.id}`}
-                      className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black"
-                    >
-                      Detay Aç
-                    </a>
-                  </div>
+              {pendingProducts.slice(0, 4).map((product) => (
+                <div key={product.id} className="rounded-2xl bg-black/30 p-4">
+                  <h3 className="font-semibold">{product.title}</h3>
+                  <p className="mt-1 text-sm text-gray-400">{product.seller}</p>
+                  <p className="mt-1 text-sm text-gray-500">{product.price}</p>
                 </div>
               ))}
 
@@ -481,90 +424,67 @@ export default function AdminPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold">Son Siparişler</h2>
-                <p className="mt-2 text-sm text-gray-400">
-                  Platformda oluşan son sipariş kayıtları.
-                </p>
+                <h2 className="text-xl font-bold">Son Siparişler</h2>
+                <p className="mt-1 text-sm text-gray-400">Yeni satış kayıtları</p>
               </div>
 
-              <a href="/admin/orders" className="text-sm text-gray-400 hover:text-white">
-                Tümünü gör
+              <a href="/admin/orders" className="text-sm text-blue-300 hover:text-blue-200">
+                Aç
               </a>
             </div>
 
             <div className="mt-6 grid gap-4">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="rounded-2xl bg-black/30 p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h3 className="font-semibold">{order.product_title}</h3>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Satıcı: {order.seller}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Tarih: {formatDate(order.created_at)}
-                      </p>
-                    </div>
-
-                    <div className="grid gap-2 md:text-right">
-                      <p className="text-xl font-bold">{order.price}</p>
-                      <span className={statusClass(order.status)}>
-                        {order.status}
-                      </span>
-                    </div>
+              {orders.slice(0, 4).map((order) => (
+                <div key={order.id} className="rounded-2xl bg-black/30 p-4">
+                  <h3 className="font-semibold">{order.product_title}</h3>
+                  <p className="mt-1 text-sm text-gray-400">{order.seller}</p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="font-bold">{order.price}</p>
+                    <span className={statusClass(order.status)}>{order.status}</span>
                   </div>
                 </div>
               ))}
 
-              {recentOrders.length === 0 && (
+              {orders.length === 0 && (
                 <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
                   Henüz sipariş yok.
                 </div>
               )}
             </div>
           </div>
-        </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold">Son Eklenen Ürünler</h2>
-              <p className="mt-2 text-sm text-gray-400">
-                Platforma en son eklenen ürünler.
-              </p>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold">Destek Talepleri</h2>
+                <p className="mt-1 text-sm text-gray-400">Son destek hareketleri</p>
+              </div>
+
+              <a href="/admin/support" className="text-sm text-blue-300 hover:text-blue-200">
+                Aç
+              </a>
             </div>
 
-            <a href="/admin/products" className="text-sm text-gray-400 hover:text-white">
-              Ürün yönetimine git
-            </a>
-          </div>
-
-          <div className="mt-6 grid gap-4">
-            {recentProducts.map((product) => (
-              <div
-                key={product.id}
-                className="grid gap-4 rounded-2xl bg-black/30 p-5 md:grid-cols-[1fr_auto_auto] md:items-center"
-              >
-                <div>
-                  <h3 className="font-semibold">{product.title}</h3>
-                  <p className="mt-1 text-sm text-gray-400">
-                    {product.category} • Satıcı: {product.seller}
-                  </p>
+            <div className="mt-6 grid gap-4">
+              {tickets.slice(0, 4).map((ticket) => (
+                <div key={ticket.id} className="rounded-2xl bg-black/30 p-4">
+                  <h3 className="font-semibold">{ticket.subject}</h3>
+                  <p className="mt-1 text-sm text-gray-400">{ticket.category}</p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs text-gray-500">
+                      {formatDate(ticket.updated_at)}
+                    </p>
+                    <span className={statusClass(ticket.status)}>{ticket.status}</span>
+                  </div>
                 </div>
+              ))}
 
-                <p className="text-xl font-bold">{product.price}</p>
-
-                <span className={statusClass(product.status)}>
-                  {product.status}
-                </span>
-              </div>
-            ))}
-
-            {recentProducts.length === 0 && (
-              <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
-                Henüz ürün yok.
-              </div>
-            )}
+              {tickets.length === 0 && (
+                <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
+                  Destek talebi yok.
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </section>
