@@ -14,6 +14,8 @@ type SupportTicket = {
   updated_at: string;
 };
 
+const pageSize = 10;
+
 const categories = [
   "Genel",
   "Satın Alma",
@@ -23,12 +25,29 @@ const categories = [
   "Teknik Destek",
 ];
 
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 15000,
+  message = "Sunucu yanıtı gecikti."
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 export default function SupportPage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -36,38 +55,76 @@ export default function SupportPage() {
   const [category, setCategory] = useState("Genel");
   const [ticketMessage, setTicketMessage] = useState("");
 
-  async function loadTickets() {
-    setLoading(true);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  async function loadTickets(targetPage = page, showLoading = true) {
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     setMessage("");
 
-    const { data: userData } = await supabase.auth.getUser();
+    try {
+      const userResult = await withTimeout(
+        supabase.auth.getUser(),
+        10000,
+        "Kullanıcı bilgisi alınırken gecikme oldu."
+      );
 
-    if (!userData.user) {
-      router.push("/login");
-      return;
-    }
+      const currentUser = userResult.data.user;
 
-    setUser(userData.user);
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("support_tickets")
-      .select("*")
-      .eq("user_id", userData.user.id)
-      .order("updated_at", { ascending: false });
+      setUser(currentUser);
 
-    if (error) {
-      setMessage("Destek talepleri yüklenemedi: " + error.message);
+      const from = (targetPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const result = await withTimeout(
+        supabase
+          .from("support_tickets")
+          .select("*", { count: "exact" })
+          .eq("user_id", currentUser.id)
+          .order("updated_at", { ascending: false })
+          .range(from, to),
+        15000,
+        "Destek talepleri yüklenirken sunucu geç cevap verdi."
+      );
+
+      if (result.error) {
+        setMessage("Destek talepleri yüklenemedi: " + result.error.message);
+        setTickets([]);
+        setTotalCount(0);
+      } else {
+        setTickets(result.data || []);
+        setTotalCount(result.count || 0);
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Destek talepleri yüklenirken bilinmeyen hata oluştu."
+      );
       setTickets([]);
-    } else {
-      setTickets(data || []);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    setLoading(false);
   }
 
   useEffect(() => {
-    loadTickets();
+    loadTickets(1, true);
   }, []);
+
+  useEffect(() => {
+    loadTickets(page, true);
+  }, [page]);
 
   async function createTicket(event: React.FormEvent) {
     event.preventDefault();
@@ -151,6 +208,11 @@ export default function SupportPage() {
     });
   }
 
+  const visibleRange =
+    totalCount === 0
+      ? "0"
+      : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCount)}`;
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
@@ -165,10 +227,28 @@ export default function SupportPage() {
         <SiteNavbar />
 
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="text-4xl font-bold">Destek Merkezi</h1>
-          <p className="mt-3 text-gray-400">
-            Satın alma, dosya indirme, satıcı işlemleri ve teknik sorunlar için destek talebi oluşturabilirsin.
-          </p>
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold">Destek Merkezi</h1>
+              <p className="mt-3 text-gray-400">
+                Satın alma, dosya indirme, satıcı işlemleri ve teknik sorunlar için destek talebi oluşturabilirsin.
+              </p>
+            </div>
+
+            <div className="grid gap-2 md:text-right">
+              <button
+                onClick={() => loadTickets(page, false)}
+                disabled={refreshing}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {refreshing ? "Yenileniyor..." : "Yenile"}
+              </button>
+
+              <p className="text-xs text-gray-500">
+                Gösterilen: {visibleRange} / {totalCount}
+              </p>
+            </div>
+          </div>
         </section>
 
         {message && (
@@ -179,20 +259,17 @@ export default function SupportPage() {
 
         <section className="grid gap-8 lg:grid-cols-[1fr_420px]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-bold">Destek Taleplerim</h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  Açtığın destek taleplerini buradan takip edebilirsin.
+                  Açtığın destek taleplerini sayfa sayfa takip edebilirsin.
                 </p>
               </div>
 
-              <button
-                onClick={loadTickets}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500"
-              >
-                Yenile
-              </button>
+              <div className="rounded-2xl bg-black/30 px-4 py-3 text-sm text-gray-300">
+                Sayfa {page} / {totalPages}
+              </div>
             </div>
 
             <div className="mt-6 grid gap-4">
@@ -226,6 +303,34 @@ export default function SupportPage() {
                 </div>
               )}
             </div>
+
+            {totalCount > pageSize && (
+              <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-gray-400">
+                  Sayfa {page} / {totalPages}
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={page <= 1}
+                    className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Önceki
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setPage((current) => Math.min(totalPages, current + 1))
+                    }
+                    disabled={page >= totalPages}
+                    className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    Sonraki
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
