@@ -135,7 +135,7 @@ export default function SellerDashboardPage() {
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Satıcı Paneli</h1>
+              <h1 className="text-4xl font-bold">Yeni Ürün Yükle</h1>
               <p className="mt-3 text-gray-400">
                 Ürünlerini, satışlarını ve mağazanı sade bir merkezden yönet.
               </p>
