@@ -267,7 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: product, error: productError } = await adminClient
     .from("products")
-    .select("id,title,file_path,status")
+    .select("id,title,file_path,file_name,file_type,file_size,status")
     .eq("id", productId)
     .maybeSingle();
 
@@ -294,6 +294,90 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const arrayBuffer = await fileBlob.arrayBuffer();
+  const lowerFileName = String(product.file_name || product.file_path || "").toLowerCase();
+  const isZipFile = lowerFileName.endsWith(".zip");
+
+  if (!isZipFile) {
+    const issues: ScanIssue[] = [];
+
+    const blockedExtensions = [
+      ".exe",
+      ".dll",
+      ".bat",
+      ".cmd",
+      ".ps1",
+      ".vbs",
+      ".scr",
+      ".msi",
+      ".apk",
+      ".dmg",
+      ".pkg",
+      ".jar"
+    ];
+
+    if (blockedExtensions.some((extension) => lowerFileName.endsWith(extension))) {
+      issues.push({
+        level: "critical",
+        file: lowerFileName,
+        message: "Çalıştırılabilir veya yüksek riskli dosya türü tespit edildi.",
+      });
+    }
+
+    const score = calculateScore(issues);
+    const securityStatus = decideSecurityStatus(score, issues);
+
+    const report: ScanReport = {
+      checkedFiles: 1,
+      scannedTextFiles: 0,
+      issues,
+      summary:
+        securityStatus === "Güvenli"
+          ? "ZIP olmayan dijital dosyada yasaklı dosya türü tespit edilmedi."
+          : "Dosya türü riskli görünüyor. Manuel inceleme gerekiyor.",
+    };
+
+    const updatePayload: Record<string, unknown> = {
+      security_status: securityStatus,
+      security_note: report.summary,
+      security_scan_score: score,
+      security_scan_report: report,
+      security_scanned_at: new Date().toISOString(),
+      security_checked_by: userData.user.id,
+    };
+
+    if (securityStatus === "Riskli" && product.status === "Yayında") {
+      updatePayload.status = "Yayından Kaldırıldı";
+    }
+
+    const { error: updateError } = await adminClient
+      .from("products")
+      .update(updatePayload)
+      .eq("id", productId);
+
+    if (updateError) {
+      return res.status(500).json({
+        error: "Tarama sonucu ürüne yazılamadı: " + updateError.message,
+      });
+    }
+
+    await adminClient.from("admin_logs").insert({
+      actor_id: userData.user.id,
+      action: "product_auto_scan",
+      entity_type: "product",
+      entity_id: productId,
+      title: "Ürün otomatik güvenlik taramasından geçti",
+      details: `"${product.title}" ürünü otomatik tarandı. Sonuç: ${securityStatus}. Skor: ${score}.`,
+      metadata: report,
+    });
+
+    return res.status(200).json({
+      ok: true,
+      securityStatus,
+      score,
+      report,
+    });
+  }
+
   const zip = await JSZip.loadAsync(Buffer.from(arrayBuffer));
 
   const issues: ScanIssue[] = [];

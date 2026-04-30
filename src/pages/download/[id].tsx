@@ -11,6 +11,9 @@ type Product = {
   seller: string;
   category: string;
   file_path: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
 };
 
 type Order = {
@@ -111,7 +114,7 @@ export default function DownloadPage() {
       const productResult = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,price,seller,category,file_path")
+          .select("id,title,price,seller,category,file_path,file_name,file_type,file_size")
           .eq("id", String(id))
           .maybeSingle(),
         12000,
@@ -185,6 +188,16 @@ export default function DownloadPage() {
     } finally {
       setDownloading(false);
     }
+  }
+
+  function formatFileSize(size?: number | null) {
+    if (!size) return "Bilinmiyor";
+
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+
+    return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
   function shownFileName(path: string | null) {
@@ -278,7 +291,21 @@ export default function DownloadPage() {
               <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 p-4">
                 <span className="text-gray-400">Dosya adı</span>
                 <span className="break-all text-right font-semibold">
-                  {shownFileName(product.file_path)}
+                  {product.file_name || shownFileName(product.file_path)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 p-4">
+                <span className="text-gray-400">Dosya türü</span>
+                <span className="text-right font-semibold">
+                  {product.file_type || "Dijital Dosya"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 p-4">
+                <span className="text-gray-400">Dosya boyutu</span>
+                <span className="text-right font-semibold">
+                  {formatFileSize(product.file_size)}
                 </span>
               </div>
 
@@ -299,7 +326,7 @@ export default function DownloadPage() {
             disabled={downloading || !product.file_path}
             className="mt-8 w-full rounded-2xl bg-blue-600 px-6 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
           >
-            {downloading ? "İndirme hazırlanıyor..." : "ZIP Dosyasını İndir"}
+            {downloading ? "İndirme hazırlanıyor..." : "Dosyayı İndir"}
           </button>
 
           <p className="mt-4 text-center text-sm text-gray-500">

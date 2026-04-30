@@ -14,6 +14,9 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  file_size: number | null;
   image_url: string | null;
 };
 
@@ -27,6 +30,22 @@ type GalleryImage = {
 
 const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
 
+function detectFileType(fileName: string) {
+  const lower = fileName.toLowerCase();
+
+  if (lower.endsWith(".zip")) return "ZIP Proje Dosyası";
+  if (lower.endsWith(".pdf")) return "PDF Doküman";
+  if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "Ders Slaytı / Sunum";
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word Dokümanı";
+  if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "Excel Dosyası";
+  if (lower.endsWith(".txt")) return "Metin Dosyası";
+  if (lower.endsWith(".csv")) return "CSV Dosyası";
+  if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")) return "Görsel Dosyası";
+  if (lower.endsWith(".json")) return "JSON Dosyası";
+
+  return "Dijital Dosya";
+}
+
 function safeFileName(fileName: string) {
   const cleaned = fileName
     .toLowerCase()
@@ -39,7 +58,7 @@ function safeFileName(fileName: string) {
     .replace(/[^a-z0-9.]+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
+  return cleaned;
 }
 
 function safeImageName(fileName: string) {
@@ -181,6 +200,9 @@ export default function SellerEditProductPage() {
     setMessage("");
 
     let newFilePath = product.file_path;
+    let newFileName = product.file_name;
+    let newFileType = product.file_type;
+    let newFileSize = product.file_size;
     let newImageUrl = product.image_url;
 
     if (zipFile) {
@@ -200,6 +222,9 @@ export default function SellerEditProductPage() {
       }
 
       newFilePath = filePath;
+      newFileName = zipFile.name;
+      newFileType = detectFileType(zipFile.name);
+      newFileSize = zipFile.size;
 
       if (product.file_path) {
         await supabase.storage.from("product-files").remove([product.file_path]);
@@ -245,6 +270,9 @@ export default function SellerEditProductPage() {
         price,
         description,
         file_path: newFilePath,
+        file_name: newFileName,
+        file_type: newFileType,
+        file_size: newFileSize,
         image_url: newImageUrl,
         status: "Onay Bekliyor",
       })
@@ -360,9 +388,12 @@ export default function SellerEditProductPage() {
           )}
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <p className="text-sm text-gray-400">Mevcut ZIP dosyası</p>
+            <p className="text-sm text-gray-400">Mevcut ürün dosyası</p>
             <p className="mt-2 break-all font-semibold">
-              {shownFileName(product?.file_path || null)}
+              {product?.file_name || shownFileName(product?.file_path || null)}
+            </p>
+            <p className="mt-2 text-sm text-gray-400">
+              Tür: {product?.file_type || "Dijital Dosya"}
             </p>
           </div>
 
@@ -474,18 +505,18 @@ export default function SellerEditProductPage() {
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">
-                Yeni ZIP dosyası seç
+                Yeni ürün dosyası seç
               </p>
 
               <input
                 type="file"
-                accept=".zip,application/zip,application/x-zip-compressed"
+                accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
                 onChange={(event) => setZipFile(event.target.files?.[0] || null)}
                 className="w-full text-sm text-gray-300"
               />
 
               <p className="mt-2 text-xs text-gray-500">
-                Yeni dosya seçmezsen mevcut ZIP dosyası korunur.
+                Yeni dosya seçmezsen mevcut ürün dosyası korunur.
               </p>
             </label>
 

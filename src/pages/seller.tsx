@@ -14,6 +14,9 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
   image_url: string | null;
   security_status?: string | null;
   security_note?: string | null;
@@ -49,6 +52,22 @@ function safeImageName(fileName: string) {
   return cleaned;
 }
 
+function detectFileType(fileName: string) {
+  const lower = fileName.toLowerCase();
+
+  if (lower.endsWith(".zip")) return "ZIP Proje Dosyası";
+  if (lower.endsWith(".pdf")) return "PDF Doküman";
+  if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "Ders Slaytı / Sunum";
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word Dokümanı";
+  if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "Excel Dosyası";
+  if (lower.endsWith(".txt")) return "Metin Dosyası";
+  if (lower.endsWith(".csv")) return "CSV Dosyası";
+  if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")) return "Görsel Dosyası";
+  if (lower.endsWith(".json")) return "JSON Dosyası";
+
+  return "Dijital Dosya";
+}
+
 function safeFileName(fileName: string) {
   const cleaned = fileName
     .toLowerCase()
@@ -61,7 +80,7 @@ function safeFileName(fileName: string) {
     .replace(/[^a-z0-9.]+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return cleaned.endsWith(".zip") ? cleaned : `${cleaned}.zip`;
+  return cleaned;
 }
 
 function withTimeout<T>(
@@ -267,7 +286,7 @@ export default function SellerPage() {
     }
 
     if (!zipFile) {
-      setMessage("Lütfen ürün ZIP dosyasını seç.");
+      setMessage("Lütfen ürün dosyasını seç.");
       setSaving(false);
       return;
     }
@@ -282,6 +301,7 @@ export default function SellerPage() {
     const sellerName = sellerNameFor(user);
     const filePath = `${user.id}/${productId}/${safeFileName(zipFile.name)}`;
     const imagePath = `${user.id}/${productId}/${safeImageName(coverImage.name)}`;
+    const detectedFileType = detectFileType(zipFile.name);
 
     const { error: uploadError } = await supabase.storage
       .from("product-files")
@@ -323,6 +343,9 @@ export default function SellerPage() {
       status: "Onay Bekliyor",
       description,
       file_path: filePath,
+      file_name: zipFile.name,
+      file_type: detectedFileType,
+      file_size: zipFile.size,
       image_url: publicImage.publicUrl,
       security_status: "Taranmadı",
       security_note: "Satıcı tarafından gönderildi. Admin güvenlik incelemesi bekleniyor.",
@@ -621,10 +644,10 @@ export default function SellerPage() {
               </label>
 
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-                <p className="mb-2 text-sm text-gray-400">ZIP dosyası</p>
+                <p className="mb-2 text-sm text-gray-400">Ürün dosyası</p>
                 <input
                   type="file"
-                  accept=".zip,application/zip,application/x-zip-compressed"
+                  accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
                   onChange={(event) => setZipFile(event.target.files?.[0] || null)}
                   required
                   className="w-full text-sm text-gray-300"
@@ -680,7 +703,7 @@ export default function SellerPage() {
                   )}
 
                   <p className="mt-3 text-xs text-gray-500">
-                    Dosya: {product.file_path ? "Yüklendi" : "Henüz dosya yok"}
+                    Dosya: {product.file_path ? product.file_type || "Yüklendi" : "Henüz dosya yok"}
                   </p>
 
                   <div className="mt-5 flex flex-wrap gap-3">

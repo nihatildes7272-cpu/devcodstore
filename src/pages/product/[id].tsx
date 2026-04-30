@@ -14,6 +14,9 @@ type Product = {
   status: string;
   description: string | null;
   file_path: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
   image_url?: string | null;
   security_status?: string | null;
   security_note?: string | null;
@@ -284,6 +287,16 @@ export default function ProductDetailPage() {
     });
   }
 
+  function formatFileSize(size?: number | null) {
+    if (!size) return "Bilinmiyor";
+
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+
+    return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
   function fileName(path: string | null) {
     if (!path) return "ZIP dosyası yok";
     return path.split("/").pop() || "proje-dosyasi.zip";
@@ -497,7 +510,13 @@ export default function ProductDetailPage() {
                     {product.file_path ? "ZIP dosyası hazır" : "Henüz ZIP dosyası yok"}
                   </p>
                   <p className="mt-2 text-sm text-gray-500">
-                    {fileName(product.file_path)}
+                    Dosya adı: {product.file_name || fileName(product.file_path)}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Dosya türü: {product.file_type || "Dijital Dosya"}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Boyut: {formatFileSize(product.file_size)}
                   </p>
                 </div>
 
@@ -676,7 +695,10 @@ export default function ProductDetailPage() {
                     : "mt-2 font-bold text-yellow-300"
                 }
               >
-                {product.file_path ? "Hazır" : "Bekleniyor"}
+                {product.file_path ? product.file_type || "Hazır" : "Bekleniyor"}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {product.file_name || fileName(product.file_path)}
               </p>
 
               <p className="mt-4 text-sm text-gray-400">Güvenlik</p>
