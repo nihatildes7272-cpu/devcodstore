@@ -16,6 +16,8 @@ type Notification = {
   created_at: string;
 };
 
+const pageSize = 15;
+
 function withTimeout<T>(
   promise: PromiseLike<T>,
   ms = 15000,
@@ -34,12 +36,19 @@ export default function NotificationsPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const [page, setPage] = useState(1);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
 
-  async function loadNotifications(showLoading = true) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  async function loadNotifications(targetPage = page, showLoading = true) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -64,23 +73,47 @@ export default function NotificationsPage() {
 
       setUser(currentUser);
 
-      const result = await withTimeout(
-        supabase
-          .from("notifications")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .order("created_at", { ascending: false })
-          .limit(100),
-        15000,
-        "Bildirimler yüklenirken sunucu geç cevap verdi."
-      );
+      const from = (targetPage - 1) * pageSize;
+      const to = from + pageSize - 1;
 
-      if (result.error) {
-        setMessage("Bildirimler yüklenemedi: " + result.error.message);
-        setNotifications([]);
-      } else {
-        setNotifications(result.data || []);
+      let query = supabase
+        .from("notifications")
+        .select("*", { count: "exact" })
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (activeFilter === "unread") {
+        query = query.eq("is_read", false);
       }
+
+      const [notificationsResult, unreadResult] = await Promise.all([
+        withTimeout(
+          query,
+          15000,
+          "Bildirimler yüklenirken sunucu geç cevap verdi."
+        ),
+        withTimeout(
+          supabase
+            .from("notifications")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", currentUser.id)
+            .eq("is_read", false),
+          15000,
+          "Okunmamış bildirim sayısı alınamadı."
+        ),
+      ]);
+
+      if (notificationsResult.error) {
+        setMessage("Bildirimler yüklenemedi: " + notificationsResult.error.message);
+        setNotifications([]);
+        setTotalCount(0);
+      } else {
+        setNotifications(notificationsResult.data || []);
+        setTotalCount(notificationsResult.count || 0);
+      }
+
+      setUnreadCount(unreadResult.count || 0);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -88,6 +121,7 @@ export default function NotificationsPage() {
           : "Bildirimler yüklenirken bilinmeyen bir hata oluştu."
       );
       setNotifications([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -95,59 +129,37 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
-    let cancelled = false;
+    loadNotifications(1, true);
 
-    async function setupNotifications() {
-      const { data } = await supabase.auth.getUser();
-
-      if (!data.user) {
-        router.push("/login");
-        return;
-      }
-
-      if (cancelled) return;
-
-      setUser(data.user);
-      await loadNotifications(true);
-
-      channel = supabase
-        .channel(`notifications-${data.user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${data.user.id}`,
-          },
-          () => {
-            loadNotifications(false);
-            window.dispatchEvent(new Event("devcodstore-notifications-updated"));
-          }
-        )
-        .subscribe();
-
-      interval = setInterval(() => {
-        loadNotifications(false);
-      }, 20000);
-    }
-
-    setupNotifications();
+    const channel = supabase
+      .channel("notifications-page-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+        },
+        () => {
+          loadNotifications(page, false);
+          window.dispatchEvent(new Event("devcodstore-notifications-updated"));
+        }
+      )
+      .subscribe();
 
     return () => {
-      cancelled = true;
-
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-
-      if (interval) {
-        clearInterval(interval);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+    loadNotifications(1, true);
+  }, [activeFilter]);
+
+  useEffect(() => {
+    loadNotifications(page, true);
+  }, [page]);
 
   async function markAsRead(notificationId: string) {
     const { error } = await supabase
@@ -161,7 +173,7 @@ export default function NotificationsPage() {
     }
 
     window.dispatchEvent(new Event("devcodstore-notifications-updated"));
-    await loadNotifications(false);
+    await loadNotifications(page, false);
   }
 
   async function markAllAsRead() {
@@ -179,7 +191,8 @@ export default function NotificationsPage() {
     }
 
     window.dispatchEvent(new Event("devcodstore-notifications-updated"));
-    await loadNotifications(false);
+    await loadNotifications(1, false);
+    setPage(1);
   }
 
   async function deleteNotification(notificationId: string) {
@@ -194,7 +207,7 @@ export default function NotificationsPage() {
     }
 
     window.dispatchEvent(new Event("devcodstore-notifications-updated"));
-    await loadNotifications(false);
+    await loadNotifications(page, false);
   }
 
   function formatDate(date: string) {
@@ -213,15 +226,16 @@ export default function NotificationsPage() {
     if (type === "order_created") return "Satış";
     if (type === "purchase_completed") return "Satın Alma";
     if (type === "review_created") return "Yorum";
+    if (type === "support_user_message") return "Destek";
+    if (type === "support_admin_reply") return "Destek Yanıtı";
+    if (type === "support_status_changed") return "Destek Durumu";
     return "Bildirim";
   }
 
-  const unreadCount = notifications.filter((item) => !item.is_read).length;
-
-  const visibleNotifications =
-    activeFilter === "unread"
-      ? notifications.filter((item) => !item.is_read)
-      : notifications;
+  const visibleRange =
+    totalCount === 0
+      ? "0"
+      : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCount)}`;
 
   if (loading) {
     return (
@@ -241,13 +255,13 @@ export default function NotificationsPage() {
             <div>
               <h1 className="text-4xl font-bold">Bildirimler</h1>
               <p className="mt-3 text-gray-400">
-                Ürün, sipariş, yorum ve hesap olayları burada görünür.
+                Ürün, sipariş, yorum ve destek bildirimlerin burada görünür.
               </p>
             </div>
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadNotifications(false)}
+                onClick={() => loadNotifications(page, false)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
@@ -276,7 +290,7 @@ export default function NotificationsPage() {
                 : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
             }
           >
-            Tüm Bildirimler ({notifications.length})
+            Tüm Bildirimler ({activeFilter === "all" ? totalCount : "..."})
           </button>
 
           <button
@@ -298,8 +312,16 @@ export default function NotificationsPage() {
           </button>
         </section>
 
+        <div className="mb-5 flex flex-col gap-2 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
+          <p>
+            Gösterilen: {visibleRange} / {totalCount}
+          </p>
+
+          <p>Sayfa {page} / {totalPages}</p>
+        </div>
+
         <section className="grid gap-4">
-          {visibleNotifications.map((notification) => (
+          {notifications.map((notification) => (
             <div
               key={notification.id}
               className={
@@ -364,15 +386,43 @@ export default function NotificationsPage() {
             </div>
           ))}
 
-          {visibleNotifications.length === 0 && (
+          {notifications.length === 0 && (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
               <h2 className="text-2xl font-bold">Bildirim yok</h2>
               <p className="mt-2 text-gray-400">
-                Yeni ürün, sipariş veya yorum olayları burada görünecek.
+                Yeni ürün, sipariş veya destek olayları burada görünecek.
               </p>
             </div>
           )}
         </section>
+
+        {totalCount > pageSize && (
+          <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-gray-400">
+              Sayfa {page} / {totalPages}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1}
+                className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+              >
+                Önceki
+              </button>
+
+              <button
+                onClick={() =>
+                  setPage((current) => Math.min(totalPages, current + 1))
+                }
+                disabled={page >= totalPages}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+              >
+                Sonraki
+              </button>
+            </div>
+          </section>
+        )}
       </section>
     </main>
   );
