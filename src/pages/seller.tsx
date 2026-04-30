@@ -6,6 +6,7 @@ import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
 import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
 import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
+import { parseTags } from "@/lib/tags";
 
 type Product = {
   id: string;
@@ -34,6 +35,7 @@ type Product = {
   requirements?: string | null;
   preview_type?: string | null;
   preview_note?: string | null;
+  tags?: string[] | null;
 };
 
 type Order = {
@@ -136,6 +138,7 @@ export default function SellerPage() {
   const [requirements, setRequirements] = useState("");
   const [previewType, setPreviewType] = useState("Kapak + Galeri");
   const [previewNote, setPreviewNote] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
@@ -380,6 +383,7 @@ export default function SellerPage() {
       requirements: requirements.trim() || null,
       preview_type: previewType,
       preview_note: previewNote.trim() || getPreviewInfo(previewType).description,
+      tags: parseTags(tagsInput),
     };
 
     const { error } = await supabase.from("products").insert(newProduct);
@@ -402,6 +406,7 @@ export default function SellerPage() {
     setRequirements("");
     setPreviewType("Kapak + Galeri");
     setPreviewNote("");
+    setTagsInput("");
     setZipFile(null);
     setCoverImage(null);
 
@@ -725,6 +730,17 @@ export default function SellerPage() {
                 />
               </div>
 
+              <input
+                value={tagsInput}
+                onChange={(event) => setTagsInput(event.target.value)}
+                placeholder="Etiketler örnek: react, nextjs, admin-panel, pdf"
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <p className="-mt-2 text-xs text-gray-500">
+                Etiketleri virgülle ayır. En fazla 12 etiket kullanılabilir.
+              </p>
+
               <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
                 <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>
 
@@ -842,6 +858,12 @@ export default function SellerPage() {
                   <p className="mt-1 text-xs text-gray-500">
                     Önizleme: {product.preview_type || "Kapak + Galeri"}
                   </p>
+
+                  {Array.isArray(product.tags) && product.tags.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Etiketler: {product.tags.join(", ")}
+                    </p>
+                  )}
 
                   {product.demo_url && (
                     <a

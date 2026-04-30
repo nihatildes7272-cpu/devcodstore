@@ -6,6 +6,7 @@ import SiteNavbar from "@/components/SiteNavbar";
 import { productCategories } from "@/lib/productCategories";
 import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
 import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
+import { parseTags, tagsToInput } from "@/lib/tags";
 
 type Product = {
   id: string;
@@ -31,6 +32,7 @@ type Product = {
   requirements: string | null;
   preview_type: string | null;
   preview_note: string | null;
+  tags: string[] | null;
 };
 
 type GalleryImage = {
@@ -117,6 +119,7 @@ export default function SellerEditProductPage() {
   const [requirements, setRequirements] = useState("");
   const [previewType, setPreviewType] = useState("Kapak + Galeri");
   const [previewNote, setPreviewNote] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -180,6 +183,7 @@ export default function SellerEditProductPage() {
       setRequirements(data.requirements || "");
       setPreviewType(data.preview_type || "Kapak + Galeri");
       setPreviewNote(data.preview_note || "");
+      setTagsInput(tagsToInput(data.tags));
 
       const { data: galleryData } = await supabase
         .from("product_images")
@@ -312,6 +316,7 @@ export default function SellerEditProductPage() {
         requirements: requirements.trim() || null,
         preview_type: previewType,
         preview_note: previewNote.trim() || getPreviewInfo(previewType).description,
+        tags: parseTags(tagsInput),
         status: "Onay Bekliyor",
       })
       .eq("id", product.id);
@@ -559,6 +564,17 @@ export default function SellerEditProductPage() {
                 className="min-h-36 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
               />
             </div>
+
+            <input
+              value={tagsInput}
+              onChange={(event) => setTagsInput(event.target.value)}
+              placeholder="Etiketler örnek: react, nextjs, admin-panel, pdf"
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+            />
+
+            <p className="-mt-2 text-xs text-gray-500">
+              Etiketleri virgülle ayır. En fazla 12 etiket kullanılabilir.
+            </p>
 
             <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
               <p className="mb-2 text-sm text-gray-400">Önizleme tipi</p>

@@ -32,6 +32,7 @@ type Product = {
   requirements?: string | null;
   preview_type?: string | null;
   preview_note?: string | null;
+  tags?: string[] | null;
 };
 
 type GalleryImage = {
@@ -607,6 +608,24 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
+
+            {Array.isArray(product.tags) && product.tags.length > 0 && (
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                <h2 className="text-2xl font-bold">Ürün Etiketleri</h2>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {product.tags.map((tag) => (
+                    <a
+                      key={tag}
+                      href={`/products?search=${encodeURIComponent(tag)}`}
+                      className="rounded-full bg-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-blue-500/20 hover:text-blue-200"
+                    >
+                      #{tag}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
               <h2 className="text-2xl font-bold">Ürün Önizlemesi</h2>

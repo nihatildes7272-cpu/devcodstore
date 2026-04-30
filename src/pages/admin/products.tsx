@@ -46,6 +46,7 @@ type Product = {
   created_at?: string;
   preview_type?: string | null;
   preview_note?: string | null;
+  tags?: string[] | null;
 };
 
 type ProductTab =
@@ -590,6 +591,9 @@ export default function AdminProductsPage() {
                           {product.license_allows_resale ? "İzinli" : "Yasak"}
                         </p>
                         {product.demo_url && <p>Demo: {product.demo_url}</p>}
+                        {Array.isArray(product.tags) && product.tags.length > 0 && (
+                          <p>Etiketler: {product.tags.join(", ")}</p>
+                        )}
                         <p>Önizleme: {product.preview_type || "Kapak + Galeri"}</p>
                         {product.preview_note && <p>Önizleme notu: {product.preview_note}</p>}
                         {product.tech_stack && <p>Teknolojiler: {product.tech_stack}</p>}

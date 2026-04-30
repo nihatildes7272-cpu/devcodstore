@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +17,7 @@ type Product = {
   description: string | null;
   created_at?: string;
   image_url?: string | null;
+  tags?: string[] | null;
 };
 
 type ProductsPageProps = {
@@ -49,6 +51,7 @@ export default function ProductsPage({
   initialProducts,
   initialError,
 }: ProductsPageProps) {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tümü");
@@ -66,7 +69,7 @@ export default function ProductsPage({
       const result = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,category,price,seller,seller_id,status,description,created_at,image_url")
+          .select("id,title,category,price,seller,seller_id,status,description,created_at,tags,image_url,tags")
           .eq("status", "Yayında")
           .order("created_at", { ascending: false })
           .limit(100),
@@ -97,6 +100,12 @@ export default function ProductsPage({
       setRefreshing(false);
     }
   }
+
+  useEffect(() => {
+    if (typeof router.query.search === "string") {
+      setSearch(router.query.search);
+    }
+  }, [router.query.search]);
 
   useEffect(() => {
     const channel = supabase
@@ -133,7 +142,7 @@ export default function ProductsPage({
     const filtered = products.filter((product) => {
       const searchText = `${product.title} ${product.seller} ${product.category} ${
         product.description || ""
-      }`.toLowerCase();
+      } ${(product.tags || []).join(" ")}`.toLowerCase();
 
       const matchesSearch = searchText.includes(search.toLowerCase());
 
@@ -310,6 +319,19 @@ export default function ProductsPage({
                       {product.description}
                     </p>
                   )}
+
+                  {Array.isArray(product.tags) && product.tags.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {product.tags.slice(0, 5).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
@@ -381,7 +403,7 @@ export const getServerSideProps: GetServerSideProps<ProductsPageProps> = async (
 
   const { data, error } = await serverSupabase
     .from("products")
-    .select("id,title,category,price,seller,seller_id,status,description,created_at,image_url")
+    .select("id,title,category,price,seller,seller_id,status,description,created_at,tags,image_url,tags")
     .eq("status", "Yayında")
     .order("created_at", { ascending: false })
     .limit(100);
