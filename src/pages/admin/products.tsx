@@ -74,6 +74,8 @@ type OpenPanel = {
   type: "security" | "manage" | "report";
 } | null;
 
+const adminProductsPageSize = 20;
+
 const tabs: { key: ProductTab; label: string }[] = [
   { key: "Onay Bekliyor", label: "Onay Bekleyen" },
   { key: "Yayında", label: "Yayında" },
@@ -97,6 +99,8 @@ function withTimeout<T>(
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [activeTab, setActiveTab] = useState<ProductTab>("Onay Bekliyor");
   const [search, setSearch] = useState("");
 
@@ -111,7 +115,7 @@ export default function AdminProductsPage() {
   const [queuingStrongScanProductId, setQueuingStrongScanProductId] =
     useState<string | null>(null);
 
-  async function loadProducts(showLoading = true) {
+  async function loadProducts(showLoading = true, targetPage = page) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -124,8 +128,12 @@ export default function AdminProductsPage() {
       const result = await withTimeout(
         supabase
           .from("products")
-          .select("*")
-          .order("created_at", { ascending: false }),
+          .select("*", { count: "planned" })
+          .order("created_at", { ascending: false })
+          .range(
+            (targetPage - 1) * adminProductsPageSize,
+            targetPage * adminProductsPageSize - 1
+          ),
         15000,
         "Ürünler yüklenirken sunucu geç cevap verdi."
       );
@@ -133,8 +141,10 @@ export default function AdminProductsPage() {
       if (result.error) {
         setMessage("Ürünler yüklenirken hata oluştu: " + result.error.message);
         setProducts([]);
+        setTotalCount(0);
       } else {
         setProducts(result.data || []);
+        setTotalCount(result.count || 0);
         setLastUpdated(
           new Date().toLocaleTimeString("tr-TR", {
             hour: "2-digit",
@@ -157,7 +167,7 @@ export default function AdminProductsPage() {
   }
 
   useEffect(() => {
-    loadProducts(true);
+    loadProducts(true, page);
 
     const channel = supabase
       .channel("admin-products-live")
@@ -168,7 +178,7 @@ export default function AdminProductsPage() {
           schema: "public",
           table: "products",
         },
-        () => loadProducts(false)
+        () => loadProducts(false, page)
       )
       .subscribe();
 
@@ -181,6 +191,11 @@ export default function AdminProductsPage() {
       clearInterval(interval);
     };
   }, []);
+
+
+  useEffect(() => {
+    loadProducts(true, page);
+  }, [page]);
 
   function togglePanel(productId: string, type: "security" | "manage" | "report") {
     if (openPanel?.productId === productId && openPanel.type === type) {
@@ -428,7 +443,9 @@ export default function AdminProductsPage() {
     return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
-  const totalProducts = products.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / adminProductsPageSize));
+
+  const totalProducts = totalCount;
   const liveProducts = products.filter((product) => product.status === "Yayında").length;
   const pendingProducts = products.filter((product) => product.status === "Onay Bekliyor").length;
   const rejectedProducts = products.filter((product) => product.status === "Reddedildi").length;
@@ -476,7 +493,7 @@ export default function AdminProductsPage() {
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadProducts(false)}
+                onClick={() => loadProducts(false, page)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
               >
@@ -495,7 +512,7 @@ export default function AdminProductsPage() {
             <p>{message}</p>
 
             <button
-              onClick={() => loadProducts(false)}
+              onClick={() => loadProducts(false, page)}
               className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
             >
               Tekrar Dene
@@ -908,6 +925,33 @@ export default function AdminProductsPage() {
               </div>
             )}
           </div>
+
+          {totalCount > adminProductsPageSize && (
+            <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-400">
+                Sayfa {page} / {totalPages} — Toplam ürün: {totalCount}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Önceki
+                </button>
+
+                <button
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Sonraki
+                </button>
+              </div>
+            </section>
+          )}
+
         </section>
       </section>
     </main>

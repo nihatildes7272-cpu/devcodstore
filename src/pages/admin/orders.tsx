@@ -16,6 +16,8 @@ type Order = {
 
 type OrderTab = "Tümü" | "Tamamlandı" | "Beklemede" | "İade Edildi";
 
+const adminOrdersPageSize = 25;
+
 const tabs: OrderTab[] = ["Tümü", "Tamamlandı", "Beklemede", "İade Edildi"];
 
 function withTimeout<T>(
@@ -33,6 +35,8 @@ function withTimeout<T>(
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [activeTab, setActiveTab] = useState<OrderTab>("Tümü");
   const [search, setSearch] = useState("");
   const [openManageId, setOpenManageId] = useState<string | null>(null);
@@ -42,7 +46,7 @@ export default function AdminOrdersPage() {
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadOrders(showLoading = true) {
+  async function loadOrders(showLoading = true, targetPage = page) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -55,9 +59,12 @@ export default function AdminOrdersPage() {
       const result = await withTimeout(
         supabase
           .from("orders")
-          .select("*")
+          .select("*", { count: "planned" })
           .order("created_at", { ascending: false })
-          .limit(300),
+          .range(
+            (targetPage - 1) * adminOrdersPageSize,
+            targetPage * adminOrdersPageSize - 1
+          ),
         15000,
         "Siparişler yüklenirken sunucu geç cevap verdi."
       );
@@ -65,8 +72,10 @@ export default function AdminOrdersPage() {
       if (result.error) {
         setMessage("Siparişler yüklenemedi: " + result.error.message);
         setOrders([]);
+        setTotalCount(0);
       } else {
         setOrders(result.data || []);
+        setTotalCount(result.count || 0);
         setLastUpdated(
           new Date().toLocaleTimeString("tr-TR", {
             hour: "2-digit",
@@ -89,7 +98,7 @@ export default function AdminOrdersPage() {
   }
 
   useEffect(() => {
-    loadOrders(true);
+    loadOrders(true, page);
 
     const channel = supabase
       .channel("admin-orders-live")
@@ -101,13 +110,13 @@ export default function AdminOrdersPage() {
           table: "orders",
         },
         () => {
-          loadOrders(false);
+          loadOrders(false, page);
         }
       )
       .subscribe();
 
     const interval = setInterval(() => {
-      loadOrders(false);
+      loadOrders(false, page);
     }, 20000);
 
     return () => {
@@ -115,6 +124,11 @@ export default function AdminOrdersPage() {
       clearInterval(interval);
     };
   }, []);
+
+
+  useEffect(() => {
+    loadOrders(true, page);
+  }, [page]);
 
   function parsePrice(price: string) {
     const numberText = price.replace(/[^\d]/g, "");
@@ -170,8 +184,10 @@ export default function AdminOrdersPage() {
 
     setMessage(`Sipariş durumu "${status}" olarak güncellendi.`);
     setOpenManageId(null);
-    await loadOrders(false);
+    await loadOrders(false, page);
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / adminOrdersPageSize));
 
   const completedOrders = orders.filter((order) => order.status === "Tamamlandı");
   const pendingOrders = orders.filter((order) => order.status === "Beklemede");
@@ -256,7 +272,7 @@ export default function AdminOrdersPage() {
         <section className="grid gap-6 md:grid-cols-5">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Sipariş</p>
-            <h2 className="mt-3 text-4xl font-bold">{orders.length}</h2>
+            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -309,7 +325,7 @@ export default function AdminOrdersPage() {
             {tabs.map((tab) => {
               const count =
                 tab === "Tümü"
-                  ? orders.length
+                  ? totalCount
                   : orders.filter((order) => order.status === tab).length;
 
               return (
@@ -454,6 +470,33 @@ export default function AdminOrdersPage() {
               </div>
             )}
           </div>
+
+          {totalCount > adminOrdersPageSize && (
+            <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-400">
+                Sayfa {page} / {totalPages} — Toplam sipariş: {totalCount}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Önceki
+                </button>
+
+                <button
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Sonraki
+                </button>
+              </div>
+            </section>
+          )}
+
         </section>
       </section>
     </main>
