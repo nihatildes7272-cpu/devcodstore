@@ -31,6 +31,10 @@ type Product = {
   security_scan_score?: number | null;
   security_scan_report?: ScanReport | null;
   security_scanned_at?: string | null;
+  strong_scan_status?: string | null;
+  strong_scan_job_id?: string | null;
+  strong_scan_started_at?: string | null;
+  strong_scan_finished_at?: string | null;
   created_at?: string;
 };
 
@@ -71,6 +75,7 @@ export default function AdminProductsPage() {
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
   const [scanningProductId, setScanningProductId] = useState<string | null>(null);
+  const [queuingStrongScanProductId, setQueuingStrongScanProductId] = useState<string | null>(null);
   const [openReportProductId, setOpenReportProductId] = useState<string | null>(null);
 
   async function loadProducts(showLoading = true) {
@@ -145,6 +150,68 @@ export default function AdminProductsPage() {
       clearInterval(interval);
     };
   }, []);
+
+  async function queueStrongScan(productId: string) {
+    setMessage("");
+    setQueuingStrongScanProductId(productId);
+
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) {
+        setMessage("Güçlü tarama için admin oturumu bulunamadı.");
+        setQueuingStrongScanProductId(null);
+        return;
+      }
+
+      const { data: jobData, error: jobError } = await supabase
+        .from("security_scan_jobs")
+        .insert({
+          product_id: productId,
+          requested_by: userData.user.id,
+          status: "queued",
+          scan_type: "full",
+          priority: 5,
+          report: {
+            message: "Güçlü tarama kuyruğa alındı. Scanner Worker çalışınca işlenecek.",
+          },
+        })
+        .select("id")
+        .single();
+
+      if (jobError || !jobData) {
+        setMessage("Güçlü tarama kuyruğa alınamadı: " + (jobError?.message || ""));
+        setQueuingStrongScanProductId(null);
+        return;
+      }
+
+      const { error: productError } = await supabase
+        .from("products")
+        .update({
+          strong_scan_status: "queued",
+          strong_scan_job_id: jobData.id,
+          security_note: "Ürün güçlü güvenlik tarama kuyruğuna alındı.",
+        })
+        .eq("id", productId);
+
+      if (productError) {
+        setMessage("Ürün güçlü tarama durumuna alınamadı: " + productError.message);
+        setQueuingStrongScanProductId(null);
+        return;
+      }
+
+      setMessage("Ürün güçlü tarama kuyruğuna alındı.");
+      await loadProducts(false);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? "Güçlü tarama kuyruğu hatası: " + error.message
+          : "Güçlü tarama kuyruğunda bilinmeyen hata oluştu."
+      );
+    } finally {
+      setQueuingStrongScanProductId(null);
+    }
+  }
 
   async function scanProduct(productId: string) {
     setMessage("");
@@ -497,6 +564,7 @@ export default function AdminProductsPage() {
                         <p>Güvenlik notu: {product.security_note || "Not yok"}</p>
                         <p>Tarama skoru: {product.security_scan_score ?? 0}</p>
                         <p>Son tarama: {formatDate(product.security_scanned_at)}</p>
+                        <p>Güçlü tarama: {product.strong_scan_status || "Yok"}</p>
                       </div>
 
                       {product.description && (
@@ -507,6 +575,14 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="grid gap-2 lg:min-w-60">
+                      <button
+                        onClick={() => queueStrongScan(product.id)}
+                        disabled={queuingStrongScanProductId === product.id}
+                        className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
+                      >
+                        {queuingStrongScanProductId === product.id ? "Kuyruğa Alınıyor..." : "Güçlü Tara"}
+                      </button>
+
                       <button
                         onClick={() => scanProduct(product.id)}
                         disabled={scanningProductId === product.id}
