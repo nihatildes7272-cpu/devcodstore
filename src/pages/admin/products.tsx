@@ -15,6 +15,8 @@ type Product = {
   security_status?: string | null;
   security_note?: string | null;
   security_checked_at?: string | null;
+  security_scan_score?: number | null;
+  security_scan_report?: Record<string, unknown> | null;
   created_at?: string;
 };
 
@@ -52,6 +54,7 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [scanningProductId, setScanningProductId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
@@ -127,6 +130,53 @@ export default function AdminProductsPage() {
       clearInterval(interval);
     };
   }, []);
+
+  async function scanProduct(productId: string) {
+    setMessage("");
+    setScanningProductId(productId);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        setMessage("Otomatik tarama için admin oturumu bulunamadı.");
+        setScanningProductId(null);
+        return;
+      }
+
+      const response = await fetch("/api/security/scan-product", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ productId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage("Otomatik tarama başarısız: " + (result.error || "Bilinmeyen hata"));
+        setScanningProductId(null);
+        return;
+      }
+
+      setMessage(
+        `Otomatik tarama tamamlandı. Sonuç: ${result.securityStatus}. Skor: ${result.score}.`
+      );
+
+      await loadProducts(false);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? "Otomatik tarama hatası: " + error.message
+          : "Otomatik tarama sırasında bilinmeyen hata oluştu."
+      );
+    } finally {
+      setScanningProductId(null);
+    }
+  }
 
   async function updateProductStatus(productId: string, status: string) {
     setMessage("");
@@ -411,6 +461,9 @@ export default function AdminProductsPage() {
                     {product.security_note && (
                       <p>Güvenlik notu: {product.security_note}</p>
                     )}
+                    {typeof product.security_scan_score === "number" && (
+                      <p>Tarama skoru: {product.security_scan_score}</p>
+                    )}
                   </div>
 
                   {product.description && (
@@ -421,6 +474,14 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="grid gap-2 lg:min-w-60">
+                  <button
+                    onClick={() => scanProduct(product.id)}
+                    disabled={scanningProductId === product.id}
+                    className="rounded-2xl bg-purple-600 px-4 py-2 text-sm font-semibold hover:bg-purple-500 disabled:opacity-60"
+                  >
+                    {scanningProductId === product.id ? "Taranıyor..." : "Otomatik Tara"}
+                  </button>
+
                   <button
                     onClick={() => updateSecurityStatus(product.id, "Güvenli")}
                     className="rounded-2xl border border-green-500/30 px-4 py-2 text-sm font-semibold text-green-300 hover:bg-green-500/10"
