@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
+import { productCategories } from "@/lib/productCategories";
 
 type Product = {
   id: string;
@@ -35,7 +36,7 @@ type Order = {
   created_at: string;
 };
 
-const categories = ["Web Site", "Dashboard", "Frontend", "Mobile UI"];
+const categories = productCategories;
 
 function safeImageName(fileName: string) {
   const cleaned = fileName

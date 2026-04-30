@@ -3,6 +3,7 @@ import type { GetServerSideProps } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
+import { productCategoryFilters } from "@/lib/productCategories";
 
 type Product = {
   id: string;
@@ -22,7 +23,7 @@ type ProductsPageProps = {
   initialError: string;
 };
 
-const categories = ["Tümü", "Web Site", "Dashboard", "Frontend", "Mobile UI"];
+const categories = productCategoryFilters;
 
 const sortOptions = [
   { value: "newest", label: "En Yeni" },
