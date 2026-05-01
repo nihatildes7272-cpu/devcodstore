@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
@@ -57,34 +57,26 @@ const securityFilters = [
 const previewFilters = ["Tümü", ...productPreviewTypes.map((item) => item.type)];
 const licenseFilters = ["Tümü", ...productLicenses.map((item) => item.type)];
 
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 15000,
+  message = "Ürünler yüklenirken sunucu geç cevap verdi."
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 function normalizeSearch(input: string) {
-  return input
-    .trim()
-    .replaceAll(",", " ")
-    .replace(/\s+/g, " ");
-}
-
-function normalizeTag(input: string) {
-  return input
-    .trim()
-    .toLowerCase()
-    .replaceAll("ı", "i")
-    .replaceAll("ğ", "g")
-    .replaceAll("ü", "u")
-    .replaceAll("ş", "s")
-    .replaceAll("ö", "o")
-    .replaceAll("ç", "c")
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function parsePrice(price: string) {
-  const numberText = price.replace(/[^\d]/g, "");
-  return Number(numberText || 0);
+  return input.trim().replaceAll(",", " ").replace(/\s+/g, " ");
 }
 
 export default function ProductsPage() {
   const router = useRouter();
+  const mountedRef = useRef(true);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -105,6 +97,7 @@ export default function ProductsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
+  const [debugText, setDebugText] = useState("");
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -115,7 +108,7 @@ export default function ProductsPage() {
     selectedPreview !== "Tümü",
   ].filter(Boolean).length;
 
-  async function loadProducts(targetPage = page, showMainLoading = false) {
+  async function loadProducts(targetPage = page, showMainLoading = true) {
     if (showMainLoading) {
       setLoading(true);
     } else {
@@ -123,33 +116,47 @@ export default function ProductsPage() {
     }
 
     setMessage("");
+    setDebugText("Ürünler sorgulanıyor...");
+
+    const hardStop = setTimeout(() => {
+      if (!mountedRef.current) return;
+
+      setLoading(false);
+      setRefreshing(false);
+      setMessage("Ürünler yüklenirken işlem uzun sürdü. Lütfen Tekrar Dene butonuna bas.");
+      setDebugText("15 saniyelik güvenlik süresi doldu.");
+    }, 16000);
 
     try {
-      const from = (targetPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-
       const cleanSearch = normalizeSearch(search);
 
-      const { data, error } = await supabase.rpc("search_products_paginated", {
-        p_search: cleanSearch,
-        p_category: selectedCategory,
-        p_file_type: selectedFileType,
-        p_security_status: selectedSecurity,
-        p_license_type: selectedLicense,
-        p_preview_type: selectedPreview,
-        p_sort: sortBy,
-        p_page: targetPage,
-        p_page_size: pageSize,
-      });
+      const result = await withTimeout(
+        supabase.rpc("search_products_paginated", {
+          p_search: cleanSearch,
+          p_category: selectedCategory,
+          p_file_type: selectedFileType,
+          p_security_status: selectedSecurity,
+          p_license_type: selectedLicense,
+          p_preview_type: selectedPreview,
+          p_sort: sortBy,
+          p_page: targetPage,
+          p_page_size: pageSize,
+        }),
+        15000,
+        "Ürünler yüklenirken sunucu geç cevap verdi."
+      );
 
-      if (error) {
+      if (!mountedRef.current) return;
+
+      if (result.error) {
         setProducts([]);
         setTotalCount(0);
-        setMessage("Ürünler yüklenemedi: " + error.message);
+        setMessage("Ürünler yüklenemedi: " + result.error.message);
+        setDebugText("Ürün sorgusunda hata oluştu.");
         return;
       }
 
-      const rows = (data || []) as Array<Product & { total_count?: number }>;
+      const rows = (result.data || []) as Array<Product & { total_count?: number }>;
       const total = rows.length > 0 ? Number(rows[0].total_count || 0) : 0;
 
       const productData = rows.map((row) => {
@@ -159,7 +166,8 @@ export default function ProductsPage() {
 
       setProducts(productData);
       setTotalCount(total);
-
+      setMessage("");
+      setDebugText("Ürünler başarıyla yüklendi.");
       setLastUpdated(
         new Date().toLocaleTimeString("tr-TR", {
           hour: "2-digit",
@@ -168,34 +176,51 @@ export default function ProductsPage() {
         })
       );
     } catch (error) {
+      if (!mountedRef.current) return;
+
       setProducts([]);
       setTotalCount(0);
       setMessage(
         error instanceof Error
           ? error.message
-          : "Ürünler yüklenirken bilinmeyen hata oluştu."
+          : "Ürünler yüklenirken bilinmeyen bir hata oluştu."
       );
+      setDebugText("Beklenmeyen hata oluştu.");
     } finally {
+      clearTimeout(hardStop);
+
+      if (!mountedRef.current) return;
+
       setLoading(false);
       setRefreshing(false);
     }
   }
 
   useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
     if (typeof router.query.search === "string") {
       setSearch(router.query.search);
       setPage(1);
     }
-  }, [router.query.search]);
+  }, [router.isReady, router.query.search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPage(1);
-      loadProducts(1, true);
-    }, 350);
+      loadProducts(page, true);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [
+    page,
     search,
     selectedCategory,
     sortBy,
@@ -204,10 +229,6 @@ export default function ProductsPage() {
     selectedLicense,
     selectedPreview,
   ]);
-
-  useEffect(() => {
-    loadProducts(page, true);
-  }, [page]);
 
   function clearFilters() {
     setSearch("");
@@ -239,20 +260,26 @@ export default function ProductsPage() {
               <p className="mt-2 text-gray-400">
                 Kod paketleri, PDF dosyaları, slaytlar, şablonlar ve dijital ürünler.
               </p>
+              <p className="mt-2 text-xs text-gray-500">
+                Durum: {debugText || "Hazırlanıyor..."}
+              </p>
             </div>
 
             <div className="grid gap-2 md:text-right">
+              <button
+                onClick={() => loadProducts(page, false)}
+                disabled={refreshing}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {refreshing ? "Yenileniyor..." : "Yenile"}
+              </button>
+
               <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-                Toplam ürün:{" "}
-                <span className="font-bold text-white">{totalCount}</span>
+                Toplam ürün: <span className="font-bold text-white">{totalCount}</span>
               </div>
 
               <div className="text-xs text-gray-500">
-                {refreshing
-                  ? "Yenileniyor..."
-                  : lastUpdated
-                  ? `Son güncelleme: ${lastUpdated}`
-                  : "Sayfalı ürün sistemi aktif"}
+                {lastUpdated ? `Son güncelleme: ${lastUpdated}` : "Sayfalı ürün sistemi aktif"}
               </div>
             </div>
           </div>
@@ -260,14 +287,20 @@ export default function ProductsPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr_auto]">
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder="Ürün, satıcı, etiket, açıklama veya dosya türü ara..."
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
             />
 
             <select
               value={selectedCategory}
-              onChange={(event) => setSelectedCategory(event.target.value)}
+              onChange={(event) => {
+                setSelectedCategory(event.target.value);
+                setPage(1);
+              }}
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
             >
               {productCategoryFilters.map((category) => (
@@ -277,7 +310,10 @@ export default function ProductsPage() {
 
             <select
               value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setPage(1);
+              }}
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
             >
               {sortOptions.map((option) => (
@@ -304,7 +340,10 @@ export default function ProductsPage() {
                   Dosya Türü
                   <select
                     value={selectedFileType}
-                    onChange={(event) => setSelectedFileType(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedFileType(event.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
                   >
                     {fileTypeFilters.map((item) => (
@@ -317,7 +356,10 @@ export default function ProductsPage() {
                   Güvenlik
                   <select
                     value={selectedSecurity}
-                    onChange={(event) => setSelectedSecurity(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedSecurity(event.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
                   >
                     {securityFilters.map((item) => (
@@ -330,7 +372,10 @@ export default function ProductsPage() {
                   Lisans
                   <select
                     value={selectedLicense}
-                    onChange={(event) => setSelectedLicense(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedLicense(event.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
                   >
                     {licenseFilters.map((item) => (
@@ -343,7 +388,10 @@ export default function ProductsPage() {
                   Önizleme
                   <select
                     value={selectedPreview}
-                    onChange={(event) => setSelectedPreview(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedPreview(event.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
                   >
                     {previewFilters.map((item) => (
@@ -374,24 +422,22 @@ export default function ProductsPage() {
             Gösterilen: {visibleRange} / {totalCount}
           </p>
 
-          <div className="flex flex-wrap gap-3">
-            {(search ||
-              selectedCategory !== "Tümü" ||
-              sortBy !== "newest" ||
-              activeAdvancedCount > 0) && (
-              <button
-                onClick={clearFilters}
-                className="text-blue-300 hover:text-blue-200"
-              >
-                Filtreleri temizle
-              </button>
-            )}
-          </div>
+          {(search ||
+            selectedCategory !== "Tümü" ||
+            sortBy !== "newest" ||
+            activeAdvancedCount > 0) && (
+            <button onClick={clearFilters} className="text-blue-300 hover:text-blue-200">
+              Filtreleri temizle
+            </button>
+          )}
         </div>
 
         {loading ? (
           <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            Ürünler yükleniyor...
+            <p>Ürünler yükleniyor...</p>
+            <p className="mt-3 text-sm text-gray-500">
+              {debugText || "Ürün sorgusu hazırlanıyor."}
+            </p>
           </section>
         ) : (
           <>
@@ -527,9 +573,7 @@ export default function ProductsPage() {
                 </button>
 
                 <button
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
-                  }
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                   disabled={page >= totalPages}
                   className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
                 >
