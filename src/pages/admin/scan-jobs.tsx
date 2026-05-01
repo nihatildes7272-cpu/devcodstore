@@ -246,6 +246,38 @@ export default function AdminScanJobsPage() {
     };
   }, [page, activeStatus, search]);
 
+  async function runJobNow(job: ScanJob) {
+    const confirmed = window.confirm("Bu tarama işi bekleme süresi olmadan hemen tekrar denensin mi?");
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("security_scan_jobs")
+      .update({
+        status: "queued",
+        next_retry_at: null,
+        error_message: null,
+        worker_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+
+    if (error) {
+      setMessage("Tarama işi hemen kuyruğa alınamadı: " + error.message);
+      return;
+    }
+
+    await supabase
+      .from("products")
+      .update({
+        strong_scan_status: "queued",
+        security_note: "Admin tarafından güçlü tarama hemen tekrar denemeye alındı.",
+      })
+      .eq("id", job.product_id);
+
+    await loadJobs(page, false);
+  }
+
   async function retryJob(job: ScanJob) {
     const confirmed = window.confirm("Bu tarama işini tekrar kuyruğa almak istiyor musun?");
 
@@ -599,6 +631,15 @@ export default function AdminScanJobsPage() {
                       >
                         Ürün Yönetimi
                       </a>
+
+                      {job.status === "queued" && (
+                        <button
+                          onClick={() => runJobNow(job)}
+                          className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500"
+                        >
+                          Hemen Tekrar Dene
+                        </button>
+                      )}
 
                       {(job.status === "queued" || job.status === "running") && (
                         <button
