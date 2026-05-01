@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/router";
 
 export default function SiteNavbar() {
+  const router = useRouter();
+
+  function handleProductsClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (router.pathname === "/products") {
+      event.preventDefault();
+      window.location.href = `/products?refresh=${Date.now()}`;
+    }
+  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -135,7 +144,7 @@ export default function SiteNavbar() {
         {links.map((link) => (
           <a
             key={link.href}
-            href={link.href}
+            href={link.href} onClick={link.href === "/products" ? handleProductsClick : undefined}
             className="text-sm font-medium text-gray-300 hover:text-white"
           >
             {link.label}
@@ -197,7 +206,7 @@ export default function SiteNavbar() {
             {links.map((link) => (
               <a
                 key={link.href}
-                href={link.href}
+                href={link.href} onClick={link.href === "/products" ? handleProductsClick : undefined}
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
               >
                 {link.label}
