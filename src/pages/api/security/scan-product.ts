@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import JSZip from "jszip";
 import { createClient } from "@supabase/supabase-js";
+import { checkServerRateLimit, getClientIp } from "@/lib/serverRateLimit";
 
 type ScanIssue = {
   level: "low" | "medium" | "high" | "critical";
@@ -262,6 +263,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!isAdmin) {
     return res.status(403).json({
       error: "Bu işlem için admin yetkisi gerekir.",
+    });
+  }
+
+  const clientIp = getClientIp(req.headers, req.socket.remoteAddress);
+
+  const adminLimit = await checkServerRateLimit({
+    key: `admin:${userData.user.id}`,
+    action: "auto_security_scan",
+    limit: 30,
+    windowSeconds: 300,
+  });
+
+  if (!adminLimit.allowed) {
+    return res.status(429).json({
+      error: "Çok fazla otomatik tarama isteği yaptın. Lütfen birkaç dakika sonra tekrar dene.",
+    });
+  }
+
+  const ipLimit = await checkServerRateLimit({
+    key: `ip:${clientIp}`,
+    action: "auto_security_scan",
+    limit: 60,
+    windowSeconds: 300,
+  });
+
+  if (!ipLimit.allowed) {
+    return res.status(429).json({
+      error: "Bu IP adresinden çok fazla tarama isteği yapıldı. Lütfen biraz sonra tekrar dene.",
     });
   }
 

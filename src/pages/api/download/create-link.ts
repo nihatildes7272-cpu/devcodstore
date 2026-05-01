@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { checkServerRateLimit, getClientIp } from "@/lib/serverRateLimit";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey =
@@ -64,6 +65,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const userId = userData.user.id;
+  const clientIp = getClientIp(req.headers, req.socket.remoteAddress);
+
+  const userLimit = await checkServerRateLimit({
+    key: `user:${userId}`,
+    action: "download_create_link",
+    limit: 60,
+    windowSeconds: 60,
+  });
+
+  if (!userLimit.allowed) {
+    return res.status(429).json({
+      error: "Çok fazla indirme isteği yaptın. Lütfen biraz sonra tekrar dene.",
+    });
+  }
+
+  const ipLimit = await checkServerRateLimit({
+    key: `ip:${clientIp}`,
+    action: "download_create_link",
+    limit: 120,
+    windowSeconds: 60,
+  });
+
+  if (!ipLimit.allowed) {
+    return res.status(429).json({
+      error: "Bu IP adresinden çok fazla indirme isteği yapıldı. Lütfen biraz sonra tekrar dene.",
+    });
+  }
 
   const { data: order, error: orderError } = await adminClient
     .from("orders")
