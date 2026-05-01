@@ -22,6 +22,8 @@ function safeFileName(fileName: string) {
     .replace(/^-|-$/g, "");
 }
 
+const maxProductFileSize = 200 * 1024 * 1024;
+
 function detectFileType(fileName: string) {
   const lower = fileName.toLowerCase();
 
@@ -94,6 +96,11 @@ export default function SellerNewProductPage() {
     if (!description.trim()) return "Açıklama alanı boş olamaz.";
     if (!coverImage) return "Lütfen kapak görseli seç.";
     if (!productFile) return "Lütfen ürün dosyası seç.";
+
+    if (productFile.size > maxProductFileSize) {
+      return "Ürün dosyası en fazla 200 MB olabilir.";
+    }
+
     return "";
   }
 

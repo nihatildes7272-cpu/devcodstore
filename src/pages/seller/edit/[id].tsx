@@ -52,6 +52,9 @@ type GalleryImage = {
 
 type StepKey = "basic" | "files" | "gallery" | "license" | "technical";
 
+const maxProductFileSize = 200 * 1024 * 1024;
+const maxGalleryImages = 12;
+
 function safeFileName(fileName: string) {
   return fileName
     .toLowerCase()
@@ -239,6 +242,15 @@ export default function SellerEditProductPage() {
     if (!title.trim()) return "Ürün adı boş olamaz.";
     if (!price.trim()) return "Fiyat alanı boş olamaz.";
     if (!description.trim()) return "Açıklama alanı boş olamaz.";
+
+    if (zipFile && zipFile.size > maxProductFileSize) {
+      return "Ürün dosyası en fazla 200 MB olabilir.";
+    }
+
+    if (galleryImages.length + galleryFiles.length > maxGalleryImages) {
+      return "Bir üründe en fazla 12 galeri görseli olabilir.";
+    }
+
     return "";
   }
 
