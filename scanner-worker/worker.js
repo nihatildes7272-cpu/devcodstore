@@ -221,28 +221,50 @@ async function getProduct(productId) {
     throw new Error("Ürün bulunamadı: " + (error?.message || ""));
   }
 
-  if (!data.file_path) {
-    throw new Error("Üründe ZIP dosyası yok.");
+  if (!data.file_path && !data.quarantine_file_path) {
+    throw new Error("Üründe taranacak dosya yok.");
   }
 
   return data;
 }
 
-async function downloadZip(filePath, targetPath) {
+async function downloadZip(filePath, targetPath, bucket = "product-files") {
   const { data, error } = await supabase.storage
-    .from("product-files")
+    .from(bucket)
     .download(filePath);
 
   if (error || !data) {
-    throw new Error("ZIP indirilemedi: " + (error?.message || ""));
+    throw new Error(`Dosya indirilemedi (${bucket}): ` + (error?.message || ""));
   }
 
   const buffer = Buffer.from(await data.arrayBuffer());
   await fs.writeFile(targetPath, buffer);
 }
 
-async function inspectZip(zipPath, extractDir) {
+async function inspectZip(zipPath, extractDir, originalFileName = "product-file") {
   const issues = [];
+  const lowerName = originalFileName.toLowerCase();
+
+  if (!lowerName.endsWith(".zip")) {
+    const targetPath = path.join(extractDir, path.basename(originalFileName));
+    await fs.copy(zipPath, targetPath);
+
+    if (hasExtension(originalFileName, dangerousExtensions)) {
+      addIssue(
+        issues,
+        "file",
+        "high",
+        originalFileName,
+        "Riskli çalıştırılabilir dosya uzantısı tespit edildi."
+      );
+    }
+
+    return {
+      checkedFiles: 1,
+      issues
+    };
+  }
+
   const zip = new StreamZip.async({ file: zipPath });
   const entries = await zip.entries();
 
@@ -676,7 +698,7 @@ async function scanSemgrep(rootDir) {
 
 async function processJob(job) {
   const scanRoot = path.join(WORKDIR, job.id);
-  const zipPath = path.join(scanRoot, "product.zip");
+  const zipPath = path.join(scanRoot, "product-file");
   const extractDir = path.join(scanRoot, "unzipped");
 
   await fs.remove(scanRoot);
@@ -684,12 +706,21 @@ async function processJob(job) {
 
   const product = await getProduct(job.product_id);
 
-  await downloadZip(product.file_path, zipPath);
+  const sourceFilePath = product.quarantine_file_path || product.file_path;
+
+  if (!sourceFilePath) {
+    throw new Error("Üründe taranacak dosya yok.");
+  }
+
+  const sourceBucket = product.quarantine_file_path ? "product-quarantine" : "product-files";
+  const originalFileName = product.file_name || path.basename(sourceFilePath);
+
+  await downloadZip(sourceFilePath, zipPath, sourceBucket);
 
   const allIssues = [];
   const tools = {};
 
-  const zipInspection = await inspectZip(zipPath, extractDir);
+  const zipInspection = await inspectZip(zipPath, extractDir, originalFileName);
   allIssues.push(...zipInspection.issues);
 
   const customScan = await scanCustomRules(extractDir);
@@ -727,14 +758,57 @@ async function processJob(job) {
     scannedTextFiles: customScan.scannedTextFiles,
     tools,
     issues: allIssues,
+    sourceBucket,
+    sourceFilePath,
     summary:
       resultStatus === "Güvenli"
-        ? "Güçlü taramada kritik risk bulunmadı."
+        ? "Güçlü taramada kritik risk bulunmadı. Dosya onaylı alana taşındı."
         : resultStatus === "Manuel İnceleme"
-        ? "Güçlü taramada şüpheli bulgular bulundu. Manuel inceleme önerilir."
-        : "Güçlü taramada yüksek riskli bulgular bulundu.",
+        ? "Güçlü taramada şüpheli bulgular bulundu. Dosya karantinada manuel inceleme bekliyor."
+        : "Güçlü taramada yüksek riskli bulgular bulundu. Dosya karantinada tutuluyor.",
     scannedAt: nowIso()
   };
+
+  const { data: scanReportData } = await supabase
+    .from("scan_reports")
+    .insert({
+      product_id: product.id,
+      job_id: job.id,
+      status: resultStatus,
+      score,
+      tools,
+      issues: allIssues,
+      summary: report.summary,
+      report
+    })
+    .select("id")
+    .single();
+
+  let approvedFilePath = product.file_path || null;
+
+  if (resultStatus === "Güvenli" && product.quarantine_file_path) {
+    approvedFilePath = product.quarantine_file_path;
+
+    const originalBuffer = await fs.readFile(zipPath);
+
+    const { error: uploadApprovedError } = await supabase.storage
+      .from("product-files")
+      .upload(approvedFilePath, originalBuffer, {
+        upsert: true,
+        contentType: "application/octet-stream"
+      });
+
+    if (uploadApprovedError) {
+      throw new Error(
+        "Temiz dosya product-files bucket içine taşınamadı: " +
+          uploadApprovedError.message
+      );
+    }
+
+    await supabase.storage
+      .from("product-quarantine")
+      .remove([product.quarantine_file_path]);
+  }
 
   await supabase
     .from("security_scan_jobs")
@@ -755,11 +829,20 @@ async function processJob(job) {
     security_note: report.summary,
     security_scan_score: score,
     security_scan_report: report,
-    security_scanned_at: nowIso()
+    security_scanned_at: nowIso(),
+    last_scan_report_id: scanReportData?.id || null
   };
 
-  if (resultStatus === "Riskli" && product.status === "Yayında") {
-    productUpdate.status = "Yayından Kaldırıldı";
+  if (resultStatus === "Güvenli") {
+    productUpdate.status = "Onay Bekliyor";
+    productUpdate.file_path = approvedFilePath;
+    productUpdate.approved_file_path = approvedFilePath;
+    productUpdate.approved_bucket = "product-files";
+    productUpdate.quarantine_file_path = null;
+  } else if (resultStatus === "Manuel İnceleme") {
+    productUpdate.status = "Karantina";
+  } else if (resultStatus === "Riskli") {
+    productUpdate.status = "Reddedildi";
   }
 
   await supabase
@@ -779,7 +862,6 @@ async function processJob(job) {
 
   await fs.remove(scanRoot);
 }
-
 async function failJob(job, error) {
   const message = error instanceof Error ? error.message : String(error);
 

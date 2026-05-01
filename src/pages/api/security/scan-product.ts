@@ -296,7 +296,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: product, error: productError } = await adminClient
     .from("products")
-    .select("id,title,file_path,file_name,file_type,file_size,status")
+    .select("id,title,file_path,quarantine_file_path,file_name,file_type,file_size,status")
     .eq("id", productId)
     .maybeSingle();
 
@@ -306,15 +306,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  if (!product.file_path) {
+  const sourceFilePath = product.quarantine_file_path || product.file_path;
+  const sourceBucket = product.quarantine_file_path ? "product-quarantine" : "product-files";
+
+  if (!sourceFilePath) {
     return res.status(400).json({
-      error: "Bu üründe ZIP dosyası yok.",
+      error: "Bu üründe taranacak dosya yok.",
     });
   }
 
   const { data: fileBlob, error: downloadError } = await adminClient.storage
-    .from("product-files")
-    .download(product.file_path);
+    .from(sourceBucket)
+    .download(sourceFilePath);
 
   if (downloadError || !fileBlob) {
     return res.status(500).json({
@@ -323,7 +326,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const arrayBuffer = await fileBlob.arrayBuffer();
-  const lowerFileName = String(product.file_name || product.file_path || "").toLowerCase();
+  const lowerFileName = String(product.file_name || sourceFilePath || "").toLowerCase();
   const isZipFile = lowerFileName.endsWith(".zip");
 
   if (!isZipFile) {

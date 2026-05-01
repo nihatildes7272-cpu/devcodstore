@@ -219,7 +219,7 @@ export default function AdminProductsPage() {
 
     const targetProduct = products.find((item) => item.id === productId);
 
-    if (!targetProduct?.file_path) {
+    if (!targetProduct?.file_path && !targetProduct?.quarantine_file_path) {
       setMessage("Bu üründe dosya yok. Güçlü tarama yapılamaz.");
       return;
     }
@@ -738,11 +738,12 @@ export default function AdminProductsPage() {
                         <button
                           onClick={() => queueStrongScan(product.id)}
                           disabled={
-                            queuingStrongScanProductId === product.id || !product.file_path
+                            queuingStrongScanProductId === product.id ||
+                            (!product.file_path && !product.quarantine_file_path)
                           }
                           className="rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
                         >
-                          {!product.file_path
+                          {!product.file_path && !product.quarantine_file_path
                             ? "Dosya Yok"
                             : queuingStrongScanProductId === product.id
                             ? "Kuyruğa Alınıyor..."

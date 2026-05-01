@@ -24,6 +24,19 @@ function safeFileName(fileName: string) {
 
 const maxProductFileSize = 200 * 1024 * 1024;
 
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms: number,
+  message: string
+): Promise<T> {
+  return Promise.race([
+    promise as Promise<T>,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
 function detectFileType(fileName: string) {
   const lower = fileName.toLowerCase();
 
@@ -131,12 +144,16 @@ export default function SellerNewProductPage() {
       const filePath = `${user.id}/${productId}/${safeFileName(productFile.name)}`;
       const imagePath = `${user.id}/${productId}/${safeFileName(coverImage.name)}`;
 
-      const { error: fileUploadError } = await supabase.storage
-        .from("product-quarantine")
-        .upload(filePath, productFile, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const { error: fileUploadError } = await withTimeout(
+        supabase.storage
+          .from("product-quarantine")
+          .upload(filePath, productFile, {
+            cacheControl: "3600",
+            upsert: false,
+          }),
+        120000,
+        "Ürün dosyası yükleme 120 saniye içinde tamamlanmadı."
+      );
 
       if (fileUploadError) {
         setMessage("Ürün dosyası yüklenemedi: " + fileUploadError.message);
@@ -144,12 +161,16 @@ export default function SellerNewProductPage() {
         return;
       }
 
-      const { error: imageUploadError } = await supabase.storage
-        .from("product-images")
-        .upload(imagePath, coverImage, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const { error: imageUploadError } = await withTimeout(
+        supabase.storage
+          .from("product-images")
+          .upload(imagePath, coverImage, {
+            cacheControl: "3600",
+            upsert: false,
+          }),
+        60000,
+        "Kapak görseli yükleme 60 saniye içinde tamamlanmadı."
+      );
 
       if (imageUploadError) {
         setMessage("Kapak görseli yüklenemedi: " + imageUploadError.message);
@@ -207,7 +228,11 @@ export default function SellerNewProductPage() {
         tags: parseTags(tagsInput),
       };
 
-      const { error } = await supabase.from("products").insert(newProduct);
+      const { error } = await withTimeout(
+        supabase.from("products").insert(newProduct),
+        30000,
+        "Ürün kaydı 30 saniye içinde oluşturulamadı."
+      );
 
       if (error) {
         setMessage("Ürün eklenirken hata oluştu: " + error.message);
@@ -215,20 +240,24 @@ export default function SellerNewProductPage() {
         return;
       }
 
-      const { error: scanJobError } = await supabase.from("security_scan_jobs").insert({
-        product_id: productId,
-        requested_by: user.id,
-        status: "queued",
-        scan_type: "full",
-        priority: 5,
-        retry_count: 0,
-        max_retries: 3,
-        next_retry_at: null,
-        last_error: null,
-        report: {
-          message: "Yeni ürün dosyası product-quarantine bucket içine alındı. Güçlü tarama bekleniyor.",
-        },
-      });
+      const { error: scanJobError } = await withTimeout(
+        supabase.from("security_scan_jobs").insert({
+          product_id: productId,
+          requested_by: user.id,
+          status: "queued",
+          scan_type: "full",
+          priority: 5,
+          retry_count: 0,
+          max_retries: 3,
+          next_retry_at: null,
+          last_error: null,
+          report: {
+            message: "Yeni ürün dosyası product-quarantine bucket içine alındı. Güçlü tarama bekleniyor.",
+          },
+        }),
+        30000,
+        "Tarama kuyruğu 30 saniye içinde oluşturulamadı."
+      );
 
       if (scanJobError) {
         setMessage("Ürün eklendi fakat tarama kuyruğu oluşturulamadı: " + scanJobError.message);
