@@ -13,6 +13,7 @@ const adminLinks = [
   { href: "/admin/logs", label: "İşlem Kayıtları" },
   { href: "/admin/download-logs", label: "İndirme Geçmişi" },
   { href: "/admin/rate-limits", label: "Rate Limit" },
+  { href: "/admin/system-health", label: "Sistem Sağlığı" },
   { href: "/admin/scan-jobs", label: "Tarama Kuyruğu" },
   { href: "/admin/sellers", label: "Satıcılar" },
   { href: "/notifications", label: "Bildirimler" },

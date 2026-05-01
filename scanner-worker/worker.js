@@ -70,6 +70,30 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function sendHeartbeat(status = "idle", currentJobId = null) {
+  try {
+    await supabase.from("scanner_worker_heartbeats").upsert(
+      {
+        worker_id: WORKER_ID,
+        status,
+        current_job_id: currentJobId,
+        last_seen_at: nowIso(),
+        meta: {
+          hostname: os.hostname(),
+          intervalMs: SCAN_INTERVAL_MS,
+          workdir: WORKDIR
+        },
+        updated_at: nowIso()
+      },
+      {
+        onConflict: "worker_id"
+      }
+    );
+  } catch (error) {
+    console.error("Heartbeat gönderilemedi:", error?.message || error);
+  }
+}
+
 function hasExtension(fileName, extensions) {
   const lower = fileName.toLowerCase();
   return extensions.some((ext) => lower.endsWith(ext));
@@ -787,16 +811,22 @@ async function failJob(job, error) {
 async function tick() {
   const job = await claimJob();
 
-  if (!job) return;
+  if (!job) {
+    await sendHeartbeat("idle", null);
+    return;
+  }
 
   console.log(`[${new Date().toISOString()}] Job alındı: ${job.id}`);
+  await sendHeartbeat("running", job.id);
 
   try {
     await processJob(job);
     console.log(`[${new Date().toISOString()}] Job tamamlandı: ${job.id}`);
+    await sendHeartbeat("idle", null);
   } catch (error) {
     console.error("Job hata:", error);
     await failJob(job, error);
+    await sendHeartbeat("error", job.id);
   }
 }
 
@@ -806,6 +836,8 @@ async function main() {
   console.log("devcodstore Scanner Worker başladı");
   console.log("Worker ID:", WORKER_ID);
   console.log("Interval:", SCAN_INTERVAL_MS);
+
+  await sendHeartbeat("idle", null);
 
   while (true) {
     await tick();
