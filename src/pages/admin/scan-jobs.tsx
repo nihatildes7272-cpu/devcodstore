@@ -14,6 +14,10 @@ type ScanJob = {
   score: number;
   report: Record<string, unknown>;
   error_message: string | null;
+  retry_count?: number | null;
+  max_retries?: number | null;
+  last_error?: string | null;
+  next_retry_at?: string | null;
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
@@ -241,6 +245,43 @@ export default function AdminScanJobsPage() {
       supabase.removeChannel(channel);
     };
   }, [page, activeStatus, search]);
+
+  async function retryJob(job: ScanJob) {
+    const confirmed = window.confirm("Bu tarama işini tekrar kuyruğa almak istiyor musun?");
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("security_scan_jobs")
+      .update({
+        status: "queued",
+        retry_count: 0,
+        last_error: null,
+        error_message: null,
+        next_retry_at: null,
+        result_status: null,
+        worker_id: null,
+        started_at: null,
+        finished_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+
+    if (error) {
+      setMessage("Tarama işi tekrar kuyruğa alınamadı: " + error.message);
+      return;
+    }
+
+    await supabase
+      .from("products")
+      .update({
+        strong_scan_status: "queued",
+        security_note: "Admin tarafından güçlü tarama tekrar kuyruğa alındı.",
+      })
+      .eq("id", job.product_id);
+
+    await loadJobs(page, false);
+  }
 
   async function cancelJob(job: ScanJob) {
     const confirmed = window.confirm("Bu tarama işini iptal etmek istiyor musun?");
@@ -527,6 +568,11 @@ export default function AdminScanJobsPage() {
                         <p>Öncelik: {job.priority}</p>
                         <p>Worker: {job.worker_id || "Henüz atanmadı"}</p>
                         <p>Skor: {job.score}</p>
+                        <p>
+                          Retry: {job.retry_count ?? 0}/{job.max_retries ?? 3}
+                        </p>
+                        <p>Son hata: {job.last_error || "Yok"}</p>
+                        <p>Sonraki deneme: {formatDate(job.next_retry_at || null)}</p>
                         <p>Oluşturulma: {formatDate(job.created_at)}</p>
                         <p>Başlama: {formatDate(job.started_at)}</p>
                         <p>Bitiş: {formatDate(job.finished_at)}</p>
@@ -560,6 +606,15 @@ export default function AdminScanJobsPage() {
                           className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
                         >
                           İptal Et
+                        </button>
+                      )}
+
+                      {job.status === "failed" && (
+                        <button
+                          onClick={() => retryJob(job)}
+                          className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+                        >
+                          Tekrar Kuyruğa Al
                         </button>
                       )}
                     </div>

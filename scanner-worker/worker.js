@@ -167,6 +167,7 @@ async function claimJob() {
     .from("security_scan_jobs")
     .select("*")
     .eq("status", "queued")
+    .or(`next_retry_at.is.null,next_retry_at.lte.${nowIso()}`)
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(1);
@@ -782,17 +783,58 @@ async function processJob(job) {
 async function failJob(job, error) {
   const message = error instanceof Error ? error.message : String(error);
 
+  const retryCount = Number(job.retry_count || 0);
+  const maxRetries = Number(job.max_retries || 3);
+  const nextRetryCount = retryCount + 1;
+
+  if (nextRetryCount <= maxRetries) {
+    const delayMs = Math.min(15 * 60 * 1000, nextRetryCount * 60 * 1000);
+    const nextRetryAt = new Date(Date.now() + delayMs).toISOString();
+
+    await supabase
+      .from("security_scan_jobs")
+      .update({
+        status: "queued",
+        retry_count: nextRetryCount,
+        last_error: message,
+        error_message: `Geçici hata. ${nextRetryCount}/${maxRetries} yeniden deneme planlandı: ${message}`,
+        next_retry_at: nextRetryAt,
+        worker_id: null,
+        updated_at: nowIso()
+      })
+      .eq("id", job.id);
+
+    await supabase
+      .from("products")
+      .update({
+        strong_scan_status: "queued",
+        security_status: "Manuel İnceleme",
+        security_note: `Güçlü tarama geçici hata verdi. ${nextRetryCount}/${maxRetries} yeniden deneme planlandı.`
+      })
+      .eq("id", job.product_id);
+
+    console.log(
+      `[${new Date().toISOString()}] Job tekrar kuyruğa alındı: ${job.id} (${nextRetryCount}/${maxRetries})`
+    );
+
+    return;
+  }
+
   await supabase
     .from("security_scan_jobs")
     .update({
       status: "failed",
       result_status: "Tarama Hatası",
+      retry_count: nextRetryCount,
+      last_error: message,
       error_message: message,
       finished_at: nowIso(),
       updated_at: nowIso(),
       report: {
         error: message,
-        workerId: WORKER_ID
+        workerId: WORKER_ID,
+        retryCount: nextRetryCount,
+        maxRetries
       }
     })
     .eq("id", job.id);
@@ -803,7 +845,7 @@ async function failJob(job, error) {
       strong_scan_status: "failed",
       strong_scan_finished_at: nowIso(),
       security_status: "Manuel İnceleme",
-      security_note: "Güçlü tarama hata verdi. Manuel inceleme gerekiyor."
+      security_note: "Güçlü tarama 3 denemeden sonra hata verdi. Manuel inceleme gerekiyor."
     })
     .eq("id", job.product_id);
 }

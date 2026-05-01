@@ -235,6 +235,10 @@ export default function AdminProductsPage() {
           status: "queued",
           scan_type: "full",
           priority: 5,
+          retry_count: 0,
+          max_retries: 3,
+          next_retry_at: null,
+          last_error: null,
           report: {
             message: "Güçlü tarama kuyruğa alındı. Scanner Worker çalışınca işlenecek.",
           },
