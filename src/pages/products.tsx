@@ -128,69 +128,19 @@ export default function ProductsPage() {
       const from = (targetPage - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      let query = supabase
-        .from("products")
-        .select(
-          "id,title,category,price,seller,seller_id,status,description,created_at,image_url,file_type,file_name,license_type,preview_type,security_status,tags",
-          { count: "planned" }
-        )
-        .eq("status", "Yayında");
-
       const cleanSearch = normalizeSearch(search);
 
-      if (cleanSearch) {
-        const tag = normalizeTag(cleanSearch);
-        const safeSearch = cleanSearch.replace(/[%_]/g, "");
-        const like = `%${safeSearch}%`;
-
-        const searchParts = [
-          `title.ilike.${like}`,
-          `seller.ilike.${like}`,
-          `category.ilike.${like}`,
-          `description.ilike.${like}`,
-          `file_type.ilike.${like}`,
-          `license_type.ilike.${like}`,
-          `preview_type.ilike.${like}`,
-        ];
-
-        if (tag && !tag.includes("-")) {
-          searchParts.push(`tags.cs.{${tag}}`);
-        }
-
-        query = query.or(searchParts.join(","));
-      }
-
-      if (selectedCategory !== "Tümü") {
-        query = query.eq("category", selectedCategory);
-      }
-
-      if (selectedFileType !== "Tümü") {
-        query = query.eq("file_type", selectedFileType);
-      }
-
-      if (selectedSecurity !== "Tümü") {
-        query = query.eq("security_status", selectedSecurity);
-      }
-
-      if (selectedLicense !== "Tümü") {
-        query = query.eq("license_type", selectedLicense);
-      }
-
-      if (selectedPreview !== "Tümü") {
-        query = query.eq("preview_type", selectedPreview);
-      }
-
-      if (sortBy === "title_az") {
-        query = query.order("title", { ascending: true });
-      } else if (sortBy === "newest") {
-        query = query.order("created_at", { ascending: false });
-      } else {
-        query = query.order("created_at", { ascending: false });
-      }
-
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error } = await supabase.rpc("search_products_paginated", {
+        p_search: cleanSearch,
+        p_category: selectedCategory,
+        p_file_type: selectedFileType,
+        p_security_status: selectedSecurity,
+        p_license_type: selectedLicense,
+        p_preview_type: selectedPreview,
+        p_sort: sortBy,
+        p_page: targetPage,
+        p_page_size: pageSize,
+      });
 
       if (error) {
         setProducts([]);
@@ -199,22 +149,16 @@ export default function ProductsPage() {
         return;
       }
 
-      let productData = data || [];
+      const rows = (data || []) as Array<Product & { total_count?: number }>;
+      const total = rows.length > 0 ? Number(rows[0].total_count || 0) : 0;
 
-      if (sortBy === "price_low") {
-        productData = [...productData].sort(
-          (a, b) => parsePrice(a.price) - parsePrice(b.price)
-        );
-      }
-
-      if (sortBy === "price_high") {
-        productData = [...productData].sort(
-          (a, b) => parsePrice(b.price) - parsePrice(a.price)
-        );
-      }
+      const productData = rows.map((row) => {
+        const { total_count, ...product } = row;
+        return product;
+      });
 
       setProducts(productData);
-      setTotalCount(count || 0);
+      setTotalCount(total);
 
       setLastUpdated(
         new Date().toLocaleTimeString("tr-TR", {
