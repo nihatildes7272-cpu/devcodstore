@@ -21,6 +21,8 @@ type Profile = {
   account_type: string | null;
 };
 
+const pageSize = 25;
+
 const entityFilters = [
   { value: "all", label: "Tümü" },
   { value: "product", label: "Ürün" },
@@ -35,6 +37,8 @@ const actionFilters = [
   { value: "all", label: "Tüm İşlemler" },
   { value: "product_status_changed", label: "Ürün Durumu" },
   { value: "product_security_changed", label: "Ürün Güvenliği" },
+  { value: "product_auto_scan", label: "Otomatik Tarama" },
+  { value: "strong_product_scan_completed", label: "Güçlü Tarama" },
   { value: "order_status_changed", label: "Sipariş Durumu" },
   { value: "profile_role_changed", label: "Rol Değişimi" },
   { value: "review_deleted", label: "Yorum Silme" },
@@ -58,15 +62,22 @@ function withTimeout<T>(
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [message, setMessage] = useState("");
+
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadLogs(showLoading = true) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  async function loadLogs(targetPage = page, showLoading = true) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -76,34 +87,80 @@ export default function AdminLogsPage() {
     setMessage("");
 
     try {
-      const [logsResult, profilesResult] = await Promise.all([
-        withTimeout(
-          supabase
-            .from("admin_logs")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(300),
-          15000,
-          "İşlem kayıtları yüklenirken sunucu geç cevap verdi."
-        ),
-        withTimeout(
-          supabase
-            .from("profiles")
-            .select("id,email,full_name,account_type"),
-          15000,
-          "Kullanıcı bilgileri yüklenirken sunucu geç cevap verdi."
-        ),
-      ]);
+      const from = (targetPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("admin_logs")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (entityFilter !== "all") {
+        query = query.eq("entity_type", entityFilter);
+      }
+
+      if (actionFilter !== "all") {
+        query = query.eq("action", actionFilter);
+      }
+
+      const cleanSearch = search.trim();
+
+      if (cleanSearch) {
+        const safeSearch = cleanSearch.replace(/[%_]/g, "");
+        const like = `%${safeSearch}%`;
+
+        query = query.or(
+          [
+            `title.ilike.${like}`,
+            `details.ilike.${like}`,
+            `action.ilike.${like}`,
+            `entity_type.ilike.${like}`,
+            `entity_id.ilike.${like}`,
+          ].join(",")
+        );
+      }
+
+      query = query.range(from, to);
+
+      const logsResult = await withTimeout(
+        query,
+        15000,
+        "İşlem kayıtları yüklenirken sunucu geç cevap verdi."
+      );
 
       if (logsResult.error) {
         setMessage("İşlem kayıtları yüklenemedi: " + logsResult.error.message);
         setLogs([]);
-      } else {
-        setLogs(logsResult.data || []);
+        setProfiles([]);
+        setTotalCount(0);
+        return;
       }
 
-      if (!profilesResult.error) {
-        setProfiles(profilesResult.data || []);
+      const logData = logsResult.data || [];
+      setLogs(logData);
+      setTotalCount(logsResult.count || 0);
+
+      const actorIds = Array.from(
+        new Set(logData.map((log) => log.actor_id).filter(Boolean))
+      ) as string[];
+
+      if (actorIds.length > 0) {
+        const profilesResult = await withTimeout(
+          supabase
+            .from("profiles")
+            .select("id,email,full_name,account_type")
+            .in("id", actorIds),
+          15000,
+          "Admin profilleri yüklenirken sunucu geç cevap verdi."
+        );
+
+        if (!profilesResult.error) {
+          setProfiles(profilesResult.data || []);
+        } else {
+          setProfiles([]);
+        }
+      } else {
+        setProfiles([]);
       }
 
       setLastUpdated(
@@ -117,9 +174,11 @@ export default function AdminLogsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "İşlem kayıtları yüklenirken bilinmeyen bir hata oluştu."
+          : "İşlem kayıtları yüklenirken bilinmeyen hata oluştu."
       );
       setLogs([]);
+      setProfiles([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -127,8 +186,14 @@ export default function AdminLogsPage() {
   }
 
   useEffect(() => {
-    loadLogs(true);
+    const timer = setTimeout(() => {
+      loadLogs(page, true);
+    }, 300);
 
+    return () => clearTimeout(timer);
+  }, [page, search, entityFilter, actionFilter]);
+
+  useEffect(() => {
     const channel = supabase
       .channel("admin-logs-live")
       .on(
@@ -139,20 +204,15 @@ export default function AdminLogsPage() {
           table: "admin_logs",
         },
         () => {
-          loadLogs(false);
+          loadLogs(page, false);
         }
       )
       .subscribe();
 
-    const interval = setInterval(() => {
-      loadLogs(false);
-    }, 30000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
-  }, []);
+  }, [page, search, entityFilter, actionFilter]);
 
   function actorName(actorId: string | null) {
     if (!actorId) return "Sistem / Bilinmeyen";
@@ -185,6 +245,8 @@ export default function AdminLogsPage() {
   function actionLabel(action: string) {
     if (action === "product_status_changed") return "Ürün Durumu";
     if (action === "product_security_changed") return "Ürün Güvenliği";
+    if (action === "product_auto_scan") return "Otomatik Tarama";
+    if (action === "strong_product_scan_completed") return "Güçlü Tarama";
     if (action === "order_status_changed") return "Sipariş Durumu";
     if (action === "profile_role_changed") return "Rol Değişimi";
     if (action === "review_deleted") return "Yorum Silindi";
@@ -223,30 +285,21 @@ export default function AdminLogsPage() {
     return "rounded-full bg-gray-500/20 px-3 py-1 text-sm text-gray-300";
   }
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesEntity =
-        entityFilter === "all" || log.entity_type === entityFilter;
+  function resetFilters() {
+    setPage(1);
+    setSearch("");
+    setEntityFilter("all");
+    setActionFilter("all");
+  }
 
-      const matchesAction =
-        actionFilter === "all" || log.action === actionFilter;
+  const visibleRange = useMemo(() => {
+    if (totalCount === 0) return "0";
 
-      const text = `${log.title} ${log.details || ""} ${log.action} ${
-        log.entity_type
-      } ${actorName(log.actor_id)} ${actorEmail(log.actor_id)}`.toLowerCase();
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, totalCount);
 
-      const matchesSearch = text.includes(search.toLowerCase());
-
-      return matchesEntity && matchesAction && matchesSearch;
-    });
-  }, [logs, profiles, search, entityFilter, actionFilter]);
-
-  const productLogCount = logs.filter((log) => log.entity_type === "product").length;
-  const orderLogCount = logs.filter((log) => log.entity_type === "order").length;
-  const profileLogCount = logs.filter((log) => log.entity_type === "profile").length;
-  const supportLogCount = logs.filter((log) =>
-    log.entity_type.startsWith("support")
-  ).length;
+    return `${start}-${end}`;
+  }, [page, totalCount]);
 
   if (loading) {
     return (
@@ -266,13 +319,13 @@ export default function AdminLogsPage() {
             <div>
               <h1 className="text-4xl font-bold">Admin İşlem Kayıtları</h1>
               <p className="mt-3 text-gray-400">
-                Admin tarafından yapılan kritik işlemler burada kayıt altına alınır.
+                Admin tarafından yapılan kritik işlemler sayfa sayfa listelenir.
               </p>
             </div>
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadLogs(false)}
+                onClick={() => loadLogs(page, false)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
@@ -280,7 +333,7 @@ export default function AdminLogsPage() {
               </button>
 
               <p className="text-xs text-gray-500">
-                {lastUpdated ? `Son güncelleme: ${lastUpdated}` : "Canlı takip aktif"}
+                {lastUpdated ? `Son güncelleme: ${lastUpdated}` : "Sayfalı log sistemi aktif"}
               </p>
             </div>
           </div>
@@ -288,64 +341,49 @@ export default function AdminLogsPage() {
 
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
-            <p>{message}</p>
-
-            <button
-              onClick={() => loadLogs(false)}
-              className="mt-4 rounded-2xl bg-blue-600 px-5 py-2 text-sm font-semibold hover:bg-blue-500"
-            >
-              Tekrar Dene
-            </button>
+            {message}
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-5">
+        <section className="grid gap-6 md:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Kayıt</p>
-            <h2 className="mt-3 text-4xl font-bold">{logs.length}</h2>
+            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Ürün</p>
+            <p className="text-sm text-gray-400">Gösterilen</p>
             <h2 className="mt-3 text-4xl font-bold text-blue-300">
-              {productLogCount}
+              {visibleRange}
             </h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Sipariş</p>
+            <p className="text-sm text-gray-400">Sayfa</p>
             <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {orderLogCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kullanıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-purple-300">
-              {profileLogCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Destek</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {supportLogCount}
+              {page}/{totalPages}
             </h2>
           </div>
         </section>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="grid gap-4 md:grid-cols-[1fr_240px_240px]">
+          <div className="grid gap-4 md:grid-cols-[1fr_240px_240px_auto]">
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Başlık, detay, admin, işlem ara..."
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Başlık, detay, işlem veya kayıt ID ara..."
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
             />
 
             <select
               value={entityFilter}
-              onChange={(event) => setEntityFilter(event.target.value)}
+              onChange={(event) => {
+                setEntityFilter(event.target.value);
+                setPage(1);
+              }}
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
             >
               {entityFilters.map((filter) => (
@@ -357,7 +395,10 @@ export default function AdminLogsPage() {
 
             <select
               value={actionFilter}
-              onChange={(event) => setActionFilter(event.target.value)}
+              onChange={(event) => {
+                setActionFilter(event.target.value);
+                setPage(1);
+              }}
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
             >
               {actionFilters.map((filter) => (
@@ -366,21 +407,24 @@ export default function AdminLogsPage() {
                 </option>
               ))}
             </select>
+
+            <button
+              onClick={resetFilters}
+              className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+            >
+              Temizle
+            </button>
           </div>
         </section>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Kayıt Listesi</h2>
-              <p className="mt-2 text-sm text-gray-400">
-                Gösterilen kayıt sayısı: {filteredLogs.length}
-              </p>
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold">Kayıt Listesi</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Gösterilen: {visibleRange} / {totalCount}
+          </p>
 
           <div className="mt-6 grid gap-4">
-            {filteredLogs.map((log) => (
+            {logs.map((log) => (
               <div key={log.id} className="rounded-3xl bg-black/30 p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -449,12 +493,40 @@ export default function AdminLogsPage() {
               </div>
             ))}
 
-            {filteredLogs.length === 0 && (
+            {logs.length === 0 && (
               <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center text-gray-400">
-                İşlem kaydı bulunamadı. Yeni admin işlemleri yaptıkça burada görünecek.
+                İşlem kaydı bulunamadı.
               </div>
             )}
           </div>
+
+          {totalCount > pageSize && (
+            <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-400">
+                Sayfa {page} / {totalPages}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Önceki
+                </button>
+
+                <button
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
+                  disabled={page >= totalPages}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Sonraki
+                </button>
+              </div>
+            </section>
+          )}
         </section>
       </section>
     </main>

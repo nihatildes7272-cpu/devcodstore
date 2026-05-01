@@ -28,6 +28,7 @@ type Product = {
   strong_scan_status: string | null;
 };
 
+const pageSize = 20;
 const statusTabs = ["all", "queued", "running", "completed", "failed", "cancelled"] as const;
 
 function withTimeout<T>(
@@ -46,15 +47,70 @@ function withTimeout<T>(
 export default function AdminScanJobsPage() {
   const [jobs, setJobs] = useState<ScanJob[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+
   const [activeStatus, setActiveStatus] =
     useState<(typeof statusTabs)[number]>("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const [totalCount, setTotalCount] = useState(0);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [runningCount, setRunningCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [cancelledCount, setCancelledCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function loadJobs(showLoading = true) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  async function loadCounts() {
+    const [queued, running, completed, failed, cancelled, all] = await Promise.all([
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "queued"),
+
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "running"),
+
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "completed"),
+
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "failed"),
+
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "cancelled"),
+
+      supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact", head: true }),
+    ]);
+
+    setQueuedCount(queued.count || 0);
+    setRunningCount(running.count || 0);
+    setCompletedCount(completed.count || 0);
+    setFailedCount(failed.count || 0);
+    setCancelledCount(cancelled.count || 0);
+
+    if (activeStatus === "all" && !search.trim()) {
+      setTotalCount(all.count || 0);
+    }
+  }
+
+  async function loadJobs(targetPage = page, showLoading = true) {
     if (showLoading) {
       setLoading(true);
     } else {
@@ -64,35 +120,78 @@ export default function AdminScanJobsPage() {
     setMessage("");
 
     try {
-      const [jobsResult, productsResult] = await Promise.all([
-        withTimeout(
-          supabase
-            .from("security_scan_jobs")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(300),
-          15000,
-          "Tarama işleri yüklenirken sunucu geç cevap verdi."
-        ),
-        withTimeout(
-          supabase
-            .from("products")
-            .select("id,title,seller,security_status,strong_scan_status"),
-          15000,
-          "Ürün bilgileri yüklenirken sunucu geç cevap verdi."
-        ),
-      ]);
+      const from = (targetPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("security_scan_jobs")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (activeStatus !== "all") {
+        query = query.eq("status", activeStatus);
+      }
+
+      const cleanSearch = search.trim();
+
+      if (cleanSearch) {
+        const safeSearch = cleanSearch.replace(/[%_]/g, "");
+        const like = `%${safeSearch}%`;
+
+        query = query.or(
+          [
+            `product_id.ilike.${like}`,
+            `status.ilike.${like}`,
+            `scan_type.ilike.${like}`,
+            `worker_id.ilike.${like}`,
+            `result_status.ilike.${like}`,
+            `error_message.ilike.${like}`,
+          ].join(",")
+        );
+      }
+
+      query = query.range(from, to);
+
+      const jobsResult = await withTimeout(
+        query,
+        15000,
+        "Tarama işleri yüklenirken sunucu geç cevap verdi."
+      );
 
       if (jobsResult.error) {
         setMessage("Tarama işleri yüklenemedi: " + jobsResult.error.message);
         setJobs([]);
-      } else {
-        setJobs(jobsResult.data || []);
+        setProducts([]);
+        setTotalCount(0);
+        return;
       }
 
-      if (!productsResult.error) {
-        setProducts(productsResult.data || []);
+      const jobData = jobsResult.data || [];
+      setJobs(jobData);
+      setTotalCount(jobsResult.count || 0);
+
+      const productIds = Array.from(new Set(jobData.map((job) => job.product_id)));
+
+      if (productIds.length > 0) {
+        const productsResult = await withTimeout(
+          supabase
+            .from("products")
+            .select("id,title,seller,security_status,strong_scan_status")
+            .in("id", productIds),
+          15000,
+          "Ürün bilgileri yüklenirken sunucu geç cevap verdi."
+        );
+
+        if (!productsResult.error) {
+          setProducts(productsResult.data || []);
+        } else {
+          setProducts([]);
+        }
+      } else {
+        setProducts([]);
       }
+
+      await loadCounts();
 
       setLastUpdated(
         new Date().toLocaleTimeString("tr-TR", {
@@ -108,6 +207,8 @@ export default function AdminScanJobsPage() {
           : "Tarama kuyruğu yüklenirken bilinmeyen hata oluştu."
       );
       setJobs([]);
+      setProducts([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -115,8 +216,14 @@ export default function AdminScanJobsPage() {
   }
 
   useEffect(() => {
-    loadJobs(true);
+    const timer = setTimeout(() => {
+      loadJobs(page, true);
+    }, 300);
 
+    return () => clearTimeout(timer);
+  }, [page, activeStatus, search]);
+
+  useEffect(() => {
     const channel = supabase
       .channel("security-scan-jobs-live")
       .on(
@@ -126,19 +233,14 @@ export default function AdminScanJobsPage() {
           schema: "public",
           table: "security_scan_jobs",
         },
-        () => loadJobs(false)
+        () => loadJobs(page, false)
       )
       .subscribe();
 
-    const interval = setInterval(() => {
-      loadJobs(false);
-    }, 20000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
-  }, []);
+  }, [page, activeStatus, search]);
 
   async function cancelJob(job: ScanJob) {
     const confirmed = window.confirm("Bu tarama işini iptal etmek istiyor musun?");
@@ -166,7 +268,7 @@ export default function AdminScanJobsPage() {
       })
       .eq("id", job.product_id);
 
-    await loadJobs(false);
+    await loadJobs(page, false);
   }
 
   function getProduct(job: ScanJob) {
@@ -225,27 +327,24 @@ export default function AdminScanJobsPage() {
     });
   }
 
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      const product = getProduct(job);
+  function changeTab(status: (typeof statusTabs)[number]) {
+    setActiveStatus(status);
+    setPage(1);
+  }
 
-      const matchesStatus =
-        activeStatus === "all" || job.status === activeStatus;
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
 
-      const text = `${job.id} ${job.product_id} ${job.status} ${
-        job.result_status || ""
-      } ${product?.title || ""} ${product?.seller || ""}`.toLowerCase();
+  const visibleRange = useMemo(() => {
+    if (totalCount === 0) return "0";
 
-      const matchesSearch = text.includes(search.toLowerCase());
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, totalCount);
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [jobs, products, activeStatus, search]);
-
-  const queuedCount = jobs.filter((job) => job.status === "queued").length;
-  const runningCount = jobs.filter((job) => job.status === "running").length;
-  const completedCount = jobs.filter((job) => job.status === "completed").length;
-  const failedCount = jobs.filter((job) => job.status === "failed").length;
+    return `${start}-${end}`;
+  }, [page, totalCount]);
 
   if (loading) {
     return (
@@ -265,13 +364,13 @@ export default function AdminScanJobsPage() {
             <div>
               <h1 className="text-4xl font-bold">Güçlü Tarama Kuyruğu</h1>
               <p className="mt-3 text-gray-400">
-                ClamAV, Trivy, Semgrep ve sandbox worker için tarama işleri burada takip edilir.
+                ClamAV, Trivy, Semgrep ve sandbox worker için tarama işleri sayfa sayfa takip edilir.
               </p>
             </div>
 
             <div className="grid gap-2 md:text-right">
               <button
-                onClick={() => loadJobs(false)}
+                onClick={() => loadJobs(page, false)}
                 disabled={refreshing}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
@@ -293,10 +392,10 @@ export default function AdminScanJobsPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-5">
+        <section className="grid gap-6 md:grid-cols-6">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam İş</p>
-            <h2 className="mt-3 text-4xl font-bold">{jobs.length}</h2>
+            <p className="text-sm text-gray-400">Toplam</p>
+            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -326,6 +425,13 @@ export default function AdminScanJobsPage() {
               {failedCount}
             </h2>
           </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">İptal</p>
+            <h2 className="mt-3 text-4xl font-bold text-gray-300">
+              {cancelledCount}
+            </h2>
+          </div>
         </section>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-3">
@@ -344,17 +450,30 @@ export default function AdminScanJobsPage() {
                   ? "Hatalı"
                   : "İptal";
 
+              const count =
+                status === "all"
+                  ? totalCount
+                  : status === "queued"
+                  ? queuedCount
+                  : status === "running"
+                  ? runningCount
+                  : status === "completed"
+                  ? completedCount
+                  : status === "failed"
+                  ? failedCount
+                  : cancelledCount;
+
               return (
                 <button
                   key={status}
-                  onClick={() => setActiveStatus(status)}
+                  onClick={() => changeTab(status)}
                   className={
                     activeStatus === status
                       ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
                       : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
                   }
                 >
-                  {label}
+                  {label} ({count})
                 </button>
               );
             })}
@@ -366,20 +485,20 @@ export default function AdminScanJobsPage() {
             <div>
               <h2 className="text-2xl font-bold">Tarama İşleri</h2>
               <p className="mt-2 text-sm text-gray-400">
-                Gösterilen iş sayısı: {filteredJobs.length}
+                Gösterilen: {visibleRange} / {totalCount} — Sayfa {page} / {totalPages}
               </p>
             </div>
 
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ürün, satıcı, durum veya job ID ara..."
+              onChange={(event) => changeSearch(event.target.value)}
+              placeholder="Ürün ID, worker, durum veya sonuç ara..."
               className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
             />
           </div>
 
           <div className="mt-6 grid gap-4">
-            {filteredJobs.map((job) => {
+            {jobs.map((job) => {
               const product = getProduct(job);
 
               return (
@@ -449,12 +568,40 @@ export default function AdminScanJobsPage() {
               );
             })}
 
-            {filteredJobs.length === 0 && (
+            {jobs.length === 0 && (
               <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center text-gray-400">
-                Tarama işi bulunamadı. Admin ürün yönetiminde “Güçlü Tara” butonuna basınca burada görünecek.
+                Tarama işi bulunamadı.
               </div>
             )}
           </div>
+
+          {totalCount > pageSize && (
+            <section className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/30 p-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-400">
+                Sayfa {page} / {totalPages}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                >
+                  Önceki
+                </button>
+
+                <button
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
+                  disabled={page >= totalPages}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Sonraki
+                </button>
+              </div>
+            </section>
+          )}
         </section>
       </section>
     </main>
