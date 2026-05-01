@@ -55,9 +55,17 @@ export default function SellerDashboardPage() {
 
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("storage_quota_bytes")
+      .select("storage_quota_bytes,account_type,seller_status")
       .eq("id", userData.user.id)
       .maybeSingle();
+
+    if (
+      profileData?.account_type !== "admin" &&
+      (profileData?.account_type !== "seller" || profileData?.seller_status !== "approved")
+    ) {
+      router.push("/seller/apply");
+      return;
+    }
 
     setStorageQuotaBytes(profileData?.storage_quota_bytes || 2147483648);
 
