@@ -15,6 +15,7 @@ type Product = {
   status: string;
   security_status?: string | null;
   image_url?: string | null;
+  file_size?: number | null;
   created_at?: string;
 };
 
@@ -35,6 +36,7 @@ export default function SellerDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [storageQuotaBytes, setStorageQuotaBytes] = useState(2147483648);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -51,10 +53,18 @@ export default function SellerDashboardPage() {
 
     setUser(userData.user);
 
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("storage_quota_bytes")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+
+    setStorageQuotaBytes(profileData?.storage_quota_bytes || 2147483648);
+
     const [productsResult, ordersResult] = await Promise.all([
       supabase
         .from("products")
-        .select("id,title,category,price,seller,seller_id,status,security_status,image_url,created_at")
+        .select("id,title,category,price,seller,seller_id,status,security_status,image_url,file_size,created_at")
         .eq("seller_id", userData.user.id)
         .order("created_at", { ascending: false }),
 
@@ -84,6 +94,16 @@ export default function SellerDashboardPage() {
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  function formatBytes(value: number) {
+    if (!value) return "0 B";
+
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+
+    return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
 
   function parsePrice(value: string) {
     const numberText = value.replace(/[^\d]/g, "");
@@ -126,6 +146,8 @@ export default function SellerDashboardPage() {
   const liveCount = products.filter((item) => item.status === "Yayında").length;
   const completedOrders = orders.filter((order) => order.status === "Tamamlandı");
   const totalRevenue = completedOrders.reduce((sum, order) => sum + parsePrice(order.price), 0);
+  const usedStorageBytes = products.reduce((sum, product) => sum + (product.file_size || 0), 0);
+  const storagePercent = Math.min(100, Math.round((usedStorageBytes / storageQuotaBytes) * 100));
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -170,7 +192,7 @@ export default function SellerDashboardPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
+        <section className="grid gap-6 md:grid-cols-5">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Ürün</p>
             <h2 className="mt-3 text-4xl font-bold">{products.length}</h2>
@@ -189,6 +211,16 @@ export default function SellerDashboardPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Kazanç</p>
             <h2 className="mt-3 text-3xl font-bold">{formatMoney(totalRevenue)}</h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Depolama</p>
+            <h2 className="mt-3 text-2xl font-bold">
+              {formatBytes(usedStorageBytes)}
+            </h2>
+            <p className="mt-2 text-xs text-gray-500">
+              Kota: {formatBytes(storageQuotaBytes)} • %{storagePercent}
+            </p>
           </div>
         </section>
 
