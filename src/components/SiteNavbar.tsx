@@ -144,7 +144,7 @@ export default function SiteNavbar() {
         {links.map((link) => (
           <a
             key={link.href}
-            href={link.href} onClick={link.href === "/products" ? handleProductsClick : undefined}
+            href={link.href === "/products" ? `/products?refresh=${Date.now()}` : link.href}
             className="text-sm font-medium text-gray-300 hover:text-white"
           >
             {link.label}
@@ -206,7 +206,7 @@ export default function SiteNavbar() {
             {links.map((link) => (
               <a
                 key={link.href}
-                href={link.href} onClick={link.href === "/products" ? handleProductsClick : undefined}
+                href={link.href === "/products" ? `/products?refresh=${Date.now()}` : link.href}
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
               >
                 {link.label}

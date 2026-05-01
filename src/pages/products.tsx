@@ -214,6 +214,15 @@ export default function ProductsPage() {
   }, [router.isReady, router.query.search]);
 
   useEffect(() => {
+    if (!router.isReady) return;
+
+    if (typeof router.query.refresh === "string") {
+      setPage(1);
+      loadProducts(1, true);
+    }
+  }, [router.isReady, router.query.refresh]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       loadProducts(page, true);
     }, 300);
