@@ -1,0 +1,333 @@
+=== DEVCODSTORE PROJE TARAMA RAPORU ===
+
+
+=== ÖNEMLİ DOSYALAR ===
+scanner-worker/worker.js
+src/app/api/products/create/route.ts
+src/components/AdminNavbar.tsx
+src/components/MainNavbar.tsx
+src/components/SellerPanelNav.tsx
+src/components/SiteFooter.tsx
+src/components/SiteNavbar.tsx
+src/lib/productCategories.ts
+src/lib/productLicenses.ts
+src/lib/productPreviewTypes.ts
+src/lib/serverRateLimit.ts
+src/lib/supabase.ts
+src/lib/supabaseAdmin.ts
+src/lib/tags.ts
+src/lib/withTimeout.ts
+src/pages/_app.tsx
+src/pages/_document.tsx
+src/pages/about.tsx
+src/pages/account.tsx
+src/pages/admin.tsx
+src/pages/admin/approved.tsx
+src/pages/admin/download-logs.tsx
+src/pages/admin/logs.tsx
+src/pages/admin/maintenance.tsx
+src/pages/admin/orders.tsx
+src/pages/admin/products.tsx
+src/pages/admin/rate-limits.tsx
+src/pages/admin/rejected.tsx
+src/pages/admin/reports.tsx
+src/pages/admin/review/[id].tsx
+src/pages/admin/reviews.tsx
+src/pages/admin/scan-jobs.tsx
+src/pages/admin/seller-applications.tsx
+src/pages/admin/sellers.tsx
+src/pages/admin/support.tsx
+src/pages/admin/support/[id].tsx
+src/pages/admin/system-health.tsx
+src/pages/admin/users.tsx
+src/pages/api/cron/system-cleanup.ts
+src/pages/api/download/create-link.ts
+src/pages/api/hello.ts
+src/pages/api/security/scan-product.ts
+src/pages/cart.tsx
+src/pages/cart/[id].tsx
+src/pages/checkout/[id].tsx
+src/pages/checkout/cart.tsx
+src/pages/contact.tsx
+src/pages/download/[id].tsx
+src/pages/gizlilik-politikasi.tsx
+src/pages/iade-politikasi.tsx
+src/pages/index.tsx
+src/pages/kullanim-sartlari.tsx
+src/pages/library.tsx
+src/pages/login.tsx
+src/pages/not-authorized.tsx
+src/pages/notifications.tsx
+src/pages/product/[id].tsx
+src/pages/products.tsx
+src/pages/register.tsx
+src/pages/satici-kurallari.tsx
+src/pages/seller-store/[id].tsx
+src/pages/seller.tsx
+src/pages/seller/apply.tsx
+src/pages/seller/edit/[id].tsx
+src/pages/seller/new.tsx
+src/pages/seller/products.tsx
+src/pages/seller/sales.tsx
+src/pages/seller/success.tsx
+src/pages/success/[id].tsx
+src/pages/success/cart.tsx
+src/pages/supabase-test.tsx
+src/pages/support.tsx
+src/pages/support/[id].tsx
+src/pages/yasal.tsx
+
+
+=== PRODUCTS KULLANIMLARI ===
+src/app/api/products/create/route.ts:125:      .from("products")
+src/app/api/products/create/route.ts:167:        .from("products")
+src/pages/seller/edit/[id].tsx:165:      .from("products")
+src/pages/seller/edit/[id].tsx:343:        .from("products")
+src/pages/seller/new.tsx:205:      const { error } = await supabase.from("products").insert(newProduct);
+src/pages/seller/products.tsx:43:      .from("products")
+src/pages/seller/products.tsx:67:      .from("products")
+src/pages/index.tsx:45:          .from("products")
+src/pages/cart.tsx:86:          .from("products")
+src/pages/seller.tsx:74:        .from("products")
+src/pages/success/[id].tsx:24:        .from("products")
+src/pages/account.tsx:79:        .from("products")
+src/pages/seller-store/[id].tsx:216:    .from("products")
+src/pages/admin/reports.tsx:60:      supabase.from("products").select("*"),
+src/pages/admin/scan-jobs.tsx:182:            .from("products")
+src/pages/admin/scan-jobs.tsx:271:      .from("products")
+src/pages/admin/scan-jobs.tsx:308:      .from("products")
+src/pages/admin/scan-jobs.tsx:338:      .from("products")
+src/pages/admin/download-logs.tsx:108:        .from("products")
+src/pages/admin/reviews.tsx:36:      .from("products")
+src/pages/admin/products.tsx:130:          .from("products")
+src/pages/admin/products.tsx:256:        .from("products")
+src/pages/admin/products.tsx:335:      .from("products")
+src/pages/admin/products.tsx:363:      .from("products")
+src/pages/product/[id].tsx:119:      .from("products")
+src/pages/product/[id].tsx:142:      .from("products")
+src/pages/checkout/cart.tsx:105:          .from("products")
+src/pages/checkout/[id].tsx:45:        .from("products")
+src/pages/download/[id].tsx:120:          .from("products")
+src/pages/cart/[id].tsx:33:        .from("products")
+src/pages/api/security/scan-product.ts:298:    .from("products")
+src/pages/api/security/scan-product.ts:382:      .from("products")
+src/pages/api/security/scan-product.ts:499:    .from("products")
+src/pages/api/download/create-link.ts:119:    .from("products")
+src/pages/admin.tsx:79:              .from("products")
+scanner-worker/worker.js:202:    .from("products")
+scanner-worker/worker.js:215:    .from("products")
+scanner-worker/worker.js:766:    .from("products")
+scanner-worker/worker.js:808:      .from("products")
+scanner-worker/worker.js:843:    .from("products")
+
+
+=== STORAGE KULLANIMLARI ===
+src/app/api/products/create/route.ts:92:    const { data: storageObject, error: storageError } = await supabaseAdmin
+src/app/api/products/create/route.ts:93:      .schema("storage")
+src/app/api/products/create/route.ts:96:      .eq("bucket_id", "product-quarantine")
+src/app/api/products/create/route.ts:100:    if (storageError) {
+src/app/api/products/create/route.ts:104:          details: storageError.message,
+src/app/api/products/create/route.ts:110:    if (!storageObject) {
+src/app/api/products/create/route.ts:117:    if (String(storageObject.owner) !== user.id) {
+src/app/api/products/create/route.ts:137:        quarantine_bucket: "product-quarantine",
+src/components/SiteNavbar.tsx:104:    window.addEventListener("storage", refreshCart);
+src/components/SiteNavbar.tsx:110:      window.removeEventListener("storage", refreshCart);
+src/pages/seller/edit/[id].tsx:97:  const marker = "/product-images/";
+src/pages/seller/edit/[id].tsx:226:    await supabase.storage.from("product-images").remove([image.image_path]);
+src/pages/seller/edit/[id].tsx:285:        const { error: uploadError } = await supabase.storage
+src/pages/seller/edit/[id].tsx:286:          .from("product-files")
+src/pages/seller/edit/[id].tsx:304:          await supabase.storage.from("product-files").remove([product.file_path]);
+src/pages/seller/edit/[id].tsx:313:        const { error: imageUploadError } = await supabase.storage
+src/pages/seller/edit/[id].tsx:314:          .from("product-images")
+src/pages/seller/edit/[id].tsx:326:        const { data: publicImage } = supabase.storage
+src/pages/seller/edit/[id].tsx:327:          .from("product-images")
+src/pages/seller/edit/[id].tsx:335:          await supabase.storage.from("product-images").remove([oldImagePath]);
+src/pages/seller/edit/[id].tsx:394:          const { error: uploadError } = await supabase.storage
+src/pages/seller/edit/[id].tsx:395:            .from("product-images")
+src/pages/seller/edit/[id].tsx:407:          const { data: publicImage } = supabase.storage
+src/pages/seller/edit/[id].tsx:408:            .from("product-images")
+src/pages/seller/new.tsx:134:      const { error: fileUploadError } = await supabase.storage
+src/pages/seller/new.tsx:135:        .from("product-quarantine")
+src/pages/seller/new.tsx:147:      const { error: imageUploadError } = await supabase.storage
+src/pages/seller/new.tsx:148:        .from("product-images")
+src/pages/seller/new.tsx:160:      const { data: publicImage } = supabase.storage
+src/pages/seller/new.tsx:161:        .from("product-images")
+src/pages/seller.tsx:39:  const [storageQuotaBytes, setStorageQuotaBytes] = useState(2147483648);
+src/pages/seller.tsx:58:      .select("storage_quota_bytes,account_type,seller_status")
+src/pages/seller.tsx:70:    setStorageQuotaBytes(profileData?.storage_quota_bytes || 2147483648);
+src/pages/seller.tsx:158:  const storagePercent = Math.min(100, Math.round((usedStorageBytes / storageQuotaBytes) * 100));
+src/pages/seller.tsx:230:              Kota: {formatBytes(storageQuotaBytes)} • %{storagePercent}
+src/pages/admin/system-health.tsx:347:        description: `${failedCount} failed job var. Tarama sistemi veya storage bağlantısı sorunlu olabilir.`,
+src/pages/admin/users.tsx:10:  storage_quota_bytes?: number | null;
+src/pages/admin/users.tsx:103:        .select("id,email,full_name,account_type,storage_quota_bytes,created_at", {
+src/pages/admin/users.tsx:185:    const currentGb = ((profile.storage_quota_bytes || 2147483648) / (1024 * 1024 * 1024)).toFixed(2);
+src/pages/admin/users.tsx:203:      .update({ storage_quota_bytes: gbToBytes(gb) })
+src/pages/admin/users.tsx:382:                      <p>Depolama kotası: {formatBytes(profile.storage_quota_bytes || 2147483648)}</p>
+src/pages/api/security/scan-product.ts:315:  const { data: fileBlob, error: downloadError } = await adminClient.storage
+src/pages/api/security/scan-product.ts:316:    .from("product-files")
+src/pages/api/download/create-link.ts:155:  const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
+src/pages/api/download/create-link.ts:156:    .from("product-files")
+scanner-worker/worker.js:232:  const { data, error } = await supabase.storage
+scanner-worker/worker.js:233:    .from("product-files")
+scanner-worker/package-lock.json:75:    "node_modules/@supabase/storage-js": {
+scanner-worker/package-lock.json:77:      "resolved": "https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.105.1.tgz",
+scanner-worker/package-lock.json:98:        "@supabase/storage-js": "2.105.1"
+
+
+=== TARAMA / SCAN KULLANIMLARI ===
+src/app/api/products/create/route.ts:133:        status: "pending_scan",
+src/app/api/products/create/route.ts:134:        scan_verdict: null,
+src/app/api/products/create/route.ts:135:        scan_risk_score: 0,
+src/app/api/products/create/route.ts:154:      "create_scan_job_for_product",
+src/app/api/products/create/route.ts:169:          status: "scan_failed",
+src/app/api/products/create/route.ts:170:          scan_verdict: "error",
+src/app/api/products/create/route.ts:171:          scan_error: jobError.message,
+src/app/api/products/create/route.ts:187:      scan_job_id: jobId,
+src/app/api/products/create/route.ts:188:      status: "pending_scan",
+src/components/AdminNavbar.tsx:19:  { href: "/admin/scan-jobs", label: "Tarama Kuyruğu" },
+src/pages/admin/rate-limits.tsx:159:              <option value="auto_security_scan">Otomatik Tarama API</option>
+src/pages/admin/scan-jobs.tsx:10:  scan_type: string;
+src/pages/admin/scan-jobs.tsx:32:  strong_scan_status: string | null;
+src/pages/admin/scan-jobs.tsx:77:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:82:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:87:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:92:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:97:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:102:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:131:        .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:149:            `scan_type.ilike.${like}`,
+src/pages/admin/scan-jobs.tsx:183:            .select("id,title,seller,security_status,strong_scan_status")
+src/pages/admin/scan-jobs.tsx:232:      .channel("security-scan-jobs-live")
+src/pages/admin/scan-jobs.tsx:238:          table: "security_scan_jobs",
+src/pages/admin/scan-jobs.tsx:255:      .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:273:        strong_scan_status: "queued",
+src/pages/admin/scan-jobs.tsx:287:      .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:310:        strong_scan_status: "queued",
+src/pages/admin/scan-jobs.tsx:324:      .from("security_scan_jobs")
+src/pages/admin/scan-jobs.tsx:340:        strong_scan_status: "cancelled",
+src/pages/admin/scan-jobs.tsx:599:                        <p>Tarama tipi: {job.scan_type}</p>
+src/pages/admin/maintenance.tsx:156:                  {valueOf(lastResult, "deleted_scan_jobs")}
+src/pages/admin/maintenance.tsx:212:                    <p>Scan Job: {valueOf(run.summary, "deleted_scan_jobs")}</p>
+src/pages/admin/system-health.tsx:81:            .from("scanner_worker_heartbeats")
+src/pages/admin/system-health.tsx:90:            .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:100:          .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:105:          .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:110:          .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:115:          .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:120:          .from("security_scan_jobs")
+src/pages/admin/system-health.tsx:278:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:288:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:308:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:318:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:328:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:338:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:348:        actionHref: "/admin/scan-jobs",
+src/pages/admin/system-health.tsx:509:                        href="/admin/scan-jobs"
+src/pages/admin/logs.tsx:40:  { value: "product_auto_scan", label: "Otomatik Tarama" },
+src/pages/admin/logs.tsx:41:  { value: "strong_product_scan_completed", label: "Güçlü Tarama" },
+src/pages/admin/logs.tsx:248:    if (action === "product_auto_scan") return "Otomatik Tarama";
+src/pages/admin/logs.tsx:249:    if (action === "strong_product_scan_completed") return "Güçlü Tarama";
+src/pages/admin/products.tsx:14:  scannedTextFiles?: number;
+src/pages/admin/products.tsx:39:  security_scan_score?: number | null;
+src/pages/admin/products.tsx:40:  security_scan_report?: ScanReport | null;
+src/pages/admin/products.tsx:41:  security_scanned_at?: string | null;
+src/pages/admin/products.tsx:56:  strong_scan_status?: string | null;
+src/pages/admin/products.tsx:57:  strong_scan_job_id?: string | null;
+src/pages/admin/products.tsx:58:  strong_scan_started_at?: string | null;
+src/pages/admin/products.tsx:59:  strong_scan_finished_at?: string | null;
+src/pages/admin/products.tsx:114:  const [scanningProductId, setScanningProductId] = useState<string | null>(null);
+src/pages/admin/products.tsx:231:        .from("security_scan_jobs")
+src/pages/admin/products.tsx:236:          scan_type: "full",
+src/pages/admin/products.tsx:258:          strong_scan_status: "queued",
+src/pages/admin/products.tsx:259:          strong_scan_job_id: jobData.id,
+src/pages/admin/products.tsx:283:  async function scanProduct(productId: string) {
+src/pages/admin/products.tsx:297:      const response = await fetch("/api/security/scan-product", {
+src/pages/admin/products.tsx:608:              const report = product.security_scan_report || {};
+src/pages/admin/products.tsx:720:                          onClick={() => scanProduct(product.id)}
+src/pages/admin/products.tsx:721:                          disabled={scanningProductId === product.id}
+src/pages/admin/products.tsx:724:                          {scanningProductId === product.id ? "Taranıyor..." : "Otomatik Tara"}
+src/pages/admin/products.tsx:742:                          href="/admin/scan-jobs"
+src/pages/admin/products.tsx:774:                        <p className="mt-1">Tarama skoru: {product.security_scan_score ?? 0}</p>
+src/pages/admin/products.tsx:775:                        <p className="mt-1">Son tarama: {formatDate(product.security_scanned_at)}</p>
+src/pages/admin/products.tsx:776:                        <p className="mt-1">Güçlü tarama: {product.strong_scan_status || "Yok"}</p>
+src/pages/admin/products.tsx:853:                            {product.security_scan_score ?? 0}
+src/pages/admin/products.tsx:867:                            {report.scannedTextFiles ?? 0}
+src/pages/product/[id].tsx:24:  security_scan_score?: number | null;
+src/pages/product/[id].tsx:700:                        {product.security_scan_score ?? 0}
+src/pages/api/security/scan-product.ts:14:  scannedTextFiles: number;
+src/pages/api/security/scan-product.ts:78:function scanTextContent(fileName: string, content: string): ScanIssue[] {
+src/pages/api/security/scan-product.ts:273:    action: "auto_security_scan",
+src/pages/api/security/scan-product.ts:286:    action: "auto_security_scan",
+src/pages/api/security/scan-product.ts:360:      scannedTextFiles: 0,
+src/pages/api/security/scan-product.ts:371:      security_scan_score: score,
+src/pages/api/security/scan-product.ts:372:      security_scan_report: report,
+src/pages/api/security/scan-product.ts:373:      security_scanned_at: new Date().toISOString(),
+src/pages/api/security/scan-product.ts:394:      action: "product_auto_scan",
+src/pages/api/security/scan-product.ts:414:  let scannedTextFiles = 0;
+src/pages/api/security/scan-product.ts:463:        scannedTextFiles += 1;
+src/pages/api/security/scan-product.ts:465:        issues.push(...scanTextContent(fileName, content));
+src/pages/api/security/scan-product.ts:475:    scannedTextFiles,
+src/pages/api/security/scan-product.ts:488:    security_scan_score: score,
+src/pages/api/security/scan-product.ts:489:    security_scan_report: report,
+src/pages/api/security/scan-product.ts:490:    security_scanned_at: new Date().toISOString(),
+src/pages/api/security/scan-product.ts:511:    action: "product_auto_scan",
+src/pages/api/cron/system-cleanup.ts:56:    const scanJobsResult = await adminClient
+src/pages/api/cron/system-cleanup.ts:57:      .from("security_scan_jobs")
+src/pages/api/cron/system-cleanup.ts:62:    summary.deleted_scan_jobs = scanJobsResult.count || 0;
+src/pages/api/cron/system-cleanup.ts:65:      .from("scanner_worker_heartbeats")
+src/pages/admin.tsx:251:      href: "/admin/scan-jobs",
+scanner-worker/worker.js:15:const WORKER_ID = process.env.SCANNER_WORKER_ID || `scanner-${os.hostname()}`;
+scanner-worker/worker.js:17:const WORKDIR = process.env.WORKDIR || "/tmp/devcodstore-scans";
+scanner-worker/worker.js:75:    await supabase.from("scanner_worker_heartbeats").upsert(
+scanner-worker/worker.js:167:    .from("security_scan_jobs")
+scanner-worker/worker.js:185:    .from("security_scan_jobs")
+scanner-worker/worker.js:204:      strong_scan_status: "running",
+scanner-worker/worker.js:205:      strong_scan_job_id: job.id,
+scanner-worker/worker.js:206:      strong_scan_started_at: nowIso()
+scanner-worker/worker.js:302:async function scanCustomRules(rootDir) {
+scanner-worker/worker.js:304:  let scannedTextFiles = 0;
+scanner-worker/worker.js:336:      scannedTextFiles += 1;
+scanner-worker/worker.js:446:    scannedTextFiles,
+scanner-worker/worker.js:451:async function scanClamAV(rootDir) {
+scanner-worker/worker.js:453:    "clamscan",
+scanner-worker/worker.js:466:      "ClamAV yüklü değil veya clamscan komutu bulunamadı."
+scanner-worker/worker.js:502:async function scanTrivy(rootDir) {
+scanner-worker/worker.js:507:      "--scanners",
+scanner-worker/worker.js:615:async function scanSemgrep(rootDir) {
+scanner-worker/worker.js:618:    ["scan", "--config", "auto", "--json", "--quiet", rootDir],
+scanner-worker/worker.js:678:  const scanRoot = path.join(WORKDIR, job.id);
+scanner-worker/worker.js:679:  const zipPath = path.join(scanRoot, "product.zip");
+scanner-worker/worker.js:680:  const extractDir = path.join(scanRoot, "unzipped");
+scanner-worker/worker.js:682:  await fs.remove(scanRoot);
+scanner-worker/worker.js:695:  const customScan = await scanCustomRules(extractDir);
+scanner-worker/worker.js:698:  const clamavScan = await scanClamAV(extractDir);
+scanner-worker/worker.js:705:  const trivyScan = await scanTrivy(extractDir);
+scanner-worker/worker.js:712:  const semgrepScan = await scanSemgrep(extractDir);
+scanner-worker/worker.js:727:    scannedTextFiles: customScan.scannedTextFiles,
+scanner-worker/worker.js:736:    scannedAt: nowIso()
+scanner-worker/worker.js:740:    .from("security_scan_jobs")
+scanner-worker/worker.js:752:    strong_scan_status: "completed",
+scanner-worker/worker.js:753:    strong_scan_finished_at: nowIso(),
+scanner-worker/worker.js:756:    security_scan_score: score,
+scanner-worker/worker.js:757:    security_scan_report: report,
+scanner-worker/worker.js:758:    security_scanned_at: nowIso()
+scanner-worker/worker.js:772:    action: "strong_product_scan_completed",
+scanner-worker/worker.js:780:  await fs.remove(scanRoot);
+scanner-worker/worker.js:795:      .from("security_scan_jobs")
+scanner-worker/worker.js:810:        strong_scan_status: "queued",
+scanner-worker/worker.js:824:    .from("security_scan_jobs")
+scanner-worker/worker.js:845:      strong_scan_status: "failed",
+scanner-worker/worker.js:846:      strong_scan_finished_at: nowIso(),
+scanner-worker/package-lock.json:2:  "name": "devcodstore-scanner-worker",
+scanner-worker/package-lock.json:8:      "name": "devcodstore-scanner-worker",
+scanner-worker/package.json:2:  "name": "devcodstore-scanner-worker",
+scanner-worker/.env:5:WORKDIR=/tmp/devcodstore-scans
+scanner-worker/.env.example:5:WORKDIR=/tmp/devcodstore-scans
+
+
+=== API DOSYALARI ===
+src/app/api/products/create/route.ts
+src/pages/api/cron/system-cleanup.ts
+src/pages/api/download/create-link.ts
+src/pages/api/hello.ts
+src/pages/api/security/scan-product.ts

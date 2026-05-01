@@ -29,6 +29,10 @@ type Product = {
   image_url?: string | null;
 
   file_path?: string | null;
+  quarantine_file_path?: string | null;
+  quarantine_bucket?: string | null;
+  approved_file_path?: string | null;
+  approved_bucket?: string | null;
   file_name?: string | null;
   file_type?: string | null;
   file_size?: number | null;
@@ -63,6 +67,8 @@ type Product = {
 };
 
 type ProductTab =
+  | "pending_scan"
+  | "Karantina"
   | "Onay Bekliyor"
   | "Yayında"
   | "Reddedildi"
@@ -77,6 +83,8 @@ type OpenPanel = {
 const adminProductsPageSize = 20;
 
 const tabs: { key: ProductTab; label: string }[] = [
+  { key: "pending_scan", label: "Tarama Bekleyen" },
+  { key: "Karantina", label: "Karantina" },
   { key: "Onay Bekliyor", label: "Onay Bekleyen" },
   { key: "Yayında", label: "Yayında" },
   { key: "Reddedildi", label: "Reddedildi" },
@@ -648,7 +656,10 @@ export default function AdminProductsPage() {
                         <div className="mt-2 grid gap-1 text-sm text-gray-400">
                           <p>Satıcı: {product.seller}</p>
                           <p>Fiyat: {product.price}</p>
-                          <p>Dosya: {product.file_name || product.file_path || "Dosya yok"}</p>
+                          <p>Dosya: {product.file_name || product.file_path || product.quarantine_file_path || "Dosya yok"}</p>
+                          {product.quarantine_file_path && (
+                            <p>Quarantine: {product.quarantine_file_path}</p>
+                          )}
                           <p>Boyut: {formatFileSize(product.file_size)}</p>
                           <p>Eklenme: {formatDate(product.created_at)}</p>
                         </div>

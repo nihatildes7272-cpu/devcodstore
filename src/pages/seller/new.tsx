@@ -132,7 +132,7 @@ export default function SellerNewProductPage() {
       const imagePath = `${user.id}/${productId}/${safeFileName(coverImage.name)}`;
 
       const { error: fileUploadError } = await supabase.storage
-        .from("product-files")
+        .from("product-quarantine")
         .upload(filePath, productFile, {
           cacheControl: "3600",
           upsert: false,
@@ -172,19 +172,24 @@ export default function SellerNewProductPage() {
         price,
         seller: sellerName,
         seller_id: user.id,
-        status: "Onay Bekliyor",
+        status: "pending_scan",
         description,
 
-        file_path: filePath,
+        file_path: null,
+        quarantine_file_path: filePath,
+        quarantine_bucket: "product-quarantine",
+        approved_file_path: null,
+        approved_bucket: "product-files",
         file_name: productFile.name,
         file_type: detectedFileType,
         file_size: productFile.size,
 
         image_url: publicImage.publicUrl,
 
-        security_status: "Taranmadı",
+        security_status: "Taranıyor",
         security_note:
-          "Satıcı tarafından gönderildi. Admin güvenlik incelemesi bekleniyor.",
+          "Dosya karantinaya alındı. Otomatik güçlü güvenlik taraması bekleniyor.",
+        strong_scan_status: "queued",
 
         license_type: selectedLicense.type,
         license_summary: selectedLicense.summary,
@@ -206,6 +211,27 @@ export default function SellerNewProductPage() {
 
       if (error) {
         setMessage("Ürün eklenirken hata oluştu: " + error.message);
+        setSaving(false);
+        return;
+      }
+
+      const { error: scanJobError } = await supabase.from("security_scan_jobs").insert({
+        product_id: productId,
+        requested_by: user.id,
+        status: "queued",
+        scan_type: "full",
+        priority: 5,
+        retry_count: 0,
+        max_retries: 3,
+        next_retry_at: null,
+        last_error: null,
+        report: {
+          message: "Yeni ürün dosyası product-quarantine bucket içine alındı. Güçlü tarama bekleniyor.",
+        },
+      });
+
+      if (scanJobError) {
+        setMessage("Ürün eklendi fakat tarama kuyruğu oluşturulamadı: " + scanJobError.message);
         setSaving(false);
         return;
       }
