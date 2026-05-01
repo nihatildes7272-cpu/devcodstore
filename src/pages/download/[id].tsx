@@ -158,7 +158,7 @@ export default function DownloadPage() {
 
   async function downloadZip() {
     if (!product?.file_path) {
-      setMessage("Bu ürün için henüz ZIP dosyası yüklenmemiş.");
+      setMessage("Bu ürün için henüz ürün dosyası yüklenmemiş.");
       return;
     }
 
@@ -166,23 +166,33 @@ export default function DownloadPage() {
     setMessage("");
 
     try {
-      const signedUrlResult = await withTimeout(
-        supabase.storage
-          .from("product-files")
-          .createSignedUrl(product.file_path, 60),
-        12000,
-        "İndirme bağlantısı oluşturulurken sunucu geç cevap verdi."
-      );
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
 
-      if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
-        setMessage(
-          "İndirme bağlantısı oluşturulamadı: " +
-            (signedUrlResult.error?.message || "Bilinmeyen hata")
-        );
+      if (!accessToken) {
+        setMessage("İndirme için oturum bulunamadı. Lütfen tekrar giriş yap.");
         return;
       }
 
-      window.location.href = signedUrlResult.data.signedUrl;
+      const response = await fetch("/api/download/create-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "İndirme bağlantısı oluşturulamadı.");
+        return;
+      }
+
+      window.location.href = result.signedUrl;
     } catch (error) {
       setMessage(
         error instanceof Error

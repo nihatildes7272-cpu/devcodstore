@@ -11,6 +11,7 @@ const adminLinks = [
   { href: "/admin/reviews", label: "Yorumlar" },
   { href: "/admin/support", label: "Destek" },
   { href: "/admin/logs", label: "İşlem Kayıtları" },
+  { href: "/admin/download-logs", label: "İndirme Geçmişi" },
   { href: "/admin/scan-jobs", label: "Tarama Kuyruğu" },
   { href: "/admin/sellers", label: "Satıcılar" },
   { href: "/notifications", label: "Bildirimler" },
