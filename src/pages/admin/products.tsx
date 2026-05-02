@@ -63,6 +63,9 @@ type Product = {
   strong_scan_finished_at?: string | null;
 
   tags?: string[] | null;
+  auto_publish_decision?: boolean | null;
+  auto_publish_reason?: string | null;
+  auto_published_at?: string | null;
   created_at?: string;
 };
 
@@ -662,6 +665,9 @@ export default function AdminProductsPage() {
                           )}
                           <p>Boyut: {formatFileSize(product.file_size)}</p>
                           <p>Eklenme: {formatDate(product.created_at)}</p>
+                          {product.auto_publish_reason && (
+                            <p>Otomatik yayın: {product.auto_publish_reason}</p>
+                          )}
                         </div>
 
                         {Array.isArray(product.tags) && product.tags.length > 0 && (

@@ -769,6 +769,27 @@ async function processJob(job) {
     scannedAt: nowIso()
   };
 
+  const { data: sellerProfile } = await supabase
+    .from("profiles")
+    .select("id,seller_trust_score,seller_clean_product_count,seller_risky_product_count,auto_publish_enabled")
+    .eq("id", product.seller_id)
+    .maybeSingle();
+
+  const canAutoPublish =
+    resultStatus === "Güvenli" &&
+    sellerProfile?.auto_publish_enabled === true &&
+    Number(sellerProfile?.seller_trust_score || 0) >= 80 &&
+    Number(sellerProfile?.seller_clean_product_count || 0) >= 10 &&
+    Number(sellerProfile?.seller_risky_product_count || 0) === 0;
+
+  const autoPublishReason = canAutoPublish
+    ? "Satıcı güvenilir seviyede olduğu için güvenli ürün otomatik yayına alındı."
+    : resultStatus === "Güvenli"
+    ? "Ürün güvenli bulundu fakat satıcı otomatik yayın eşiğinde değil. Admin onayı bekliyor."
+    : resultStatus === "Manuel İnceleme"
+    ? "Ürün şüpheli bulgular nedeniyle karantinaya alındı."
+    : "Ürün riskli bulgular nedeniyle reddedildi.";
+
   const { data: scanReportData } = await supabase
     .from("scan_reports")
     .insert({
@@ -834,16 +855,28 @@ async function processJob(job) {
   };
 
   if (resultStatus === "Güvenli") {
-    productUpdate.status = "Onay Bekliyor";
+    productUpdate.status = canAutoPublish ? "Yayında" : "Onay Bekliyor";
     productUpdate.file_path = approvedFilePath;
     productUpdate.approved_file_path = approvedFilePath;
     productUpdate.approved_bucket = "product-files";
     productUpdate.quarantine_file_path = null;
+    productUpdate.auto_publish_decision = canAutoPublish;
+    productUpdate.auto_publish_reason = autoPublishReason;
+    productUpdate.auto_published_at = canAutoPublish ? nowIso() : null;
   } else if (resultStatus === "Manuel İnceleme") {
     productUpdate.status = "Karantina";
+    productUpdate.auto_publish_decision = false;
+    productUpdate.auto_publish_reason = autoPublishReason;
   } else if (resultStatus === "Riskli") {
     productUpdate.status = "Reddedildi";
+    productUpdate.auto_publish_decision = false;
+    productUpdate.auto_publish_reason = autoPublishReason;
   }
+
+  await supabase.rpc("update_seller_trust_after_scan", {
+    p_seller_id: product.seller_id,
+    p_result_status: resultStatus
+  });
 
   await supabase
     .from("products")

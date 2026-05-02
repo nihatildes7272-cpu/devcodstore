@@ -8,6 +8,10 @@ type Profile = {
   full_name: string | null;
   account_type: "buyer" | "seller" | "admin";
   storage_quota_bytes?: number | null;
+  seller_trust_score?: number | null;
+  seller_clean_product_count?: number | null;
+  seller_risky_product_count?: number | null;
+  auto_publish_enabled?: boolean | null;
   created_at?: string | null;
 };
 
@@ -100,7 +104,7 @@ export default function AdminUsersPage() {
 
       let query = supabase
         .from("profiles")
-        .select("id,email,full_name,account_type,storage_quota_bytes,created_at", {
+        .select("id,email,full_name,account_type,storage_quota_bytes,seller_trust_score,seller_clean_product_count,seller_risky_product_count,auto_publish_enabled,created_at", {
           count: "exact",
         })
         .order("created_at", { ascending: false })
@@ -380,6 +384,10 @@ export default function AdminUsersPage() {
                       <p>Kayıt tarihi: {formatDate(profile.created_at)}</p>
                       <p className="break-all">Kullanıcı ID: {profile.id}</p>
                       <p>Depolama kotası: {formatBytes(profile.storage_quota_bytes || 2147483648)}</p>
+                      <p>Güven puanı: {profile.seller_trust_score ?? 0}/100</p>
+                      <p>Temiz ürün: {profile.seller_clean_product_count ?? 0}</p>
+                      <p>Riskli ürün: {profile.seller_risky_product_count ?? 0}</p>
+                      <p>Otomatik yayın: {profile.auto_publish_enabled ? "Açık" : "Kapalı"}</p>
                     </div>
                   </div>
 
