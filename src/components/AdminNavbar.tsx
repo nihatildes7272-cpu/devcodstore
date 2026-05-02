@@ -58,11 +58,11 @@ export default function AdminNavbar() {
       {menuOpen && (
         <div>
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99]"
             onClick={() => setMenuOpen(false)}
           />
           {/* Menu */}
-          <div className="absolute left-0 right-0 top-28 z-50 rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl">
+          <div className="fixed left-6 right-6 top-32 z-[100] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
           <div className="grid gap-4 md:grid-cols-3">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;
