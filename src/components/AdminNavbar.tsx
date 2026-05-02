@@ -74,7 +74,7 @@ export default function AdminNavbar() {
             onClick={() => setMenuOpen(false)}
           />
           {/* Menu */}
-          <div className="fixed left-6 right-6 top-16 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+          <div className="fixed left-6 right-6 top-48 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[70vh] overflow-y-auto">
           <div className="grid gap-4 md:grid-cols-3">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;

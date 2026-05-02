@@ -297,7 +297,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white pt-32 md:pt-0">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white pt-56 md:pt-0">
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
