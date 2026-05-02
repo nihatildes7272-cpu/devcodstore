@@ -297,7 +297,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white pt-32 md:pt-0">
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
@@ -342,7 +342,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 mt-24 md:mt-0">
+        <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
           <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm">
             <p className="text-sm text-emerald-300 font-medium">💰 Toplam Ciro</p>
             <h2 className="mt-3 text-4xl font-bold text-emerald-400">{formatMoney(totalRevenue)}</h2>
@@ -368,7 +368,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-16 md:mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-2xl font-bold">Yönetim Kısayolları</h2>
           <p className="mt-2 text-sm text-gray-400">
             Ana panel artık sade. Detaylı işlemler için ilgili bölüme git.
@@ -395,7 +395,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-16 md:mt-10 grid gap-8 lg:grid-cols-3">
+        <section className="mt-10 grid gap-8 lg:grid-cols-3">
           <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
