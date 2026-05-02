@@ -17,6 +17,7 @@ const adminLinks = [
   { href: "/admin/system-health", label: "Sistem Sağlığı" },
   { href: "/admin/maintenance", label: "Sistem Bakımı" },
   { href: "/admin/scan-jobs", label: "Tarama Kuyruğu" },
+  { href: "/admin/scan-repair", label: "Tarama Repair" },
   { href: "/admin/sellers", label: "Satıcılar" },
   { href: "/notifications", label: "Bildirimler" },
 ];
