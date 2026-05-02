@@ -119,45 +119,58 @@ export default function Home() {
             <div className="mt-8 flex gap-4">
               <a
                 href="/products"
-                className="rounded-2xl bg-blue-600 px-7 py-3 font-semibold hover:bg-blue-500"
+                className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 font-semibold text-white hover:from-blue-500 hover:to-blue-600 shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                Ürünleri Keşfet
+                🛍️ Ürünleri Keşfet
               </a>
 
               <a
                 href="/seller"
-                className="rounded-2xl border border-white/15 px-7 py-3 font-semibold hover:bg-white/10"
+                className="rounded-2xl border border-white/30 bg-gradient-to-r from-white/10 to-white/5 px-8 py-4 font-semibold text-gray-200 hover:bg-white/20 hover:border-white/50 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
               >
-                Satıcı Ol
+                💼 Satıcı Ol
               </a>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
-            <h3 className="text-xl font-semibold">Canlı Platform Paneli</h3>
-            <p className="mt-1 text-sm text-gray-400">
-              Veriler Supabase’den gerçek zamanlı olarak çekilir.
-            </p>
+          <div className="rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center">
+                📊
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Canlı Platform Paneli</h3>
+                <p className="text-sm text-gray-400">
+                  Veriler Supabase'den gerçek zamanlı olarak çekilir
+                </p>
+              </div>
+            </div>
 
             {loading ? (
-              <div className="mt-5 rounded-2xl bg-black/30 p-5 text-gray-400">
-                Veriler yükleniyor...
+              <div className="rounded-2xl bg-gradient-to-r from-black/50 to-slate-900/50 backdrop-blur-sm p-6 text-gray-400 border border-white/10">
+                <div className="animate-pulse flex items-center gap-3">
+                  <div className="h-8 w-8 bg-gray-600 rounded-full"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-600 rounded w-32"></div>
+                    <div className="h-3 bg-gray-700 rounded w-24"></div>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="mt-5 grid gap-4">
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Yayındaki Ürün</p>
-                  <p className="mt-2 text-3xl font-bold">{totalProducts}</p>
+              <div className="grid gap-4">
+                <div className="rounded-2xl bg-gradient-to-r from-blue-500/10 to-blue-600/5 backdrop-blur-sm p-5 border border-blue-500/20">
+                  <p className="text-sm text-blue-300 font-medium">Yayındaki Ürün</p>
+                  <p className="mt-2 text-3xl font-bold text-blue-400">{totalProducts}</p>
                 </div>
 
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Satıcı Sayısı</p>
-                  <p className="mt-2 text-3xl font-bold">{sellerCount}</p>
+                <div className="rounded-2xl bg-gradient-to-r from-green-500/10 to-green-600/5 backdrop-blur-sm p-5 border border-green-500/20">
+                  <p className="text-sm text-green-300 font-medium">Satıcı Sayısı</p>
+                  <p className="mt-2 text-3xl font-bold text-green-400">{sellerCount}</p>
                 </div>
 
-                <div className="rounded-2xl bg-black/30 p-5">
-                  <p className="text-sm text-gray-400">Toplam Ciro</p>
-                  <p className="mt-2 text-3xl font-bold">
+                <div className="rounded-2xl bg-gradient-to-r from-purple-500/10 to-purple-600/5 backdrop-blur-sm p-5 border border-purple-500/20">
+                  <p className="text-sm text-purple-300 font-medium">Toplam Ciro</p>
+                  <p className="mt-2 text-3xl font-bold text-purple-400">
                     {formatMoney(totalRevenue)}
                   </p>
                 </div>
@@ -167,82 +180,111 @@ export default function Home() {
         </section>
 
         <section className="mb-16 grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold">
-              ✓
+          <div className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-xl font-bold shadow-lg">
+                ✓
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Admin Onaylı Ürünler</h3>
+              <p className="text-sm leading-6 text-gray-400">
+                Yayına çıkan ürünler admin kontrolünden geçer. Kullanıcı sadece onaylı ürünleri görür.
+              </p>
             </div>
-            <h3 className="text-xl font-bold">Admin Onaylı Ürünler</h3>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Yayına çıkan ürünler admin kontrolünden geçer. Kullanıcı sadece onaylı ürünleri görür.
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-xl font-bold">
-              ↓
+          <div className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-green-600 to-green-700 text-xl font-bold shadow-lg">
+                ↓
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Dijital Teslimat</h3>
+              <p className="text-sm leading-6 text-gray-400">
+                Satın alınan projeler kullanıcının Dosyalarım alanına tanımlanır ve güvenli indirme sağlanır.
+              </p>
             </div>
-            <h3 className="text-xl font-bold">Dijital Teslimat</h3>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Satın alınan projeler kullanıcının Dosyalarım alanına tanımlanır ve güvenli indirme sağlanır.
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-xl font-bold">
-              S
+          <div className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-purple-700 text-xl font-bold shadow-lg">
+                S
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Satıcı Paneli</h3>
+              <p className="text-sm leading-6 text-gray-400">
+                Satıcılar ürünlerini, ZIP dosyalarını, görsellerini, satışlarını ve kazançlarını takip edebilir.
+              </p>
             </div>
-            <h3 className="text-xl font-bold">Satıcı Paneli</h3>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Satıcılar ürünlerini, ZIP dosyalarını, görsellerini, satışlarını ve kazançlarını takip edebilir.
-            </p>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-600 text-xl font-bold">
-              ★
+          <div className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 via-transparent to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-yellow-600 to-yellow-700 text-xl font-bold shadow-lg">
+                ★
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Yorum ve Puanlama</h3>
+              <p className="text-sm leading-6 text-gray-400">
+                Satın alan kullanıcılar ürünlere yorum ve puan verebilir. Böylece ürün kalitesi görünür olur.
+              </p>
             </div>
-            <h3 className="text-xl font-bold">Yorum ve Puanlama</h3>
-            <p className="mt-3 text-sm leading-6 text-gray-400">
-              Satın alan kullanıcılar ürünlere yorum ve puan verebilir. Böylece ürün kalitesi görünür olur.
-            </p>
           </div>
         </section>
 
         <section>
-          <h3 className="text-3xl font-bold">Öne Çıkan Ürünler</h3>
-          <p className="mt-2 text-gray-400">
-            Veritabanındaki yayındaki ürünlerden seçilen kod paketleri.
-          </p>
+          <div className="text-center">
+            <h3 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Öne Çıkan Ürünler
+            </h3>
+            <p className="mt-3 text-gray-400 text-lg">
+              Veritabanındaki yayındaki ürünlerden seçilen kod paketleri
+            </p>
+          </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 grid gap-8 md:grid-cols-3">
             {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                className="rounded-3xl border border-white/10 bg-white/5 p-6"
+                className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:border-blue-500/30"
               >
-                <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
-                  {product.category}
-                </span>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative">
+                  <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-blue-600/20 px-4 py-2 text-sm font-medium text-blue-300 border border-blue-500/30">
+                    {product.category}
+                  </span>
 
-                <h4 className="mt-5 text-xl font-semibold">{product.title}</h4>
+                  <h4 className="mt-6 text-xl font-bold text-white group-hover:text-blue-300 transition-colors duration-200">
+                    {product.title}
+                  </h4>
 
-                <p className="mt-3 text-sm leading-6 text-gray-400">
-                  {product.description || "Bu ürün için açıklama eklenmemiş."}
-                </p>
+                  <p className="mt-4 text-sm leading-7 text-gray-400 line-clamp-3">
+                    {product.description || "Bu ürün için açıklama eklenmemiş."}
+                  </p>
 
-                <p className="mt-3 text-sm text-gray-500">
-                  Satıcı: {product.seller}
-                </p>
+                  <div className="mt-5 flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center text-xs font-bold text-white">
+                      {product.seller.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      <span className="font-medium text-gray-300">Satıcı:</span> {product.seller}
+                    </p>
+                  </div>
 
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-2xl font-bold">{product.price}</p>
+                  <div className="mt-8 flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-white">{product.price}</p>
+                      <p className="text-xs text-gray-400 mt-1">₺</p>
+                    </div>
 
-                  <a
-                    href={`/product/${product.id}`}
-                    className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black"
-                  >
-                    İncele
-                  </a>
+                    <a
+                      href={`/product/${product.id}`}
+                      className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:from-blue-500 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
+                    >
+                      👁️ İncele
+                    </a>
+                  </div>
                 </div>
               </div>
             ))}
