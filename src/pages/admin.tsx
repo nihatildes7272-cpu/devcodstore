@@ -342,44 +342,44 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm">
+        <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 mt-24 md:mt-0">
+          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm">
             <p className="text-sm text-emerald-300 font-medium">💰 Toplam Ciro</p>
             <h2 className="mt-3 text-4xl font-bold text-emerald-400">{formatMoney(totalRevenue)}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-green-500/10 to-green-600/5 p-6 shadow-lg backdrop-blur-sm">
+          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-green-500/10 to-green-600/5 p-6 shadow-lg backdrop-blur-sm">
             <p className="text-sm text-green-300 font-medium">📦 Yayındaki Ürün</p>
             <h2 className="mt-3 text-4xl font-bold text-green-400">
               {liveProducts.length}
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm">
+          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm">
             <p className="text-sm text-yellow-300 font-medium">⏳ Onay Bekleyen</p>
             <h2 className="mt-3 text-4xl font-bold text-yellow-400">
               {pendingProducts.length}
             </h2>
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-6 shadow-lg backdrop-blur-sm">
+          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-6 shadow-lg backdrop-blur-sm">
             <p className="text-sm text-blue-300 font-medium">👥 Satıcı</p>
             <h2 className="mt-3 text-4xl font-bold text-blue-400">{sellerCount}</h2>
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-16 md:mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-2xl font-bold">Yönetim Kısayolları</h2>
           <p className="mt-2 text-sm text-gray-400">
             Ana panel artık sade. Detaylı işlemler için ilgili bölüme git.
           </p>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             {adminCards.map((card) => (
               <Link
                 key={card.href}
                 href={card.href}
-                className="group rounded-3xl border border-white/20 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 transition-all duration-300 hover:border-blue-500/40 hover:bg-gradient-to-br hover:from-blue-500/10 hover:to-purple-500/10 hover:shadow-xl hover:scale-105 backdrop-blur-sm"
+                className="group relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 transition-all duration-300 hover:border-blue-500/40 hover:bg-gradient-to-br hover:from-blue-500/10 hover:to-purple-500/10 hover:shadow-xl hover:scale-105 backdrop-blur-sm"
               >
                 <p className="w-fit rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-1 text-xs font-semibold text-blue-300 border border-blue-500/30">
                   {card.meta}
@@ -395,8 +395,8 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-16 md:mt-10 grid gap-8 lg:grid-cols-3">
+          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Onay Bekleyen Ürünler</h2>
@@ -427,7 +427,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Son Siparişler</h2>
@@ -459,7 +459,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Destek Talepleri</h2>
