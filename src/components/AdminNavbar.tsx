@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 
@@ -35,6 +35,18 @@ export default function AdminNavbar() {
   const currentPage =
     adminLinks.find((link) => link.href === router.pathname)?.label || "Admin";
 
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
   return (
     <nav className="relative mb-10 rounded-3xl border border-white/10 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-2xl">
       <div className="flex items-center justify-between gap-5">
@@ -58,11 +70,11 @@ export default function AdminNavbar() {
       {menuOpen && (
         <div>
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99]"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
             onClick={() => setMenuOpen(false)}
           />
           {/* Menu */}
-          <div className="fixed left-6 right-6 top-32 z-[100] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+          <div className="fixed left-6 right-6 top-32 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
           <div className="grid gap-4 md:grid-cols-3">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;
