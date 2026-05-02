@@ -100,11 +100,15 @@ export default function AdminRateLimitsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="text-4xl font-bold">API Rate Limit Kayıtları</h1>
-          <p className="mt-3 text-gray-400">
-            İndirme ve tarama API isteklerinin limit kayıtlarını takip et.
-          </p>
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-black tracking-tight">API Rate Limit Kayıtları</h1>
+              <p className="mt-3 text-gray-300">
+                İndirme ve tarama API isteklerinin limit kayıtlarını takip et.
+              </p>
+            </div>
+          </div>
         </section>
 
         {message && (
@@ -113,24 +117,24 @@ export default function AdminRateLimitsPage() {
           </div>
         )}
 
-        <section className="mb-8 grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Kayıt</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
+        <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Toplam Kayıt</p>
+            <h2 className="mt-3 text-4xl font-black text-white">{totalCount}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Sayfa</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Sayfa</p>
+            <h2 className="mt-3 text-4xl font-black text-blue-400">
               {page}/{totalPages}
             </h2>
           </div>
 
           <button
             onClick={() => loadRows(page)}
-            className="rounded-3xl border border-blue-500/30 bg-blue-500/10 p-6 text-left font-semibold text-blue-300 hover:bg-blue-500/20"
+            className="flex items-center justify-between rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-transparent p-6 text-left font-bold text-blue-300 shadow-lg backdrop-blur-sm transition-all hover:border-blue-500/50 hover:bg-blue-500/20 hover:scale-105 active:scale-95 col-span-2 md:col-span-1"
           >
-            Yenile
+            <span className="text-xl tracking-tight">Yenile 🔄</span>
           </button>
         </section>
 
@@ -143,7 +147,7 @@ export default function AdminRateLimitsPage() {
                 setPage(1);
               }}
               placeholder="Kullanıcı, IP veya action ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 transition-all"
             />
 
             <select
@@ -152,7 +156,7 @@ export default function AdminRateLimitsPage() {
                 setActionFilter(event.target.value);
                 setPage(1);
               }}
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
             >
               <option value="all">Tüm Actionlar</option>
               <option value="download_create_link">Download API</option>
@@ -160,23 +164,23 @@ export default function AdminRateLimitsPage() {
             </select>
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-8 grid gap-4">
             {rows.map((row) => (
-              <div key={row.id} className="rounded-3xl bg-black/30 p-5">
+              <div key={row.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h2 className="text-xl font-bold">{row.action}</h2>
+                    <h2 className="text-xl font-black group-hover:text-blue-300 transition-colors">{row.action}</h2>
 
-                    <div className="mt-3 grid gap-1 text-sm text-gray-400">
-                      <p>Key: {row.rate_key}</p>
-                      <p>Pencere başlangıcı: {formatDate(row.window_start)}</p>
-                      <p>Son güncelleme: {formatDate(row.updated_at)}</p>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs font-medium text-gray-500">
+                      <p>🔑 {row.rate_key}</p>
+                      <p>🕒 Başlangıç: {formatDate(row.window_start)}</p>
+                      <p>🔄 Son: {formatDate(row.updated_at)}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-blue-500/10 px-5 py-3 text-center">
-                    <p className="text-sm text-gray-400">İstek</p>
-                    <p className="text-3xl font-bold text-blue-300">{row.count}</p>
+                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-6 py-3 text-center backdrop-blur-sm">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500">İstek</p>
+                    <p className="text-3xl font-black text-blue-400">{row.count}</p>
                   </div>
                 </div>
               </div>

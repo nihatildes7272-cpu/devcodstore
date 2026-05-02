@@ -100,10 +100,10 @@ export default function AdminReviewsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Yorum Yönetimi</h1>
+              <h1 className="text-4xl font-black tracking-tight">Yorum Yönetimi</h1>
               <p className="mt-3 text-gray-400">
                 Kullanıcıların ürünlere yaptığı yorumları görüntüle ve uygunsuz olanları sil.
               </p>
@@ -111,7 +111,7 @@ export default function AdminReviewsPage() {
 
             <button
               onClick={loadReviews}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500"
+              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95"
             >
               Yenile
             </button>
@@ -124,36 +124,28 @@ export default function AdminReviewsPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Yorum</p>
-            <h2 className="mt-3 text-4xl font-bold">{reviews.length}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Ortalama Puan</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {reviews.length
-                ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-                : "0.0"}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yönetim Durumu</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">Aktif</h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          {[
+            { label: "Toplam Yorum", value: reviews.length, color: "text-white" },
+            { label: "Ortalama Puan", value: reviews.length ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1) : "0.0", color: "text-yellow-400" },
+            { label: "Yönetim Durumu", value: "Aktif", color: "text-green-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Yorum Listesi</h2>
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+          <h2 className="text-2xl font-black tracking-tight mb-8">Yorum Listesi</h2>
 
           <div className="mt-6 grid gap-4">
             {reviews.map((review) => (
-              <div key={review.id} className="rounded-3xl bg-black/30 p-6">
+              <div key={review.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h3 className="text-xl font-bold">{productTitle(review.product_id)}</h3>
+                    <h3 className="text-xl font-black group-hover:text-blue-300 transition-colors">{productTitle(review.product_id)}</h3>
                     <p className="mt-1 text-sm text-gray-400">
                       Yorum yapan: {review.author_name}
                     </p>
@@ -168,14 +160,14 @@ export default function AdminReviewsPage() {
                   <div className="flex gap-3">
                     <a
                       href={`/product/${review.product_id}`}
-                      className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black"
+                      className="rounded-2xl bg-white px-4 py-2 text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                     >
                       Ürünü Aç
                     </a>
 
                     <button
                       onClick={() => deleteReview(review.id)}
-                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-500"
+                      className="rounded-2xl border border-red-500/30 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/10"
                     >
                       Yorumu Sil
                     </button>
@@ -187,7 +179,7 @@ export default function AdminReviewsPage() {
             ))}
 
             {reviews.length === 0 && (
-              <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center text-gray-400">
+              <div className="rounded-3xl bg-black/30 p-8 text-center text-gray-400">
                 Henüz yorum yok.
               </div>
             )}

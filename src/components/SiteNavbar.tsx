@@ -73,7 +73,6 @@ export default function SiteNavbar() {
       await checkAdmin(data.user);
       await loadCartCount(data.user);
       await loadNotificationCount(data.user);
-      await loadNotificationCount(data.user);
     }
 
     loadUser();
@@ -89,20 +88,21 @@ export default function SiteNavbar() {
       }
     );
 
-    async function refreshCart() {
+    async function refreshNavbarStats() {
       const { data } = await supabase.auth.getUser();
       await loadCartCount(data.user);
+      await loadNotificationCount(data.user);
     }
 
-    window.addEventListener("storage", refreshCart);
-    window.addEventListener("devcodstore-cart-updated", refreshCart);
-    window.addEventListener("devcodstore-notifications-updated", refreshCart);
+    window.addEventListener("storage", refreshNavbarStats);
+    window.addEventListener("devcodstore-cart-updated", refreshNavbarStats);
+    window.addEventListener("devcodstore-notifications-updated", refreshNavbarStats);
 
     return () => {
       listener.subscription.unsubscribe();
-      window.removeEventListener("storage", refreshCart);
-      window.removeEventListener("devcodstore-cart-updated", refreshCart);
-      window.removeEventListener("devcodstore-notifications-updated", refreshCart);
+      window.removeEventListener("storage", refreshNavbarStats);
+      window.removeEventListener("devcodstore-cart-updated", refreshNavbarStats);
+      window.removeEventListener("devcodstore-notifications-updated", refreshNavbarStats);
     };
   }, []);
 
@@ -117,9 +117,9 @@ export default function SiteNavbar() {
   ];
 
   return (
-    <nav className="relative mb-10 flex items-center justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
+    <nav className="sticky top-6 z-[100] mb-12 flex items-center justify-between gap-6 rounded-3xl border border-white/10 bg-white/10 px-6 py-4 shadow-2xl backdrop-blur-xl transition-all">
       <Link href="/" className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-lg font-black text-white">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-black text-white shadow-lg shadow-blue-500/20">
           D
         </div>
 
@@ -205,6 +205,15 @@ export default function SiteNavbar() {
                 {link.label}
               </Link>
             ))}
+
+            {user && (
+              <Link
+                href="/notifications"
+                className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm font-semibold text-yellow-300"
+              >
+                🔔 Bildirimler {notificationCount > 0 ? `(${notificationCount})` : ""}
+              </Link>
+            )}
 
             <Link
               href="/cart"

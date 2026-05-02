@@ -374,11 +374,11 @@ export default function AdminSystemHealthPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Sistem Sağlığı</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Sistem Sağlığı</h1>
+              <p className="mt-3 text-gray-300">
                 Scanner worker, tarama kuyruğu ve kritik sistem alarmlarını takip et.
               </p>
             </div>
@@ -387,7 +387,7 @@ export default function AdminSystemHealthPage() {
               <button
                 onClick={() => loadHealth(false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
@@ -435,7 +435,7 @@ export default function AdminSystemHealthPage() {
                   {alert.actionHref && (
                     <a
                       href={alert.actionHref}
-                      className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-black"
+                      className="rounded-2xl bg-white px-6 py-3 text-center text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                     >
                       {alert.actionLabel || "Aç"}
                     </a>

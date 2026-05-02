@@ -174,20 +174,20 @@ export default function CartPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Sepetim</h1>
-              <p className="mt-2 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Sepetim</h1>
+              <p className="mt-2 text-gray-300 font-medium">
                 {user
-                  ? "Bu sepet hesabına bağlıdır."
+                  ? "🛒 Hesabına bağlı güncel ürünlerin listesi."
                   : "Giriş yapmadığın için bu sepet sadece bu cihazda tutulur."}
               </p>
             </div>
 
-            <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
+            <div className="rounded-2xl bg-blue-600/10 border border-blue-500/20 px-6 py-4 text-sm text-blue-200 backdrop-blur-md">
               Sepetteki ürün:{" "}
-              <span className="font-bold text-white">{products.length}</span>
+              <span className="text-xl font-black text-white ml-2">{products.length}</span>
             </div>
           </div>
         </section>
@@ -232,7 +232,7 @@ export default function CartPage() {
               {products.map((product) => (
                 <div
                   key={product.id}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-6"
+                  className="group rounded-3xl border border-white/10 bg-white/5 p-6 transition-all hover:border-blue-500/30 hover:bg-white/[0.08]"
                 >
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -275,25 +275,25 @@ export default function CartPage() {
               ))}
             </div>
 
-            <aside className="h-fit rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-2xl font-bold">Sipariş Özeti</h2>
+            <aside className="h-fit rounded-3xl border border-blue-500/20 bg-gradient-to-b from-blue-500/10 to-transparent p-8 shadow-2xl backdrop-blur-xl">
+              <h2 className="text-2xl font-black tracking-tight mb-8">Sipariş Özeti</h2>
 
-              <div className="mt-6 grid gap-4">
-                <div className="flex items-center justify-between rounded-2xl bg-black/30 p-4">
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/5 p-4">
                   <span className="text-gray-400">Ürün Sayısı</span>
                   <span className="font-bold">{products.length}</span>
                 </div>
 
-                <div className="flex items-center justify-between rounded-2xl bg-black/30 p-4">
-                  <span className="text-gray-400">Toplam</span>
-                  <span className="text-3xl font-bold">{formatMoney(totalPrice)}</span>
+                <div className="flex flex-col gap-1 rounded-2xl bg-white/5 border border-white/5 p-5 mt-2">
+                  <span className="text-xs uppercase font-bold tracking-widest text-gray-500">Ödenecek Tutar</span>
+                  <span className="text-4xl font-black text-blue-400">{formatMoney(totalPrice)}</span>
                 </div>
               </div>
 
               <div className="mt-8 grid gap-3">
                 <a
                   href="/checkout/cart"
-                  className="rounded-2xl bg-blue-600 px-5 py-4 text-center font-semibold hover:bg-blue-500"
+                  className="rounded-2xl bg-blue-600 px-5 py-4 text-center font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-[1.02] active:scale-95"
                 >
                   Sepeti Satın Al
                 </a>

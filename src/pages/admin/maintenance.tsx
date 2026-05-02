@@ -99,11 +99,11 @@ export default function AdminMaintenancePage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Sistem Bakımı</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Sistem Bakımı</h1>
+              <p className="mt-3 text-gray-300">
                 Eski geçici kayıtları, rate limit kayıtlarını, okunmuş bildirimleri ve eski tarama kayıtlarını temizle.
               </p>
             </div>
@@ -111,7 +111,7 @@ export default function AdminMaintenancePage() {
             <button
               onClick={runCleanup}
               disabled={running}
-              className="rounded-2xl bg-blue-600 px-6 py-4 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              className="rounded-2xl bg-blue-600 px-8 py-4 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
             >
               {running ? "Temizlik çalışıyor..." : "Sistem Temizliği Çalıştır"}
             </button>
@@ -125,48 +125,48 @@ export default function AdminMaintenancePage() {
         )}
 
         {lastResult && (
-          <section className="mb-8 rounded-3xl border border-green-500/20 bg-green-500/10 p-6">
-            <h2 className="text-2xl font-bold">Son Temizlik Sonucu</h2>
+          <section className="mb-8 rounded-3xl border border-green-500/30 bg-gradient-to-b from-green-500/10 to-transparent p-8 shadow-xl backdrop-blur-md">
+            <h2 className="text-2xl font-black tracking-tight text-green-400">Son Temizlik Sonucu</h2>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Rate Limit</p>
-                <p className="mt-2 text-3xl font-bold">
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Rate Limit</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_rate_limits")}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Okunmuş Bildirim</p>
-                <p className="mt-2 text-3xl font-bold">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Okunmuş Bildirim</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_read_notifications")}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">İndirme Logu</p>
-                <p className="mt-2 text-3xl font-bold">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">İndirme Logu</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_download_logs")}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Tarama Job</p>
-                <p className="mt-2 text-3xl font-bold">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Tarama Job</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_scan_jobs")}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Worker Heartbeat</p>
-                <p className="mt-2 text-3xl font-bold">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Worker Heartbeat</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_heartbeats")}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
-                <p className="text-sm text-gray-400">Admin Log</p>
-                <p className="mt-2 text-3xl font-bold">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Admin Log</p>
+                <p className="mt-2 text-4xl font-black text-white">
                   {valueOf(lastResult, "deleted_old_admin_logs")}
                 </p>
               </div>
@@ -174,10 +174,10 @@ export default function AdminMaintenancePage() {
           </section>
         )}
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Bakım Geçmişi</h2>
+              <h2 className="text-2xl font-black tracking-tight">Bakım Geçmişi</h2>
               <p className="mt-2 text-sm text-gray-400">
                 Son 30 sistem bakım çalıştırması.
               </p>
@@ -185,19 +185,19 @@ export default function AdminMaintenancePage() {
 
             <button
               onClick={loadRuns}
-              className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold shadow-lg transition hover:bg-white/10 hover:scale-105 active:scale-95"
             >
               Yenile
             </button>
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-8 grid gap-4">
             {runs.map((run) => (
-              <div key={run.id} className="rounded-3xl bg-black/30 p-6">
+              <div key={run.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h3 className="text-xl font-bold">{run.action}</h3>
-                    <p className="mt-2 text-sm text-gray-400">
+                    <h3 className="text-xl font-black group-hover:text-blue-300 transition-colors">{run.action}</h3>
+                    <p className="mt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
                       Tarih: {formatDate(run.created_at)}
                     </p>
                     <p className="mt-1 break-all text-sm text-gray-500">

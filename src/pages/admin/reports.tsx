@@ -171,113 +171,108 @@ export default function AdminReportsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-black tracking-tight">Sistem Raporları</h1>
+              <p className="mt-3 text-gray-300">
+                Ciro, kullanıcı, ürün ve sipariş istatistiklerini genel olarak incele.
+              </p>
+            </div>
+            <button
+              onClick={loadReports}
+              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95"
+            >
+              Raporları Yenile
+            </button>
+          </div>
+        </section>
+
         {message && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
             {message}
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ciro</p>
-            <h2 className="mt-3 text-4xl font-bold">{formatMoney(totalRevenue)}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Platform Kazancı</p>
-            <h2 className="mt-3 text-4xl font-bold">{formatMoney(platformRevenue)}</h2>
-            <p className="mt-2 text-xs text-gray-500">Demo oran: %15</p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Sipariş</p>
-            <h2 className="mt-3 text-4xl font-bold">{orders.length}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Kullanıcı</p>
-            <h2 className="mt-3 text-4xl font-bold">{profiles.length}</h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {[
+            { label: "Toplam Ciro", value: formatMoney(totalRevenue), color: "text-emerald-400" },
+            { label: "Platform Kazancı", value: formatMoney(platformRevenue), color: "text-blue-400", sub: "Demo oran: %15" },
+            { label: "Toplam Sipariş", value: orders.length, color: "text-white" },
+            { label: "Toplam Kullanıcı", value: profiles.length, color: "text-white" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-3xl md:text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+              {stat.sub && <p className="mt-2 text-xs font-medium text-gray-500">{stat.sub}</p>}
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold">{products.length}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yayında</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{liveProducts}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Onay Bekliyor</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">{pendingProducts}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Reddedildi / Kaldırıldı</p>
-            <h2 className="mt-3 text-4xl font-bold text-red-300">
-              {rejectedProducts + unpublishedProducts}
-            </h2>
-          </div>
+        <section className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {[
+            { label: "Toplam Ürün", value: products.length, color: "text-white" },
+            { label: "Yayında", value: liveProducts, color: "text-green-400" },
+            { label: "Onay Bekliyor", value: pendingProducts, color: "text-yellow-400" },
+            { label: "Reddedildi / Kaldırıldı", value: rejectedProducts + unpublishedProducts, color: "text-red-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Alıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{buyerCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">{sellerCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Admin</p>
-            <h2 className="mt-3 text-4xl font-bold text-purple-300">{adminCount}</h2>
-          </div>
+        <section className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          {[
+            { label: "Alıcı", value: buyerCount, color: "text-green-400" },
+            { label: "Satıcı", value: sellerCount, color: "text-blue-400" },
+            { label: "Admin", value: adminCount, color: "text-purple-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-10 grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-bold">Sipariş Durumları</h2>
+        <section className="mt-10 grid gap-6 lg:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+            <h2 className="text-2xl font-black tracking-tight mb-6">Sipariş Durumları</h2>
 
             <div className="mt-6 grid gap-4">
-              <div className="rounded-2xl bg-black/30 p-5">
+              <div className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition hover:bg-white/10">
                 <div className="flex items-center justify-between">
-                  <span>Tamamlandı</span>
-                  <span className="font-bold text-green-300">{completedOrders}</span>
+                  <span className="font-medium text-gray-300">Tamamlandı</span>
+                  <span className="text-xl font-black text-green-400">{completedOrders}</span>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
+              <div className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition hover:bg-white/10">
                 <div className="flex items-center justify-between">
-                  <span>Beklemede</span>
-                  <span className="font-bold text-yellow-300">{pendingOrders}</span>
+                  <span className="font-medium text-gray-300">Beklemede</span>
+                  <span className="text-xl font-black text-yellow-400">{pendingOrders}</span>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-black/30 p-5">
+              <div className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition hover:bg-white/10">
                 <div className="flex items-center justify-between">
-                  <span>İade Edildi</span>
-                  <span className="font-bold text-red-300">{refundedOrders}</span>
+                  <span className="font-medium text-gray-300">İade Edildi</span>
+                  <span className="text-xl font-black text-red-400">{refundedOrders}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-bold">Kategori Dağılımı</h2>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+            <h2 className="text-2xl font-black tracking-tight mb-6">Kategori Dağılımı</h2>
 
             <div className="mt-6 grid gap-4">
               {categoryList.map(([category, count]) => (
-                <div key={category} className="rounded-2xl bg-black/30 p-5">
+                <div key={category} className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition hover:bg-white/10">
                   <div className="flex items-center justify-between">
-                    <span>{category}</span>
-                    <span className="font-bold">{count} ürün</span>
+                    <span className="font-medium text-gray-300">{category}</span>
+                    <span className="text-lg font-black text-white">{count} ürün</span>
                   </div>
                 </div>
               ))}
@@ -288,15 +283,15 @@ export default function AdminReportsPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-bold">Satıcı Ürünleri</h2>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+            <h2 className="text-2xl font-black tracking-tight mb-6">Satıcı Ürünleri</h2>
 
             <div className="mt-6 grid gap-4">
               {sellerList.slice(0, 5).map(([seller, count]) => (
-                <div key={seller} className="rounded-2xl bg-black/30 p-5">
+                <div key={seller} className="group rounded-2xl border border-white/5 bg-white/5 p-5 transition hover:bg-white/10">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="truncate">{seller}</span>
-                    <span className="font-bold">{count} ürün</span>
+                    <span className="truncate font-medium text-gray-300">{seller}</span>
+                    <span className="text-lg font-black text-white">{count} ürün</span>
                   </div>
                 </div>
               ))}
@@ -308,8 +303,8 @@ export default function AdminReportsPage() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Aylık Sipariş ve Ciro</h2>
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+          <h2 className="text-2xl font-black tracking-tight mb-6">Aylık Sipariş ve Ciro</h2>
           <p className="mt-2 text-sm text-gray-400">
             Orders tablosundaki tarihlere göre hesaplanır.
           </p>
@@ -318,27 +313,27 @@ export default function AdminReportsPage() {
             {monthlyList.map(([month, data]) => (
               <div
                 key={month}
-                className="grid gap-4 rounded-2xl bg-black/30 p-5 md:grid-cols-3 md:items-center"
+                className="group grid gap-4 rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08] md:grid-cols-3 md:items-center"
               >
                 <div>
-                  <p className="text-sm text-gray-400">Dönem</p>
-                  <h3 className="mt-1 text-xl font-bold">{month}</h3>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Dönem</p>
+                  <h3 className="mt-1 text-xl font-black group-hover:text-blue-300 transition-colors">{month}</h3>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Sipariş</p>
-                  <h3 className="mt-1 text-xl font-bold">{data.orders}</h3>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Sipariş</p>
+                  <h3 className="mt-1 text-xl font-black text-white">{data.orders}</h3>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Ciro</p>
-                  <h3 className="mt-1 text-xl font-bold">{formatMoney(data.revenue)}</h3>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Ciro</p>
+                  <h3 className="mt-1 text-xl font-black text-emerald-400">{formatMoney(data.revenue)}</h3>
                 </div>
               </div>
             ))}
 
             {monthlyList.length === 0 && (
-              <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-center">
+              <div className="rounded-3xl bg-black/30 p-8 text-center text-gray-400">
                 Henüz aylık rapor oluşturacak sipariş yok.
               </div>
             )}

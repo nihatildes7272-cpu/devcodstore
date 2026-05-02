@@ -129,8 +129,6 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
-    loadNotifications(1, true);
-
     const channel = supabase
       .channel("notifications-page-live")
       .on(
@@ -153,13 +151,8 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    setPage(1);
-    loadNotifications(1, true);
-  }, [activeFilter]);
-
-  useEffect(() => {
     loadNotifications(page, true);
-  }, [page]);
+  }, [page, activeFilter]);
 
   async function markAsRead(notificationId: string) {
     const { error } = await supabase
@@ -250,27 +243,27 @@ export default function NotificationsPage() {
       <section className="mx-auto max-w-6xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Bildirimler</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Bildirimler</h1>
+              <p className="mt-3 text-gray-300">
                 Ürün, sipariş, yorum ve destek bildirimlerin burada görünür.
               </p>
             </div>
 
-            <div className="grid gap-2 md:text-right">
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Okunmamış</p>
+                <p className="text-2xl font-black text-yellow-400">{unreadCount}</p>
+              </div>
               <button
                 onClick={() => loadNotifications(page, false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
-
-              <p className="text-xs text-gray-500">
-                Okunmamış: {unreadCount}
-              </p>
             </div>
           </div>
         </section>
@@ -283,30 +276,36 @@ export default function NotificationsPage() {
 
         <section className="mb-8 grid gap-3 rounded-3xl border border-white/10 bg-white/5 p-3 md:grid-cols-3">
           <button
-            onClick={() => setActiveFilter("all")}
-            className={
+            onClick={() => {
+              setActiveFilter("all");
+              setPage(1);
+            }}
+            className={`rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
               activeFilter === "all"
-                ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-            }
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                : "border border-white/10 text-gray-400 hover:bg-white/5"
+            }`}
           >
             Tüm Bildirimler ({activeFilter === "all" ? totalCount : "..."})
           </button>
 
           <button
-            onClick={() => setActiveFilter("unread")}
-            className={
+            onClick={() => {
+              setActiveFilter("unread");
+              setPage(1);
+            }}
+            className={`rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
               activeFilter === "unread"
-                ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-            }
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                : "border border-white/10 text-gray-400 hover:bg-white/5"
+            }`}
           >
             Okunmamış ({unreadCount})
           </button>
 
           <button
             onClick={markAllAsRead}
-            className="rounded-2xl border border-green-500/30 px-5 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/10"
+            className="rounded-2xl border border-green-500/30 px-5 py-3 text-sm font-bold text-green-300 transition hover:bg-green-500/10"
           >
             Tümünü Okundu Yap
           </button>

@@ -156,10 +156,10 @@ export default function AdminSellerApplicationsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Satıcı Başvuruları</h1>
+              <h1 className="text-4xl font-black tracking-tight">Satıcı Başvuruları</h1>
               <p className="mt-3 text-gray-400">
                 Satıcı olmak isteyen kullanıcıların başvurularını onayla veya reddet.
               </p>
@@ -167,7 +167,7 @@ export default function AdminSellerApplicationsPage() {
 
             <button
               onClick={loadApplications}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500"
+              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95"
             >
               Yenile
             </button>
@@ -186,11 +186,11 @@ export default function AdminSellerApplicationsPage() {
               <button
                 key={status}
                 onClick={() => setActiveStatus(status)}
-                className={
+                className={`rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
                   activeStatus === status
-                    ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                    : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-                }
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "border border-white/10 text-gray-400 hover:bg-white/5"
+                }`}
               >
                 {status === "pending"
                   ? "Bekleyen"
@@ -206,7 +206,7 @@ export default function AdminSellerApplicationsPage() {
 
         <section className="grid gap-5">
           {applications.map((application) => (
-            <div key={application.id} className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div key={application.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap gap-3">
@@ -215,12 +215,13 @@ export default function AdminSellerApplicationsPage() {
                     </span>
                   </div>
 
-                  <h2 className="mt-4 text-2xl font-bold">{application.full_name}</h2>
+                  <h2 className="mt-4 text-2xl font-black group-hover:text-blue-300 transition-colors">{application.full_name}</h2>
 
-                  <div className="mt-3 grid gap-1 text-sm text-gray-400">
-                    <p>Telefon: {application.phone || "Yok"}</p>
-                    <p>Portfolyo: {application.portfolio_url || "Yok"}</p>
-                    <p className="break-all">Kullanıcı ID: {application.user_id}</p>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-500">
+                    <p>📱 {application.phone || "Yok"}</p>
+                    <p>🔗 {application.portfolio_url || "Yok"}</p>
+                    <p className="truncate">🆔 {application.user_id}</p>
+                    <p>🕒 {new Date(application.created_at).toLocaleDateString("tr-TR")}</p>
                   </div>
 
                   <p className="mt-5 leading-7 text-gray-300">
@@ -239,14 +240,14 @@ export default function AdminSellerApplicationsPage() {
                     <>
                       <button
                         onClick={() => approveApplication(application)}
-                        className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold hover:bg-green-500"
+                        className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-bold shadow-lg shadow-green-600/20 transition hover:bg-green-500 hover:scale-105 active:scale-95"
                       >
                         Onayla
                       </button>
 
                       <button
                         onClick={() => rejectApplication(application)}
-                        className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-500"
+                        className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-bold shadow-lg shadow-red-600/20 transition hover:bg-red-500 hover:scale-105 active:scale-95"
                       >
                         Reddet
                       </button>

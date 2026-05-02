@@ -200,67 +200,76 @@ export default function SellerDashboardPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-5">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Ürün</p>
-            <h2 className="mt-3 text-4xl font-bold">{products.length}</h2>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Toplam Ürün</p>
+            <h2 className="mt-4 text-4xl font-black">{products.length}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yayında</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">{liveCount}</h2>
+          <div className="rounded-3xl border border-green-500/20 bg-gradient-to-br from-green-500/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-400/70">Yayında</p>
+            <h2 className="mt-4 text-4xl font-black text-green-400">{liveCount}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Onay Bekleyen</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">{pendingCount}</h2>
+          <div className="rounded-3xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-yellow-400/70">Onay Bekleyen</p>
+            <h2 className="mt-4 text-4xl font-black text-yellow-400">{pendingCount}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kazanç</p>
-            <h2 className="mt-3 text-3xl font-bold">{formatMoney(totalRevenue)}</h2>
+          <div className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-400/70">Kazanç</p>
+            <h2 className="mt-4 text-3xl font-black text-blue-400">{formatMoney(totalRevenue)}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Depolama</p>
-            <h2 className="mt-3 text-2xl font-bold">
-              {formatBytes(usedStorageBytes)}
-            </h2>
-            <p className="mt-2 text-xs text-gray-500">
-              Kota: {formatBytes(storageQuotaBytes)} • %{storagePercent}
-            </p>
+          <div className="col-span-2 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm md:col-span-1">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Depolama</p>
+              <span className="text-xs font-bold text-gray-500">%{storagePercent}</span>
+            </div>
+            <h2 className="mt-2 text-2xl font-black">{formatBytes(usedStorageBytes)}</h2>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  storagePercent > 90 ? 'bg-red-500' : storagePercent > 70 ? 'bg-yellow-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${storagePercent}%` }}
+              />
+            </div>
           </div>
         </section>
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Son Ürünlerim</h2>
+        <section className="mt-12 grid gap-8 lg:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-black tracking-tight">Son Ürünlerim</h2>
               <a href="/seller/products" className="text-sm text-blue-300 hover:text-blue-200">
                 Tümünü gör
               </a>
             </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="grid gap-4">
               {products.slice(0, 4).map((product) => (
-                <div key={product.id} className="rounded-2xl bg-black/30 p-4">
+                <div key={product.id} className="group flex items-center gap-4 rounded-2xl bg-white/5 border border-white/5 p-4 transition hover:bg-white/10">
                   <div className="flex gap-4">
                     {product.image_url && (
                       <img
                         src={product.image_url}
                         alt={product.title}
-                        className="h-20 w-24 rounded-xl object-cover"
+                        className="h-16 w-20 rounded-xl object-cover shadow-lg grayscale-[0.5] group-hover:grayscale-0 transition-all"
                       />
                     )}
 
                     <div className="flex-1">
-                      <h3 className="font-semibold">{product.title}</h3>
-                      <p className="mt-1 text-sm text-gray-400">
+                      <h3 className="font-bold group-hover:text-blue-300 transition-colors">{product.title}</h3>
+                      <p className="mt-0.5 text-xs text-gray-400">
                         {product.category} • {product.price}
                       </p>
-                      <span className={statusClass(product.status)}>
-                        {product.status}
-                      </span>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className={statusClass(product.status)}>{product.status}</span>
+                        {product.security_status && (
+                          <span className="text-[10px] uppercase font-bold text-gray-500">{product.security_status}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

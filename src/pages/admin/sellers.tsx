@@ -32,34 +32,46 @@ export default function AdminSellersPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold">3</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Aktif Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">2</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Onay Bekleyen</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">1</h2>
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-black tracking-tight">Satıcılar</h1>
+              <p className="mt-3 text-gray-300">
+                Platformdaki aktif satıcıları ve kazançlarını görüntüle.
+              </p>
+            </div>
+            <button className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95">
+              Yenile
+            </button>
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Satıcı Listesi</h2>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          {[
+            { label: "Toplam Satıcı", value: 3, color: "text-white" },
+            { label: "Aktif Satıcı", value: 2, color: "text-green-400" },
+            { label: "Onay Bekleyen", value: 1, color: "text-yellow-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>
+                {stat.value}
+              </h2>
+            </div>
+          ))}
+        </section>
 
-          <div className="mt-6 grid gap-4">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+          <h2 className="text-2xl font-black tracking-tight">Satıcı Listesi</h2>
+
+          <div className="mt-8 grid gap-4">
             {sellers.map((seller) => (
               <div
                 key={seller.id}
-                className="flex flex-col gap-4 rounded-2xl bg-black/30 p-5 md:flex-row md:items-center md:justify-between"
+                className="group flex flex-col gap-4 rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08] md:flex-row md:items-center md:justify-between"
               >
                 <div>
-                  <h3 className="font-semibold">{seller.name}</h3>
+                  <h3 className="text-xl font-black group-hover:text-blue-300 transition-colors">{seller.name}</h3>
                   <p className="mt-1 text-sm text-gray-400">
                     Satıcı No: {seller.id}
                   </p>
@@ -69,10 +81,10 @@ export default function AdminSellersPage() {
                 </div>
 
                 <div className="grid gap-2 md:text-right">
-                  <p className="text-sm text-gray-400">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
                     Ürün sayısı: {seller.products}
                   </p>
-                  <p className="text-lg font-bold">{seller.revenue}</p>
+                  <p className="text-2xl font-black text-white">{seller.revenue}</p>
 
                   <span
                     className={

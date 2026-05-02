@@ -314,10 +314,10 @@ export default function AdminLogsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Admin İşlem Kayıtları</h1>
+              <h1 className="text-4xl font-black tracking-tight">Admin İşlem Kayıtları</h1>
               <p className="mt-3 text-gray-400">
                 Admin tarafından yapılan kritik işlemler sayfa sayfa listelenir.
               </p>
@@ -327,7 +327,7 @@ export default function AdminLogsPage() {
               <button
                 onClick={() => loadLogs(page, false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
@@ -345,28 +345,20 @@ export default function AdminLogsPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Kayıt</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Gösterilen</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">
-              {visibleRange}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Sayfa</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {page}/{totalPages}
-            </h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          {[
+            { label: "Toplam Kayıt", value: totalCount, color: "text-white" },
+            { label: "Gösterilen", value: visibleRange, color: "text-blue-400" },
+            { label: "Sayfa", value: `${page}/${totalPages}`, color: "text-green-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
           <div className="grid gap-4 md:grid-cols-[1fr_240px_240px_auto]">
             <input
               value={search}
@@ -375,7 +367,7 @@ export default function AdminLogsPage() {
                 setPage(1);
               }}
               placeholder="Başlık, detay, işlem veya kayıt ID ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 transition-all"
             />
 
             <select
@@ -384,7 +376,7 @@ export default function AdminLogsPage() {
                 setEntityFilter(event.target.value);
                 setPage(1);
               }}
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
             >
               {entityFilters.map((filter) => (
                 <option key={filter.value} value={filter.value}>
@@ -399,7 +391,7 @@ export default function AdminLogsPage() {
                 setActionFilter(event.target.value);
                 setPage(1);
               }}
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
             >
               {actionFilters.map((filter) => (
                 <option key={filter.value} value={filter.value}>
@@ -410,22 +402,22 @@ export default function AdminLogsPage() {
 
             <button
               onClick={resetFilters}
-              className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold shadow-lg transition hover:bg-white/10 hover:scale-105 active:scale-95"
             >
               Temizle
             </button>
           </div>
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Kayıt Listesi</h2>
+        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+          <h2 className="text-2xl font-black tracking-tight">Kayıt Listesi</h2>
           <p className="mt-2 text-sm text-gray-400">
             Gösterilen: {visibleRange} / {totalCount}
           </p>
 
           <div className="mt-6 grid gap-4">
             {logs.map((log) => (
-              <div key={log.id} className="rounded-3xl bg-black/30 p-6">
+              <div key={log.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex flex-wrap gap-3">
@@ -438,17 +430,17 @@ export default function AdminLogsPage() {
                       </span>
                     </div>
 
-                    <h3 className="mt-4 text-xl font-bold">{log.title}</h3>
+                    <h3 className="mt-4 text-xl font-black group-hover:text-blue-300 transition-colors">{log.title}</h3>
 
                     {log.details && (
                       <p className="mt-3 leading-7 text-gray-300">{log.details}</p>
                     )}
 
-                    <div className="mt-4 grid gap-1 text-sm text-gray-500">
-                      <p>Admin: {actorName(log.actor_id)}</p>
-                      {actorEmail(log.actor_id) && <p>E-posta: {actorEmail(log.actor_id)}</p>}
-                      {log.entity_id && <p>Kayıt ID: {log.entity_id}</p>}
-                      <p>Tarih: {formatDate(log.created_at)}</p>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-500">
+                      <p>👤 {actorName(log.actor_id)}</p>
+                      {actorEmail(log.actor_id) && <p>📧 {actorEmail(log.actor_id)}</p>}
+                      {log.entity_id && <p>🆔 {log.entity_id}</p>}
+                      <p>🕒 {formatDate(log.created_at)}</p>
                     </div>
                   </div>
 
@@ -456,7 +448,7 @@ export default function AdminLogsPage() {
                     {log.entity_type === "product" && log.entity_id && (
                       <a
                         href={`/product/${log.entity_id}`}
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                       >
                         Ürünü Aç
                       </a>
@@ -465,7 +457,7 @@ export default function AdminLogsPage() {
                     {log.entity_type === "order" && (
                       <a
                         href="/admin/orders"
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                       >
                         Siparişlere Git
                       </a>
@@ -474,7 +466,7 @@ export default function AdminLogsPage() {
                     {log.entity_type === "profile" && (
                       <a
                         href="/admin/users"
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                       >
                         Kullanıcılara Git
                       </a>
@@ -483,7 +475,7 @@ export default function AdminLogsPage() {
                     {log.entity_type.startsWith("support") && (
                       <a
                         href="/admin/support"
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-bold text-black transition hover:scale-105 active:scale-95"
                       >
                         Desteğe Git
                       </a>

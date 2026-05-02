@@ -273,11 +273,11 @@ export default function AdminUsersPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Kullanıcı Yönetimi</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Kullanıcı Yönetimi</h1>
+              <p className="mt-3 text-gray-300">
                 Kullanıcıları sayfa sayfa yönet, rollerini ve satıcı depolama kotasını düzenle.
               </p>
             </div>
@@ -285,7 +285,7 @@ export default function AdminUsersPage() {
             <button
               onClick={() => loadUsers(page, false)}
               disabled={refreshing}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
             >
               {refreshing ? "Yenileniyor..." : "Yenile"}
             </button>
@@ -298,45 +298,33 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Gösterilen Toplam</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Alıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {buyerCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">
-              {sellerCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Admin</p>
-            <h2 className="mt-3 text-4xl font-bold text-purple-300">
-              {adminCount}
-            </h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {[
+            { label: "Toplam", value: totalCount, color: "text-white" },
+            { label: "Alıcı", value: buyerCount, color: "text-green-400" },
+            { label: "Satıcı", value: sellerCount, color: "text-blue-400" },
+            { label: "Admin", value: adminCount, color: "text-purple-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>
+                {stat.value}
+              </h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-3">
-          <div className="grid gap-3 md:grid-cols-4">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {roleFilters.map((role) => (
               <button
                 key={role}
                 onClick={() => changeRoleFilter(role)}
-                className={
+                className={`rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
                   roleFilter === role
-                    ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                    : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-                }
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "border border-white/10 text-gray-400 hover:bg-white/5"
+                }`}
               >
                 {role === "Tümü" ? "Tümü" : roleLabel(role)}
               </button>
@@ -344,10 +332,10 @@ export default function AdminUsersPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Kullanıcı Listesi</h2>
+              <h2 className="text-2xl font-black tracking-tight">Kullanıcı Listesi</h2>
               <p className="mt-2 text-sm text-gray-400">
                 Gösterilen: {visibleRange} / {totalCount} — Sayfa {page} / {totalPages}
               </p>
@@ -360,13 +348,13 @@ export default function AdminUsersPage() {
                 setPage(1);
               }}
               placeholder="E-posta, isim veya rol ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 md:w-96 transition-all"
             />
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-10 grid gap-4">
             {profiles.map((profile) => (
-              <div key={profile.id} className="rounded-3xl bg-black/30 p-6">
+              <div key={profile.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap gap-3">
@@ -375,19 +363,17 @@ export default function AdminUsersPage() {
                       </span>
                     </div>
 
-                    <h3 className="mt-4 text-xl font-bold">
+                    <h3 className="mt-4 text-xl font-black group-hover:text-blue-300 transition-colors">
                       {profile.full_name || "İsimsiz Kullanıcı"}
                     </h3>
 
-                    <div className="mt-3 grid gap-1 text-sm text-gray-400">
-                      <p>E-posta: {profile.email || "E-posta yok"}</p>
-                      <p>Kayıt tarihi: {formatDate(profile.created_at)}</p>
-                      <p className="break-all">Kullanıcı ID: {profile.id}</p>
-                      <p>Depolama kotası: {formatBytes(profile.storage_quota_bytes || 2147483648)}</p>
-                      <p>Güven puanı: {profile.seller_trust_score ?? 0}/100</p>
-                      <p>Temiz ürün: {profile.seller_clean_product_count ?? 0}</p>
-                      <p>Riskli ürün: {profile.seller_risky_product_count ?? 0}</p>
-                      <p>Otomatik yayın: {profile.auto_publish_enabled ? "Açık" : "Kapalı"}</p>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-500">
+                      <p>📧 {profile.email || "E-posta yok"}</p>
+                      <p>📅 {formatDate(profile.created_at)}</p>
+                      <p className="truncate">🆔 {profile.id}</p>
+                      <p>💾 Kota: {formatBytes(profile.storage_quota_bytes || 2147483648)}</p>
+                      <p>🛡️ Güven: {profile.seller_trust_score ?? 0}/100</p>
+                      <p>⚡ Otomatik Yayın: {profile.auto_publish_enabled ? "Açık" : "Kapalı"}</p>
                     </div>
                   </div>
 

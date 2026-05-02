@@ -432,11 +432,11 @@ export default function AdminScanJobsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Güçlü Tarama Kuyruğu</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-black tracking-tight">Güçlü Tarama Kuyruğu</h1>
+              <p className="mt-3 text-gray-300">
                 ClamAV, Trivy, Semgrep ve sandbox worker için tarama işleri sayfa sayfa takip edilir.
               </p>
             </div>
@@ -445,7 +445,7 @@ export default function AdminScanJobsPage() {
               <button
                 onClick={() => loadJobs(page, false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
@@ -465,50 +465,26 @@ export default function AdminScanJobsPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-6">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kuyrukta</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {queuedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Taranıyor</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">
-              {runningCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Tamamlandı</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {completedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Hatalı</p>
-            <h2 className="mt-3 text-4xl font-bold text-red-300">
-              {failedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">İptal</p>
-            <h2 className="mt-3 text-4xl font-bold text-gray-300">
-              {cancelledCount}
-            </h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-6 md:gap-6">
+          {[
+            { label: "Toplam", value: totalCount, color: "text-white" },
+            { label: "Kuyrukta", value: queuedCount, color: "text-yellow-400" },
+            { label: "Taranıyor", value: runningCount, color: "text-blue-400" },
+            { label: "Tamamlandı", value: completedCount, color: "text-green-400" },
+            { label: "Hatalı", value: failedCount, color: "text-red-400" },
+            { label: "İptal", value: cancelledCount, color: "text-gray-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>
+                {stat.value}
+              </h2>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-3">
-          <div className="grid gap-3 md:grid-cols-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
             {statusTabs.map((status) => {
               const label =
                 status === "all"
@@ -541,9 +517,11 @@ export default function AdminScanJobsPage() {
                   key={status}
                   onClick={() => changeTab(status)}
                   className={
-                    activeStatus === status
-                      ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                      : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                    `rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
+                      activeStatus === status
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                        : "border border-white/10 text-gray-400 hover:bg-white/5"
+                    }`
                   }
                 >
                   {label} ({count})
@@ -553,10 +531,10 @@ export default function AdminScanJobsPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Tarama İşleri</h2>
+              <h2 className="text-2xl font-black tracking-tight">Tarama İşleri</h2>
               <p className="mt-2 text-sm text-gray-400">
                 Gösterilen: {visibleRange} / {totalCount} — Sayfa {page} / {totalPages}
               </p>
@@ -566,16 +544,16 @@ export default function AdminScanJobsPage() {
               value={search}
               onChange={(event) => changeSearch(event.target.value)}
               placeholder="Ürün ID, worker, durum veya sonuç ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 md:w-96 transition-all"
             />
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-10 grid gap-4">
             {jobs.map((job) => {
               const product = getProduct(job);
 
               return (
-                <div key={job.id} className="rounded-3xl bg-black/30 p-6">
+                <div key={job.id} className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08]">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap gap-3">
@@ -588,11 +566,11 @@ export default function AdminScanJobsPage() {
                         </span>
                       </div>
 
-                      <h3 className="mt-4 text-xl font-bold">
+                      <h3 className="mt-4 text-xl font-black group-hover:text-blue-300 transition-colors">
                         {product?.title || "Ürün bulunamadı"}
                       </h3>
 
-                      <div className="mt-3 grid gap-1 text-sm text-gray-400">
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-500">
                         <p>Job ID: {job.id}</p>
                         <p>Ürün ID: {job.product_id}</p>
                         <p>Satıcı: {product?.seller || "Bilinmiyor"}</p>

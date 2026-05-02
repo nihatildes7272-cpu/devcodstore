@@ -359,45 +359,39 @@ export default function LibraryPage() {
           </section>
         ) : user ? (
           <>
-            <section className="grid gap-6 md:grid-cols-3">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Kullanıcı</p>
-                <h2 className="mt-3 break-all text-xl font-bold">
-                  {user.email}
-                </h2>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Toplam Satın Alma</p>
-                <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm text-gray-400">Gösterilen</p>
-                <h2 className="mt-3 text-4xl font-bold text-green-300">
-                  {visibleRange}
-                </h2>
-              </div>
+            <section className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+              {[
+                { label: "Hesap", value: user.email?.split('@')[0], color: "text-white" },
+                { label: "Satın Alınan", value: totalCount, color: "text-white" },
+                { label: "Gösterilen", value: visibleRange, color: "text-green-300" },
+              ].map((stat, i) => (
+                <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+                  <h2 className={`mt-3 text-2xl font-black truncate ${stat.color}`}>
+                    {stat.value}
+                  </h2>
+                </div>
+              ))}
             </section>
 
-            <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-3xl font-bold">Satın Alınanlar</h2>
+            <section className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+              <h2 className="text-3xl font-black tracking-tight">Satın Alınan Projeler</h2>
               <p className="mt-2 text-gray-400">
                 Satın aldığın ürünler sayfa sayfa listelenir.
               </p>
 
-              <div className="mt-8 grid gap-5">
+              <div className="mt-10 grid gap-5">
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-black/30 p-6 md:flex-row md:items-center md:justify-between"
+                    className="group flex flex-col gap-5 rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/10 md:flex-row md:items-center md:justify-between"
                   >
                     <div>
-                      <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
+                      <span className="rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1 text-xs font-bold text-green-300 uppercase">
                         {order.status}
                       </span>
 
-                      <h3 className="mt-4 text-2xl font-bold">
+                      <h3 className="mt-4 text-2xl font-black group-hover:text-blue-300 transition-colors">
                         {order.product_title}
                       </h3>
 
@@ -409,22 +403,22 @@ export default function LibraryPage() {
                         Satın alma tarihi: {formatDate(order.created_at)}
                       </p>
 
-                      <p className="mt-1 break-all text-sm text-gray-400">
-                        Sipariş No: {order.id}
-                      </p>
+                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-gray-500">
+                        <p>👤 {order.seller}</p>
+                        <p>📅 {formatDate(order.created_at)}</p>
+                        <p>🆔 {order.id.slice(0, 8)}...</p>
+                      </div>
                     </div>
 
-                    <div className="grid gap-3 md:min-w-48">
-                      <p className="text-right text-2xl font-bold">
-                        {order.price}
-                      </p>
+                    <div className="flex flex-col gap-3 md:min-w-56">
+                      <p className="text-right text-3xl font-black text-white mb-2">{order.price}</p>
 
                       {order.product_id ? (
                         <a
                           href={`/download/${order.product_id}`}
-                          className="rounded-2xl bg-blue-600 px-6 py-3 text-center font-semibold hover:bg-blue-500"
+                          className="rounded-2xl bg-blue-600 px-6 py-3 text-center font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95"
                         >
-                          Dosyayı İndir
+                          ⬇️ Dosyayı İndir
                         </a>
                       ) : (
                         <button

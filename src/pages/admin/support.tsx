@@ -291,10 +291,10 @@ export default function AdminSupportPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">Destek Talepleri</h1>
+              <h1 className="text-4xl font-black tracking-tight">Destek Talepleri</h1>
               <p className="mt-3 text-gray-400">
                 Kullanıcı ve satıcı destek taleplerini sayfa sayfa yönet.
               </p>
@@ -304,7 +304,7 @@ export default function AdminSupportPage() {
               <button
                 onClick={() => loadTickets(page, false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-60"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
@@ -322,39 +322,19 @@ export default function AdminSupportPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-5">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Talep</p>
-            <h2 className="mt-3 text-4xl font-bold">{allCount}</h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Açık</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {openCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">İnceleniyor</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">
-              {reviewCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Çözüldü</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {solvedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Kapandı</p>
-            <h2 className="mt-3 text-4xl font-bold text-gray-300">
-              {closedCount}
-            </h2>
-          </div>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6">
+          {[
+            { label: "Toplam Talep", value: allCount, color: "text-white" },
+            { label: "Açık", value: openCount, color: "text-yellow-400" },
+            { label: "İnceleniyor", value: reviewCount, color: "text-blue-400" },
+            { label: "Çözüldü", value: solvedCount, color: "text-green-400" },
+            { label: "Kapandı", value: closedCount, color: "text-gray-400" },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <h2 className={`mt-3 text-4xl font-black ${stat.color}`}>{stat.value}</h2>
+            </div>
+          ))}
         </section>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-3">
@@ -375,11 +355,11 @@ export default function AdminSupportPage() {
                 <button
                   key={status}
                   onClick={() => changeTab(status)}
-                  className={
+                  className={`rounded-2xl px-5 py-3 text-sm font-bold transition-all ${
                     activeStatus === status
-                      ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                      : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
-                  }
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                      : "border border-white/10 text-gray-400 hover:bg-white/5"
+                  }`}
                 >
                   {status} ({count})
                 </button>
@@ -388,10 +368,10 @@ export default function AdminSupportPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Talep Listesi</h2>
+              <h2 className="text-2xl font-black tracking-tight">Talep Listesi</h2>
               <p className="mt-2 text-sm text-gray-400">
                 Gösterilen: {visibleRange} / {totalCount} — Sayfa {page} / {totalPages}
               </p>
@@ -401,11 +381,11 @@ export default function AdminSupportPage() {
               value={search}
               onChange={(event) => changeSearch(event.target.value)}
               placeholder="Konu, kategori veya durum ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 md:w-96 transition-all"
             />
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-8 grid gap-4">
             {tickets.map((ticket) => {
               const user = getUser(ticket);
 
@@ -413,20 +393,17 @@ export default function AdminSupportPage() {
                 <a
                   key={ticket.id}
                   href={`/admin/support/${ticket.id}`}
-                  className="rounded-3xl border border-white/10 bg-black/30 p-5 transition hover:border-blue-500/40 hover:bg-white/10"
+                  className="group rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08] hover:border-blue-500/30"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <h3 className="text-xl font-bold">{ticket.subject}</h3>
-                      <p className="mt-2 text-sm text-gray-400">
-                        Kullanıcı: {user.name} — {user.email}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Kategori: {ticket.category}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Güncelleme: {formatDate(ticket.updated_at)}
-                      </p>
+                      <h3 className="text-xl font-black group-hover:text-blue-300 transition-colors">{ticket.subject}</h3>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-500">
+                        <p>👤 {user.name} — {user.email}</p>
+                        <p>📁 {ticket.category}</p>
+                        <p>🕒 {formatDate(ticket.updated_at)}</p>
+                      </div>
                     </div>
 
                     <span className={statusClass(ticket.status)}>

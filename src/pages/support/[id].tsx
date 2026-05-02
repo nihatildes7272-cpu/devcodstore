@@ -188,12 +188,12 @@ export default function SupportDetailPage() {
       <section className="mx-auto max-w-5xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-8 shadow-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">{ticket.subject}</h1>
-              <p className="mt-3 text-gray-400">Kategori: {ticket.category}</p>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-4xl font-black tracking-tight">{ticket.subject}</h1>
+              <p className="mt-3 text-gray-300 font-medium">📁 {ticket.category}</p>
+              <p className="mt-1 text-xs text-gray-500 font-bold uppercase tracking-widest">
                 Oluşturulma: {formatDate(ticket.created_at)}
               </p>
             </div>
@@ -210,30 +210,28 @@ export default function SupportDetailPage() {
           </div>
         )}
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-2xl font-bold">Mesajlar</h2>
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+          <h2 className="text-2xl font-black tracking-tight mb-8">Mesajlaşma Geçmişi</h2>
 
-          <div className="mt-6 grid gap-4">
+          <div className="grid gap-6">
             {messages.map((item) => (
               <div
                 key={item.id}
-                className={
+                className={`max-w-[85%] rounded-3xl p-6 ${
                   item.role === "admin"
-                    ? "rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5"
-                    : "rounded-3xl border border-white/10 bg-black/30 p-5"
-                }
+                    ? "mr-auto border border-blue-500/30 bg-blue-500/10"
+                    : "ml-auto border border-white/10 bg-white/5"
+                }`}
               >
                 <div className="flex items-center justify-between gap-4">
-                  <p className="font-bold">
-                    {item.role === "admin" ? "Admin" : "Sen"}
+                  <p className={`text-xs font-black uppercase tracking-widest ${item.role === "admin" ? 'text-blue-300' : 'text-gray-400'}`}>
+                    {item.role === "admin" ? "🛡️ Destek Ekibi" : "👤 Sen"}
                   </p>
-
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs text-gray-600 font-bold">
                     {formatDate(item.created_at)}
                   </p>
                 </div>
-
-                <p className="mt-4 leading-7 text-gray-300">
+                <p className="mt-4 text-gray-200 leading-relaxed">
                   {item.message}
                 </p>
               </div>
