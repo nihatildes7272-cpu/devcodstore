@@ -48,9 +48,7 @@ export default function AdminNavbar() {
   }, [menuOpen]);
 
   return (
-    <>
-      {!menuOpen && (
-        <nav className="relative mb-10 rounded-3xl border border-white/10 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-2xl">
+    <nav className="relative mb-10 rounded-3xl border border-white/10 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-2xl">
       <div className="flex items-center justify-between gap-5">
         <Link href="/admin" className="block group">
           <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-purple-300 transition-all duration-300">
@@ -76,7 +74,7 @@ export default function AdminNavbar() {
             onClick={() => setMenuOpen(false)}
           />
           {/* Menu */}
-          <div className="fixed left-6 right-6 top-0 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+          <div className="fixed left-6 right-6 top-16 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
           <div className="grid gap-4 md:grid-cols-3">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;
@@ -127,7 +125,5 @@ export default function AdminNavbar() {
         </div>
       )}
     </nav>
-    )}
-    </>
   );
 }
