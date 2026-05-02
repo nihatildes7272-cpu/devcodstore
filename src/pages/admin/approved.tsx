@@ -1,4 +1,4 @@
-import AdminNavbar from "@/components/AdminNavbar";
+import Link from "next/link";
 export default function ApprovedPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#070A12] px-6 text-white">
@@ -14,19 +14,19 @@ export default function ApprovedPage() {
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <a
+          <Link
             href="/admin"
             className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500"
           >
             Admin Panele Dön
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/products"
             className="rounded-2xl border border-white/15 px-5 py-3 font-semibold hover:bg-white/10"
           >
             Ürünlere Git
-          </a>
+          </Link>
         </div>
       </section>
     </main>

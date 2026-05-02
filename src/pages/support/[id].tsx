@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -35,7 +36,7 @@ export default function SupportDetailPage() {
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
 
-  async function loadTicket() {
+  const loadTicket = useCallback(async () => {
     if (!router.isReady || !id) return;
 
     setLoading(true);
@@ -80,11 +81,15 @@ export default function SupportDetailPage() {
     }
 
     setLoading(false);
-  }
+  }, [router, id]);
 
   useEffect(() => {
-    loadTicket();
-  }, [router.isReady, id]);
+    const fetchTicket = async () => {
+      await loadTicket();
+    };
+
+    void fetchTicket();
+  }, [loadTicket]);
 
   async function sendReply(event: React.FormEvent) {
     event.preventDefault();
@@ -166,12 +171,12 @@ export default function SupportDetailPage() {
             <h1 className="text-3xl font-bold">Talep bulunamadı</h1>
             <p className="mt-3 text-red-200">{info}</p>
 
-            <a
+            <Link
               href="/support"
               className="mt-8 inline-block rounded-2xl bg-white px-5 py-3 font-semibold text-black"
             >
               Destek Merkezine Dön
-            </a>
+            </Link>
           </div>
         </section>
       </main>

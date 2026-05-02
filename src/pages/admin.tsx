@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AdminNavbar from "@/components/AdminNavbar";
@@ -161,7 +162,11 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    loadDashboard(true);
+    const initializeDashboard = async () => {
+      await loadDashboard(true);
+    };
+
+    void initializeDashboard();
   }, []);
 
   function parsePrice(price: string) {
@@ -399,9 +404,9 @@ export default function AdminPage() {
                 </p>
               </div>
 
-              <a href="/admin/products" className="text-sm text-blue-300 hover:text-blue-200">
+              <Link href="/admin/products" className="text-sm text-blue-300 hover:text-blue-200">
                 Aç
-              </a>
+              </Link>
             </div>
 
             <div className="mt-6 grid gap-4">
@@ -428,9 +433,9 @@ export default function AdminPage() {
                 <p className="mt-1 text-sm text-gray-400">Yeni satış kayıtları</p>
               </div>
 
-              <a href="/admin/orders" className="text-sm text-blue-300 hover:text-blue-200">
+              <Link href="/admin/orders" className="text-sm text-blue-300 hover:text-blue-200">
                 Aç
-              </a>
+              </Link>
             </div>
 
             <div className="mt-6 grid gap-4">
@@ -460,9 +465,9 @@ export default function AdminPage() {
                 <p className="mt-1 text-sm text-gray-400">Son destek hareketleri</p>
               </div>
 
-              <a href="/admin/support" className="text-sm text-blue-300 hover:text-blue-200">
+              <Link href="/admin/support" className="text-sm text-blue-300 hover:text-blue-200">
                 Aç
-              </a>
+              </Link>
             </div>
 
             <div className="mt-6 grid gap-4">

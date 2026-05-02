@@ -1,22 +1,15 @@
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/router";
 
 export default function SiteNavbar() {
-  const router = useRouter();
-
-  function handleProductsClick(event: React.MouseEvent<HTMLAnchorElement>) {
-    if (router.pathname === "/products") {
-      event.preventDefault();
-      window.location.href = `/products?refresh=${Date.now()}`;
-    }
-  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [refreshToken] = useState(() => Date.now());
 
   async function checkAdmin(currentUser: User | null) {
     if (!currentUser) {
@@ -125,7 +118,7 @@ export default function SiteNavbar() {
 
   return (
     <nav className="relative mb-10 flex items-center justify-between gap-6 rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
-      <a href="/" className="flex items-center gap-3">
+      <Link href="/" className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-lg font-black text-white">
           D
         </div>
@@ -138,58 +131,58 @@ export default function SiteNavbar() {
             Kod, proje ve web sistemleri pazarı
           </p>
         </div>
-      </a>
+      </Link>
 
       <div className="hidden items-center gap-4 md:flex">
         {links.map((link) => (
-          <a
+          <Link
             key={link.href}
-            href={link.href === "/products" ? `/products?refresh=${Date.now()}` : link.href}
+            href={link.href === "/products" ? `/products?refresh=${refreshToken}` : link.href}
             className="text-sm font-medium text-gray-300 hover:text-white"
           >
             {link.label}
-          </a>
+          </Link>
         ))}
 
         {user && (
-          <a
+          <Link
             href="/notifications"
             className="rounded-2xl border border-yellow-500/30 px-5 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/10"
           >
             🔔 Bildirimler {notificationCount > 0 ? `(${notificationCount})` : ""}
-          </a>
+          </Link>
         )}
 
-        <a
+        <Link
           href="/cart"
           className="rounded-2xl border border-white/15 px-5 py-2 text-sm font-semibold hover:bg-white/10"
         >
           🛒 Sepet {cartCount > 0 ? `(${cartCount})` : ""}
-        </a>
+        </Link>
 
         {user ? (
-          <a
+          <Link
             href="/account"
             className="rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-500"
           >
             Hesabım
-          </a>
+          </Link>
         ) : (
-          <a
+          <Link
             href="/login"
             className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
           >
             Giriş Yap
-          </a>
+          </Link>
         )}
 
         {isAdmin && (
-          <a
+          <Link
             href="/admin"
             className="rounded-2xl border border-purple-500/30 px-5 py-2 text-sm font-semibold text-purple-300 hover:bg-purple-500/10"
           >
             Admin
-          </a>
+          </Link>
         )}
       </div>
 
@@ -204,45 +197,45 @@ export default function SiteNavbar() {
         <div className="absolute left-0 right-0 top-20 z-50 rounded-3xl border border-white/10 bg-[#0B1020] p-4 shadow-2xl md:hidden">
           <div className="grid gap-3">
             {links.map((link) => (
-              <a
+              <Link
                 key={link.href}
-                href={link.href === "/products" ? `/products?refresh=${Date.now()}` : link.href}
+                href={link.href === "/products" ? `/products?refresh=${refreshToken}` : link.href}
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
 
-            <a
+            <Link
               href="/cart"
               className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200"
             >
               🛒 Sepet {cartCount > 0 ? `(${cartCount})` : ""}
-            </a>
+            </Link>
 
             {user ? (
-              <a
+              <Link
                 href="/account"
                 className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white"
               >
                 Hesabım
-              </a>
+              </Link>
             ) : (
-              <a
+              <Link
                 href="/login"
                 className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black"
               >
                 Giriş Yap
-              </a>
+              </Link>
             )}
 
             {isAdmin && (
-              <a
+              <Link
                 href="/admin"
                 className="rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm font-semibold text-purple-300"
               >
                 Admin
-              </a>
+              </Link>
             )}
           </div>
         </div>

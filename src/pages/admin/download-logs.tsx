@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AdminNavbar from "@/components/AdminNavbar";
 
@@ -42,12 +42,13 @@ export default function AdminDownloadLogsPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  async function loadLogs(targetPage = page, showLoading = true) {
-    if (showLoading) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
+  const loadLogs = useCallback(
+    async (targetPage = page, showLoading = true) => {
+      if (showLoading) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
 
     setMessage("");
 
@@ -116,15 +117,15 @@ export default function AdminDownloadLogsPage() {
 
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [page, search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadLogs(page, true);
+      void loadLogs(page, true);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [page, search]);
+  }, [loadLogs, page, search]);
 
   function profileFor(userId: string) {
     return profiles.find((profile) => profile.id === userId);

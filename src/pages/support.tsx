@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -57,74 +58,85 @@ export default function SupportPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  async function loadTickets(targetPage = page, showLoading = true) {
-    if (showLoading) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-
-    setMessage("");
-
-    try {
-      const userResult = await withTimeout(
-        supabase.auth.getUser(),
-        10000,
-        "Kullanıcı bilgisi alınırken gecikme oldu."
-      );
-
-      const currentUser = userResult.data.user;
-
-      if (!currentUser) {
-        router.push("/login");
-        return;
+  const loadTickets = useCallback(
+    async (targetPage = page, showLoading = true) => {
+      if (showLoading) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
       }
 
-      setUser(currentUser);
+      setMessage("");
 
-      const from = (targetPage - 1) * pageSize;
-      const to = from + pageSize - 1;
+      try {
+        const userResult = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          "Kullanıcı bilgisi alınırken gecikme oldu."
+        );
 
-      const result = await withTimeout(
-        supabase
-          .from("support_tickets")
-          .select("*", { count: "exact" })
-          .eq("user_id", currentUser.id)
-          .order("updated_at", { ascending: false })
-          .range(from, to),
-        15000,
-        "Destek talepleri yüklenirken sunucu geç cevap verdi."
-      );
+        const currentUser = userResult.data.user;
 
-      if (result.error) {
-        setMessage("Destek talepleri yüklenemedi: " + result.error.message);
+        if (!currentUser) {
+          router.push("/login");
+          return;
+        }
+
+        setUser(currentUser);
+
+        const from = (targetPage - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        const result = await withTimeout(
+          supabase
+            .from("support_tickets")
+            .select("*", { count: "exact" })
+            .eq("user_id", currentUser.id)
+            .order("updated_at", { ascending: false })
+            .range(from, to),
+          15000,
+          "Destek talepleri yüklenirken sunucu geç cevap verdi."
+        );
+
+        if (result.error) {
+          setMessage("Destek talepleri yüklenemedi: " + result.error.message);
+          setTickets([]);
+          setTotalCount(0);
+        } else {
+          setTickets(result.data || []);
+          setTotalCount(result.count || 0);
+        }
+      } catch (error) {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Destek talepleri yüklenirken bilinmeyen hata oluştu."
+        );
         setTickets([]);
         setTotalCount(0);
-      } else {
-        setTickets(result.data || []);
-        setTotalCount(result.count || 0);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Destek talepleri yüklenirken bilinmeyen hata oluştu."
-      );
-      setTickets([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+    },
+    [page, router]
+  );
 
   useEffect(() => {
-    loadTickets(1, true);
-  }, []);
+    const fetchTickets = async () => {
+      await loadTickets(1, true);
+    };
+
+    void fetchTickets();
+  }, [loadTickets]);
 
   useEffect(() => {
-    loadTickets(page, true);
-  }, [page]);
+    const fetchTickets = async () => {
+      await loadTickets(page, true);
+    };
+
+    void fetchTickets();
+  }, [loadTickets, page]);
 
   async function createTicket(event: React.FormEvent) {
     event.preventDefault();
@@ -274,7 +286,7 @@ export default function SupportPage() {
 
             <div className="mt-6 grid gap-4">
               {tickets.map((ticket) => (
-                <a
+                <Link
                   key={ticket.id}
                   href={`/support/${ticket.id}`}
                   className="rounded-3xl border border-white/10 bg-black/30 p-5 transition hover:border-blue-500/40 hover:bg-white/10"
@@ -294,7 +306,7 @@ export default function SupportPage() {
                       {ticket.status}
                     </span>
                   </div>
-                </a>
+                </Link>
               ))}
 
               {tickets.length === 0 && (

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -27,7 +28,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  async function loadAccount() {
+  const loadAccount = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
@@ -94,11 +95,15 @@ export default function AccountPage() {
     setSellerProductCount(sellerProductsResult.count || 0);
 
     setLoading(false);
-  }
+  }, [router]);
 
   useEffect(() => {
-    loadAccount();
-  }, []);
+    const fetchAccount = async () => {
+      await loadAccount();
+    };
+
+    void fetchAccount();
+  }, [loadAccount]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -235,29 +240,29 @@ export default function AccountPage() {
 
             <div className="mt-6 grid gap-3">
               {isAdmin && (
-                <a
-                  href="/admin"
-                  className="rounded-2xl bg-purple-600 px-5 py-3 text-center font-semibold hover:bg-purple-500"
-                >
-                  Admin Paneline Git
-                </a>
-              )}
-
-              {isSeller && (
-                <a
-                  href="/seller"
-                  className="rounded-2xl bg-blue-600 px-5 py-3 text-center font-semibold hover:bg-blue-500"
-                >
-                  Satıcı Paneline Git
-                </a>
-              )}
-
-              <a
-                href="/support"
-                className="rounded-2xl border border-white/15 px-5 py-3 text-center font-semibold hover:bg-white/10"
+              <Link
+                href="/admin"
+                className="rounded-2xl bg-purple-600 px-5 py-3 text-center font-semibold hover:bg-purple-500"
               >
-                Destek Talebi Aç
-              </a>
+                Admin Paneline Git
+              </Link>
+            )}
+
+            {isSeller && (
+              <Link
+                href="/seller"
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-center font-semibold hover:bg-blue-500"
+              >
+                Satıcı Paneline Git
+              </Link>
+            )}
+
+            <Link
+              href="/support"
+              className="rounded-2xl border border-white/15 px-5 py-3 text-center font-semibold hover:bg-white/10"
+            >
+              Destek Talebi Aç
+            </Link>
             </div>
           </div>
 
@@ -301,19 +306,19 @@ export default function AccountPage() {
                     <p className="mt-2 text-3xl font-bold">{sellerProductCount}</p>
                   </div>
 
-                  <a
+                  <Link
                     href="/seller/new"
                     className="rounded-2xl bg-blue-600 p-5 font-semibold hover:bg-blue-500"
                   >
                     Yeni Ürün Yükle
-                  </a>
+                  </Link>
 
-                  <a
+                  <Link
                     href="/seller/products"
                     className="rounded-2xl border border-white/15 p-5 font-semibold hover:bg-white/10"
                   >
                     Ürünlerimi Yönet
-                  </a>
+                  </Link>
                 </div>
               </section>
             )}
@@ -326,7 +331,7 @@ export default function AccountPage() {
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 {quickLinks.map((link) => (
-                  <a
+                  <Link
                     key={link.href}
                     href={link.href}
                     className="rounded-3xl border border-white/10 bg-black/30 p-5 transition hover:border-blue-500/40 hover:bg-white/10"
@@ -335,7 +340,7 @@ export default function AccountPage() {
                     <p className="mt-2 text-sm leading-6 text-gray-400">
                       {link.description}
                     </p>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </section>

@@ -1,40 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Devcodstore
 
-## Getting Started
+DevCodStore, Supabase tabanlı dijital ürün mağazası ve tarama/indirme altyapısı içeren bir Next.js projesidir.
 
-First, run the development server:
+## Başlarken
+
+1. Bağımlılıkları yükleyin:
+
+```bash
+npm install
+```
+
+2. Ortam değişkenlerini ayarlayın:
+
+- `.env.local` dosyası oluşturun
+- `.env.example` dosyasını referans alın
+
+3. Geliştirme sunucusunu başlatın:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Tarayıcıda açın:
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+[http://localhost:3000](http://localhost:3000)
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Kullanılan önemli komutlar
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+- `npm run dev` - geliştirme sunucusunu çalıştırır
+- `npm run build` - üretim için derler
+- `npm run start` - derlenen uygulamayı başlatır
+- `npm run lint` - ESLint kontrolü yapar
+- `npm run lint:fix` - ESLint hatalarını otomatik düzeltmeye çalışır
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Ortam Değişkenleri
 
-## Learn More
+Aşağıdaki değerler Supabase bağlantısı ve sunucu tarafı işlemler için gereklidir:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+`NEXT_PUBLIC_*` olarak başlayan anahtarlar istemci tarafı kodda kullanılırken, `SUPABASE_SERVICE_ROLE_KEY` ve `CRON_SECRET` sunucu tarafında güvenli şekilde saklanmalıdır.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scanner Worker
 
-## Deploy on Vercel
+`scanner-worker/worker.js` dosyası Supabase depolama ve tarama işleri için bağımsız bir worker süreç olarak çalışabilir. Worker çalıştırmak için:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd scanner-worker
+npm install
+npm run start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+## Notlar
+
+- Bu proje Next.js `pages` ve `app` dizinlerini birlikte kullanıyor.
+- `src/lib/supabase.ts` ve `src/lib/supabaseAdmin.ts` dosyaları Supabase istemci yapılandırmasını yönetir.
+- `.env.example` dosyası projenin `.env.local` ortam ayarları için rehber sağlar.

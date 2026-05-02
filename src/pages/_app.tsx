@@ -90,7 +90,7 @@ export default function App({ Component, pageProps }: AppProps) {
     return () => {
       cancelled = true;
     };
-  }, [router.isReady, router.pathname]);
+  }, [router, router.isReady, router.pathname]);
 
   if (checkingAdmin) {
     return (

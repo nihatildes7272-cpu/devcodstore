@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
@@ -37,14 +38,14 @@ export default function AdminNavbar() {
   return (
     <nav className="relative mb-10 rounded-3xl border border-white/10 bg-white/5 p-5">
       <div className="flex items-center justify-between gap-5">
-        <a href="/admin" className="block">
+        <Link href="/admin" className="block">
           <h1 className="text-2xl font-black tracking-tight text-white">
             devcodstore Admin
           </h1>
           <p className="text-xs text-gray-400">
             Şu an: {currentPage}
           </p>
-        </a>
+        </Link>
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -61,7 +62,7 @@ export default function AdminNavbar() {
               const isActive = router.pathname === link.href;
 
               return (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
                   className={
@@ -71,23 +72,23 @@ export default function AdminNavbar() {
                   }
                 >
                   {link.label}
-                </a>
+                </Link>
               );
             })}
 
-            <a
+            <Link
               href="/"
               className="rounded-2xl border border-green-500/30 bg-green-500/10 px-5 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/20"
             >
               Siteye Dön
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/account"
               className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10"
             >
               Hesabım
-            </a>
+            </Link>
 
             <button
               onClick={handleLogout}

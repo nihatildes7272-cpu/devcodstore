@@ -6,7 +6,6 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import StreamZip from "node-stream-zip";
 import { createClient } from "@supabase/supabase-js";
-import { v4 as uuidv4 } from "uuid";
 
 const execFileAsync = promisify(execFile);
 
