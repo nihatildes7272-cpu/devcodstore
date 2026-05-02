@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import AdminNavbar from "@/components/AdminNavbar";
 
 type Product = {
   id: string;
@@ -297,15 +296,53 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white pt-56 md:pt-0">
-      <section className="mx-auto max-w-7xl px-6 py-10">
-        <AdminNavbar />
+    <main className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
 
-        <section className="mb-8 rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-8 shadow-2xl">
+        <nav className="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <Link
+                href="/admin"
+                className="text-xl font-black bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent"
+              >
+                devcodstore Admin
+              </Link>
+              <p className="mt-1 text-sm text-gray-400">
+                Yönetim menüsü
+              </p>
+            </div>
+
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:max-w-4xl xl:grid-cols-4">
+              {[
+                { href: "/admin/products", label: "Ürün Yönetimi" },
+                { href: "/admin/orders", label: "Siparişler" },
+                { href: "/admin/users", label: "Kullanıcılar" },
+                { href: "/admin/scan-jobs", label: "Güvenlik" },
+                { href: "/admin/support", label: "Destek" },
+                { href: "/admin/reports", label: "Raporlar" },
+                { href: "/admin/logs", label: "Loglar" },
+                { href: "/", label: "Siteye Dön" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-gray-200 transition hover:border-blue-400/40 hover:bg-blue-500/10 hover:text-blue-200"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        <section className="rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-5xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">Admin Merkezi</h1>
-              <p className="mt-3 max-w-3xl text-gray-300 text-lg">
+              <h1 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent md:text-5xl">
+                Admin Merkezi
+              </h1>
+              <p className="mt-3 max-w-3xl text-base text-gray-300 md:text-lg">
                 devcodstore yönetimi için modern kontrol merkezi.
                 Detaylı işlemler ilgili yönetim sayfalarında yapılır.
               </p>
@@ -315,7 +352,7 @@ export default function AdminPage() {
               <button
                 onClick={() => loadDashboard(false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white hover:from-blue-500 hover:to-blue-600 disabled:opacity-60 shadow-lg transition-all duration-200"
+                className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:from-blue-500 hover:to-blue-600 disabled:opacity-60"
               >
                 {refreshing ? "🔄 Yenileniyor..." : "🔄 Yenile"}
               </button>
@@ -330,7 +367,7 @@ export default function AdminPage() {
         </section>
 
         {message && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
             <p>{message}</p>
 
             <button
@@ -342,52 +379,58 @@ export default function AdminPage() {
           </div>
         )}
 
-        <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
-          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm">
-            <p className="text-sm text-emerald-300 font-medium">💰 Toplam Ciro</p>
-            <h2 className="mt-3 text-4xl font-bold text-emerald-400">{formatMoney(totalRevenue)}</h2>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-h-[128px] rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm font-medium text-emerald-300">💰 Toplam Ciro</p>
+            <h2 className="mt-3 break-words text-3xl font-bold text-emerald-400 md:text-4xl">
+              {formatMoney(totalRevenue)}
+            </h2>
           </div>
 
-          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-green-500/10 to-green-600/5 p-6 shadow-lg backdrop-blur-sm">
-            <p className="text-sm text-green-300 font-medium">📦 Yayındaki Ürün</p>
+          <div className="min-h-[128px] rounded-3xl border border-white/20 bg-gradient-to-br from-green-500/10 to-green-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm font-medium text-green-300">📦 Yayındaki Ürün</p>
             <h2 className="mt-3 text-4xl font-bold text-green-400">
               {liveProducts.length}
             </h2>
           </div>
 
-          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm">
-            <p className="text-sm text-yellow-300 font-medium">⏳ Onay Bekleyen</p>
+          <div className="min-h-[128px] rounded-3xl border border-white/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm font-medium text-yellow-300">⏳ Onay Bekleyen</p>
             <h2 className="mt-3 text-4xl font-bold text-yellow-400">
               {pendingProducts.length}
             </h2>
           </div>
 
-          <div className="relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-6 shadow-lg backdrop-blur-sm">
-            <p className="text-sm text-blue-300 font-medium">👥 Satıcı</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-400">{sellerCount}</h2>
+          <div className="min-h-[128px] rounded-3xl border border-white/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm font-medium text-blue-300">👥 Satıcı</p>
+            <h2 className="mt-3 text-4xl font-bold text-blue-400">
+              {sellerCount}
+            </h2>
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-2xl font-bold">Yönetim Kısayolları</h2>
           <p className="mt-2 text-sm text-gray-400">
             Ana panel artık sade. Detaylı işlemler için ilgili bölüme git.
           </p>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {adminCards.map((card) => (
               <Link
                 key={card.href}
                 href={card.href}
-                className="group relative z-0 rounded-3xl border border-white/20 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 transition-all duration-300 hover:border-blue-500/40 hover:bg-gradient-to-br hover:from-blue-500/10 hover:to-purple-500/10 hover:shadow-xl hover:scale-105 backdrop-blur-sm"
+                className="group min-h-[170px] rounded-3xl border border-white/20 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 backdrop-blur-sm transition-all duration-300 hover:border-blue-500/40 hover:from-blue-500/10 hover:to-purple-500/10 hover:shadow-xl"
               >
-                <p className="w-fit rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-1 text-xs font-semibold text-blue-300 border border-blue-500/30">
+                <p className="w-fit rounded-full border border-blue-500/30 bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-1 text-xs font-semibold text-blue-300">
                   {card.meta}
                 </p>
 
-                <h3 className="mt-5 text-xl font-bold group-hover:text-blue-300 transition-colors">{card.title}</h3>
+                <h3 className="mt-5 text-xl font-bold transition-colors group-hover:text-blue-300">
+                  {card.title}
+                </h3>
 
-                <p className="mt-3 text-sm leading-6 text-gray-400 group-hover:text-gray-300 transition-colors">
+                <p className="mt-3 text-sm leading-6 text-gray-400 transition-colors group-hover:text-gray-300">
                   {card.description}
                 </p>
               </Link>
@@ -395,8 +438,8 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-3">
-          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Onay Bekleyen Ürünler</h2>
@@ -427,7 +470,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Son Siparişler</h2>
@@ -444,7 +487,7 @@ export default function AdminPage() {
                 <div key={order.id} className="rounded-2xl bg-black/30 p-4">
                   <h3 className="font-semibold">{order.product_title}</h3>
                   <p className="mt-1 text-sm text-gray-400">{order.seller}</p>
-                  <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-bold">{order.price}</p>
                     <span className={statusClass(order.status)}>{order.status}</span>
                   </div>
@@ -459,7 +502,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="relative z-0 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Destek Talepleri</h2>
@@ -476,7 +519,7 @@ export default function AdminPage() {
                 <div key={ticket.id} className="rounded-2xl bg-black/30 p-4">
                   <h3 className="font-semibold">{ticket.subject}</h3>
                   <p className="mt-1 text-sm text-gray-400">{ticket.category}</p>
-                  <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-gray-500">
                       {formatDate(ticket.updated_at)}
                     </p>
