@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { withTimeout } from "@/lib/withTimeout";
 import SiteFooter from "@/components/SiteFooter";
+import AIAssistant from "@/components/AIAssistant";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -127,6 +128,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <>
       <Component {...pageProps} />
       {!router.pathname.startsWith("/admin") && <SiteFooter />}
+      {!router.pathname.startsWith("/admin") && <AIAssistant />}
     </>
   );
 }

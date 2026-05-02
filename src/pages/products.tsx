@@ -262,38 +262,39 @@ export default function ProductsPage() {
       <section className="mx-auto max-w-7xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 to-transparent p-8 shadow-xl backdrop-blur-md">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-3xl font-bold">Tüm Ürünler</h2>
-              <p className="mt-2 text-gray-400">
+              <h2 className="text-4xl font-black tracking-tight">Tüm Ürünler</h2>
+              <p className="mt-3 text-gray-300">
                 Kod paketleri, PDF dosyaları, slaytlar, şablonlar ve dijital ürünler.
               </p>
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs font-bold uppercase tracking-widest text-gray-500">
                 Durum: {debugText || "Hazırlanıyor..."}
               </p>
             </div>
 
-            <div className="grid gap-2 md:text-right">
+            <div className="flex flex-col gap-4 md:items-end">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-gray-300 backdrop-blur-sm">
+                  Toplam ürün: <span className="font-black text-white ml-1">{totalCount}</span>
+                </div>
               <button
                 onClick={() => loadProducts(page, false)}
                 disabled={refreshing}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold shadow-lg shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-60 hover:bg-blue-500"
               >
                 {refreshing ? "Yenileniyor..." : "Yenile"}
               </button>
-
-              <div className="rounded-2xl bg-black/30 px-5 py-3 text-sm text-gray-300">
-                Toplam ürün: <span className="font-bold text-white">{totalCount}</span>
               </div>
 
-              <div className="text-xs text-gray-500">
+              <div className="text-xs font-medium text-gray-500">
                 {lastUpdated ? `Son güncelleme: ${lastUpdated}` : "Sayfalı ürün sistemi aktif"}
               </div>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr_auto]">
+          <div className="mt-8 grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr_auto]">
             <input
               value={search}
               onChange={(event) => {
@@ -301,7 +302,7 @@ export default function ProductsPage() {
                 setPage(1);
               }}
               placeholder="Ürün, satıcı, etiket, açıklama veya dosya türü ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none placeholder:text-gray-600 focus:border-blue-500/50 transition-all"
             />
 
             <select
@@ -310,7 +311,7 @@ export default function ProductsPage() {
                 setSelectedCategory(event.target.value);
                 setPage(1);
               }}
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
             >
               {productCategoryFilters.map((category) => (
                 <option key={category}>{category}</option>
@@ -323,7 +324,7 @@ export default function ProductsPage() {
                 setSortBy(event.target.value);
                 setPage(1);
               }}
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none"
+              className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -335,7 +336,7 @@ export default function ProductsPage() {
             <button
               type="button"
               onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="rounded-2xl border border-blue-500/30 px-5 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+              className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-bold text-blue-300 transition-all hover:scale-105 active:scale-95 hover:bg-blue-500/20"
             >
               Gelişmiş Filtreler
               {activeAdvancedCount > 0 ? ` (${activeAdvancedCount})` : ""}
@@ -343,17 +344,17 @@ export default function ProductsPage() {
           </div>
 
           {advancedOpen && (
-            <section className="mt-5 rounded-3xl border border-white/10 bg-black/30 p-5">
+            <section className="mt-5 rounded-3xl border border-white/5 bg-black/20 p-6 shadow-inner">
               <div className="grid gap-4 md:grid-cols-4">
                 <label className="grid gap-2 text-sm text-gray-400">
-                  Dosya Türü
+                  <span className="font-bold text-gray-300">Dosya Türü</span>
                   <select
                     value={selectedFileType}
                     onChange={(event) => {
                       setSelectedFileType(event.target.value);
                       setPage(1);
                     }}
-                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
                     {fileTypeFilters.map((item) => (
                       <option key={item}>{item}</option>
@@ -362,14 +363,14 @@ export default function ProductsPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm text-gray-400">
-                  Güvenlik
+                  <span className="font-bold text-gray-300">Güvenlik</span>
                   <select
                     value={selectedSecurity}
                     onChange={(event) => {
                       setSelectedSecurity(event.target.value);
                       setPage(1);
                     }}
-                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
                     {securityFilters.map((item) => (
                       <option key={item}>{item}</option>
@@ -378,14 +379,14 @@ export default function ProductsPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm text-gray-400">
-                  Lisans
+                  <span className="font-bold text-gray-300">Lisans</span>
                   <select
                     value={selectedLicense}
                     onChange={(event) => {
                       setSelectedLicense(event.target.value);
                       setPage(1);
                     }}
-                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
                     {licenseFilters.map((item) => (
                       <option key={item}>{item}</option>
@@ -394,14 +395,14 @@ export default function ProductsPage() {
                 </label>
 
                 <label className="grid gap-2 text-sm text-gray-400">
-                  Önizleme
+                  <span className="font-bold text-gray-300">Önizleme</span>
                   <select
                     value={selectedPreview}
                     onChange={(event) => {
                       setSelectedPreview(event.target.value);
                       setPage(1);
                     }}
-                    className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
                     {previewFilters.map((item) => (
                       <option key={item}>{item}</option>
@@ -435,15 +436,16 @@ export default function ProductsPage() {
             selectedCategory !== "Tümü" ||
             sortBy !== "newest" ||
             activeAdvancedCount > 0) && (
-            <button onClick={clearFilters} className="text-blue-300 hover:text-blue-200">
-              Filtreleri temizle
+            <button onClick={clearFilters} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-blue-300 transition-all hover:bg-white/10 hover:text-blue-200">
+              ✕ Filtreleri Temizle
             </button>
           )}
         </div>
 
         {loading ? (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <p>Ürünler yükleniyor...</p>
+          <section className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 py-24 text-center">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+            <p className="text-xl font-bold">Ürünler aranıyor...</p>
             <p className="mt-3 text-sm text-gray-500">
               {debugText || "Ürün sorgusu hazırlanıyor."}
             </p>
@@ -454,35 +456,40 @@ export default function ProductsPage() {
               {products.map((product) => (
                 <div
                   key={product.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 transition hover:border-blue-500/40 hover:bg-white/[0.07]"
+                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-2 transition-all duration-300 hover:scale-[1.02] hover:border-blue-500/30 hover:bg-white/[0.08] hover:shadow-2xl hover:shadow-blue-500/10"
                 >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  
+                  <div className="relative">
                   {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="h-52 w-full object-cover"
-                    />
+                    <div className="h-52 w-full overflow-hidden rounded-2xl">
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </div>
                   ) : (
-                    <div className="flex h-52 w-full items-center justify-center bg-black/30 text-gray-500">
+                    <div className="flex h-52 w-full items-center justify-center rounded-2xl bg-black/30 text-gray-500">
                       Görsel yok
                     </div>
                   )}
 
-                  <div className="p-6">
+                  <div className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
                           {product.category}
                         </span>
 
-                        <h2 className="mt-5 text-2xl font-bold">{product.title}</h2>
+                        <h2 className="mt-5 text-2xl font-black tracking-tight transition-colors group-hover:text-blue-300">{product.title}</h2>
 
-                        <p className="mt-2 text-sm text-gray-400">
-                          Satıcı:{" "}
+                        <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-400">
+                          <span className="text-base">👨‍💻</span>{" "}
                           {product.seller_id ? (
                             <a
                               href={`/seller-store/${product.seller_id}`}
-                              className="text-blue-300 hover:text-blue-200"
+                              className="font-medium text-gray-300 transition-colors hover:text-blue-400"
                             >
                               {product.seller}
                             </a>
@@ -498,7 +505,7 @@ export default function ProductsPage() {
                         )}
                       </div>
 
-                      <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
+                      <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-green-400">
                         {product.status}
                       </span>
                     </div>
@@ -536,16 +543,20 @@ export default function ProductsPage() {
                       </div>
                     )}
 
-                    <div className="mt-8 flex items-center justify-between">
-                      <p className="text-3xl font-bold">{product.price}</p>
+                    <div className="mt-8 flex items-end justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Fiyat</span>
+                        <p className="text-3xl font-black text-white">{product.price}</p>
+                      </div>
 
                       <a
                         href={`/product/${product.id}`}
-                        className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-black"
+                        className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
                       >
                         İncele
                       </a>
                     </div>
+                  </div>
                   </div>
                 </div>
               ))}
