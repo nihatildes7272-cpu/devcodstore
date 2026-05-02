@@ -162,6 +162,28 @@ async function runCommand(command, args, cwd) {
   }
 }
 
+async function recoverStuckJobs() {
+  try {
+    const { data, error } = await supabase.rpc("recover_stuck_scan_jobs");
+
+    if (error) {
+      console.error("Stuck job recovery hatası:", error.message);
+      return;
+    }
+
+    const recovered = Number(data?.recovered_count || 0);
+    const failed = Number(data?.failed_count || 0);
+
+    if (recovered > 0 || failed > 0) {
+      console.log(
+        `[${new Date().toISOString()}] Stuck job recovery: recovered=${recovered}, failed=${failed}`
+      );
+    }
+  } catch (error) {
+    console.error("Stuck job recovery exception:", error?.message || error);
+  }
+}
+
 async function claimJob() {
   const { data: jobs, error } = await supabase
     .from("security_scan_jobs")
@@ -995,8 +1017,10 @@ async function main() {
   console.log("Interval:", SCAN_INTERVAL_MS);
 
   await sendHeartbeat("idle", null);
+  await recoverStuckJobs();
 
   while (true) {
+    await recoverStuckJobs();
     await tick();
     await sleep(SCAN_INTERVAL_MS);
   }
