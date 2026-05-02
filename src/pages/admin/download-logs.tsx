@@ -154,22 +154,23 @@ export default function AdminDownloadLogsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
-        İndirme geçmişi yükleniyor...
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+        <div className="animate-spin text-4xl">📊</div>
+        <p className="ml-4 text-xl">İndirme geçmişi yükleniyor...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#070A12] text-white">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
       <section className="mx-auto max-w-7xl px-6 py-10">
         <AdminNavbar />
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mb-8 rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-8 shadow-2xl">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-4xl font-bold">İndirme Geçmişi</h1>
-              <p className="mt-3 text-gray-400">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">İndirme Geçmişi</h1>
+              <p className="mt-3 text-gray-300">
                 Kullanıcıların satın aldığı ürün dosyalarını ne zaman indirdiğini takip et.
               </p>
             </div>
@@ -177,9 +178,9 @@ export default function AdminDownloadLogsPage() {
             <button
               onClick={() => loadLogs(page, false)}
               disabled={refreshing}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold hover:bg-blue-500 disabled:opacity-60"
+              className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white hover:from-blue-500 hover:to-blue-600 disabled:opacity-60 shadow-lg transition-all duration-200"
             >
-              {refreshing ? "Yenileniyor..." : "Yenile"}
+              {refreshing ? "🔄 Yenileniyor..." : "🔄 Yenile"}
             </button>
           </div>
         </section>
@@ -191,14 +192,14 @@ export default function AdminDownloadLogsPage() {
         )}
 
         <section className="mb-8 grid gap-6 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Kayıt</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalCount}</h2>
+          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm text-blue-300 font-medium">📊 Toplam Kayıt</p>
+            <h2 className="mt-3 text-4xl font-bold text-blue-400">{totalCount}</h2>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Gösterilen</p>
-            <h2 className="mt-3 text-4xl font-bold text-blue-300">{visibleRange}</h2>
+          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-green-500/10 to-green-600/5 p-6 shadow-lg backdrop-blur-sm">
+            <p className="text-sm text-green-300 font-medium">👀 Gösterilen</p>
+            <h2 className="mt-3 text-4xl font-bold text-green-400">{visibleRange}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
