@@ -75,7 +75,7 @@ export default function AdminNavbar() {
           />
           {/* Menu */}
           <div className="fixed left-6 right-6 top-48 z-[9999] rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl max-h-[70vh] overflow-y-auto">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3 mb-6">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;
 
@@ -120,6 +120,13 @@ export default function AdminNavbar() {
             >
               🚪 Çıkış Yap
             </button>
+          </div>
+
+          <div className="text-center border-t border-white/20 pt-4">
+            <h2 className="text-xl font-bold text-white mb-2">devcodstore Admin</h2>
+            <p className="text-sm text-gray-300">
+              Şu an: <span className="text-blue-400 font-medium">{currentPage}</span>
+            </p>
           </div>
           </div>
         </div>
