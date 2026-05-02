@@ -536,41 +536,56 @@ export default function AdminProductsPage() {
         )}
 
         <section className="grid gap-6 md:grid-cols-5">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam</p>
-            <h2 className="mt-3 text-4xl font-bold">{totalProducts}</h2>
+          <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
+            <div className="relative">
+              <p className="text-sm text-blue-300 font-medium">Toplam</p>
+              <h2 className="mt-3 text-4xl font-bold text-white">{totalProducts}</h2>
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Onay Bekleyen</p>
-            <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-              {pendingProducts}
-            </h2>
+          <div className="relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/5"></div>
+            <div className="relative">
+              <p className="text-sm text-yellow-300 font-medium">Onay Bekleyen</p>
+              <h2 className="mt-3 text-4xl font-bold text-yellow-300">
+                {pendingProducts}
+              </h2>
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yayında</p>
-            <h2 className="mt-3 text-4xl font-bold text-green-300">
-              {liveProducts}
-            </h2>
+          <div className="relative overflow-hidden rounded-3xl border border-green-500/30 bg-gradient-to-br from-green-500/10 to-emerald-600/5 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5"></div>
+            <div className="relative">
+              <p className="text-sm text-green-300 font-medium">Yayında</p>
+              <h2 className="mt-3 text-4xl font-bold text-green-300">
+                {liveProducts}
+              </h2>
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Reddedildi</p>
-            <h2 className="mt-3 text-4xl font-bold text-red-300">
-              {rejectedProducts}
-            </h2>
+          <div className="relative overflow-hidden rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/10 to-rose-600/5 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-rose-500/5"></div>
+            <div className="relative">
+              <p className="text-sm text-red-300 font-medium">Reddedildi</p>
+              <h2 className="mt-3 text-4xl font-bold text-red-300">
+                {rejectedProducts}
+              </h2>
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Yayından Kaldırıldı</p>
-            <h2 className="mt-3 text-4xl font-bold text-gray-300">
-              {unpublishedProducts}
-            </h2>
+          <div className="relative overflow-hidden rounded-3xl border border-gray-500/30 bg-gradient-to-br from-gray-500/10 to-slate-600/5 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-500/5 to-slate-500/5"></div>
+            <div className="relative">
+              <p className="text-sm text-gray-300 font-medium">Yayından Kaldırıldı</p>
+              <h2 className="mt-3 text-4xl font-bold text-gray-300">
+                {unpublishedProducts}
+              </h2>
+            </div>
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-3">
+        <section className="mt-10 rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-2xl">
           <div className="grid gap-3 md:grid-cols-5">
             {tabs.map((tab) => {
               const count =
@@ -584,8 +599,8 @@ export default function AdminProductsPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={
                     activeTab === tab.key
-                      ? "rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
-                      : "rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-300 hover:bg-white/10"
+                      ? "rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-blue-500/50 transition-all duration-200"
+                      : "rounded-2xl border border-white/30 bg-gradient-to-r from-white/5 to-white/10 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/20 hover:border-white/50 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                   }
                 >
                   {tab.label} ({count})
@@ -595,26 +610,31 @@ export default function AdminProductsPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <section className="mt-8 rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-8 shadow-2xl">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {tabs.find((tab) => tab.key === activeTab)?.label}
               </h2>
               <p className="mt-2 text-sm text-gray-400">
-                Gösterilen ürün sayısı: {filteredProducts.length}
+                Gösterilen ürün sayısı: <span className="text-blue-400 font-medium">{filteredProducts.length}</span>
               </p>
             </div>
 
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ürün, satıcı, kategori, etiket veya dosya türü ara..."
-              className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-white outline-none placeholder:text-gray-500 md:w-96"
-            />
+            <div className="relative">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Ürün, satıcı, kategori, etiket veya dosya türü ara..."
+                className="rounded-2xl border border-white/20 bg-black/50 px-6 py-4 text-white outline-none placeholder:text-gray-500 md:w-96 backdrop-blur-sm focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                🔍
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-6 grid gap-6">
             {filteredProducts.map((product) => {
               const report = product.security_scan_report || {};
               const issues = Array.isArray(report.issues) ? report.issues : [];
@@ -622,8 +642,9 @@ export default function AdminProductsPage() {
                 openPanel?.productId === product.id ? openPanel.type : null;
 
               return (
-                <div key={product.id} className="rounded-3xl bg-black/30 p-5">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div key={product.id} className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex flex-col gap-4 md:flex-row">
                       {product.image_url && (
                         <img
@@ -685,60 +706,62 @@ export default function AdminProductsPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-2 lg:min-w-48">
+                    <div className="grid gap-3 lg:min-w-48">
                       <a
                         href={`/product/${product.id}`}
-                        className="rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-black"
+                        className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg hover:from-blue-500 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
                       >
-                        İncele
+                        👁️ İncele
                       </a>
 
                       <button
                         onClick={() => togglePanel(product.id, "security")}
                         className={
                           currentPanel === "security"
-                            ? "rounded-2xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-purple-500/30 px-4 py-2 text-sm font-semibold text-purple-300 hover:bg-purple-500/10"
+                            ? "rounded-2xl bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-purple-500/50"
+                            : "rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-purple-600/5 px-4 py-3 text-sm font-semibold text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                         }
                       >
-                        Güvenlik
+                        🛡️ Güvenlik
                       </button>
 
                       <button
                         onClick={() => togglePanel(product.id, "manage")}
                         className={
                           currentPanel === "manage"
-                            ? "rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-blue-500/30 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+                            ? "rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-blue-500/50"
+                            : "rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-blue-600/5 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                         }
                       >
-                        Yönet
+                        ⚙️ Yönet
                       </button>
 
                       <button
                         onClick={() => togglePanel(product.id, "report")}
                         className={
                           currentPanel === "report"
-                            ? "rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-indigo-500/30 px-4 py-2 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/10"
+                            ? "rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-indigo-500/50"
+                            : "rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 to-indigo-600/5 px-4 py-3 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/20 hover:border-indigo-500/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                         }
                       >
-                        Rapor
+                        📊 Rapor
                       </button>
                     </div>
                   </div>
 
                   {currentPanel === "security" && (
-                    <section className="mt-6 rounded-3xl border border-purple-500/20 bg-purple-500/10 p-5">
-                      <h4 className="text-xl font-bold">Güvenlik İşlemleri</h4>
+                    <section className="mt-8 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-purple-600/5 backdrop-blur-xl p-6 shadow-lg">
+                      <h4 className="text-xl font-bold text-purple-300 mb-6 flex items-center gap-2">
+                        🛡️ Güvenlik İşlemleri
+                      </h4>
 
-                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-4 md:grid-cols-3 mb-6">
                         <button
                           onClick={() => scanProduct(product.id)}
                           disabled={scanningProductId === product.id}
-                          className="rounded-2xl bg-purple-600 px-4 py-3 text-sm font-semibold hover:bg-purple-500 disabled:opacity-60"
+                          className="rounded-2xl bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 text-sm font-semibold text-white hover:from-purple-500 hover:to-purple-600 disabled:opacity-60 shadow-lg transition-all duration-200 transform hover:scale-105"
                         >
-                          {scanningProductId === product.id ? "Taranıyor..." : "Otomatik Tara"}
+                          {scanningProductId === product.id ? "🔄 Taranıyor..." : "🔍 Otomatik Tara"}
                         </button>
 
                         <button
@@ -747,51 +770,61 @@ export default function AdminProductsPage() {
                             queuingStrongScanProductId === product.id ||
                             (!product.file_path && !product.quarantine_file_path)
                           }
-                          className="rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
+                          className="rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-3 text-sm font-semibold text-white hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-60 shadow-lg transition-all duration-200 transform hover:scale-105"
                         >
                           {!product.file_path && !product.quarantine_file_path
-                            ? "Dosya Yok"
+                            ? "📁 Dosya Yok"
                             : queuingStrongScanProductId === product.id
-                            ? "Kuyruğa Alınıyor..."
-                            : "Güçlü Tara"}
+                            ? "⏳ Kuyruğa Alınıyor..."
+                            : "🔬 Güçlü Tara"}
                         </button>
 
                         <a
                           href="/admin/scan-jobs"
-                          className="rounded-2xl border border-white/15 px-4 py-3 text-center text-sm font-semibold hover:bg-white/10"
+                          className="rounded-2xl border border-white/30 bg-gradient-to-r from-white/10 to-white/5 px-4 py-3 text-center text-sm font-semibold text-gray-200 hover:bg-white/20 hover:border-white/50 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
-                          Tarama Kuyruğu
+                          📋 Tarama Kuyruğu
                         </a>
                       </div>
 
-                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-4 md:grid-cols-3 mb-6">
                         <button
                           onClick={() => updateSecurityStatus(product.id, "Güvenli")}
-                          className="rounded-2xl border border-green-500/30 px-4 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/10"
+                          className="rounded-2xl border border-green-500/40 bg-gradient-to-r from-green-500/10 to-green-600/5 px-4 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/20 hover:border-green-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
-                          Güvenli İşaretle
+                          ✅ Güvenli İşaretle
                         </button>
 
                         <button
                           onClick={() => updateSecurityStatus(product.id, "Manuel İnceleme")}
-                          className="rounded-2xl border border-blue-500/30 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+                          className="rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/5 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
-                          İncelemeye Al
+                          🔍 İncelemeye Al
                         </button>
 
                         <button
                           onClick={() => updateSecurityStatus(product.id, "Riskli")}
-                          className="rounded-2xl border border-red-500/30 px-4 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                          className="rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-500/10 to-red-600/5 px-4 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/20 hover:border-red-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
-                          Riskli İşaretle
+                          ⚠️ Riskli İşaretle
                         </button>
                       </div>
 
-                      <div className="mt-5 rounded-2xl bg-black/30 p-4 text-sm text-gray-300">
-                        <p>Güvenlik notu: {product.security_note || "Not yok"}</p>
-                        <p className="mt-1">Tarama skoru: {product.security_scan_score ?? 0}</p>
-                        <p className="mt-1">Son tarama: {formatDate(product.security_scanned_at)}</p>
-                        <p className="mt-1">Güçlü tarama: {product.strong_scan_status || "Yok"}</p>
+                      <div className="rounded-2xl bg-gradient-to-r from-black/50 to-slate-900/50 backdrop-blur-sm p-4 border border-white/10">
+                        <div className="grid gap-2 text-sm">
+                          <p className="text-gray-300">
+                            📝 <span className="font-medium">Güvenlik notu:</span> {product.security_note || "Not yok"}
+                          </p>
+                          <p className="text-gray-300">
+                            📊 <span className="font-medium">Tarama skoru:</span> <span className="text-blue-400">{product.security_scan_score ?? 0}</span>
+                          </p>
+                          <p className="text-gray-300">
+                            🕒 <span className="font-medium">Son tarama:</span> {formatDate(product.security_scanned_at)}
+                          </p>
+                          <p className="text-gray-300">
+                            🔬 <span className="font-medium">Güçlü tarama:</span> {product.strong_scan_status || "Yok"}
+                          </p>
+                        </div>
                       </div>
                     </section>
                   )}
