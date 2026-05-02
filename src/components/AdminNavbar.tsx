@@ -56,7 +56,13 @@ export default function AdminNavbar() {
       </div>
 
       {menuOpen && (
-        <div className="absolute left-0 right-0 top-28 z-50 rounded-3xl border border-white/20 bg-gradient-to-b from-slate-900/95 to-slate-800/95 backdrop-blur-xl p-6 shadow-2xl">
+        <div>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            onClick={() => setMenuOpen(false)}
+          />
+          {/* Menu */}
+          <div className="absolute left-0 right-0 top-28 z-50 rounded-3xl border border-white/30 bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl">
           <div className="grid gap-4 md:grid-cols-3">
             {adminLinks.map((link) => {
               const isActive = router.pathname === link.href;
@@ -65,10 +71,11 @@ export default function AdminNavbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={() => setMenuOpen(false)}
                   className={
                     isActive
-                      ? "rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transform scale-105"
-                      : "rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+                      ? "rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-blue-500/50 animate-pulse"
+                      : "rounded-2xl border border-white/30 bg-gradient-to-r from-white/5 to-white/10 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/20 hover:border-white/50 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                   }
                 >
                   {link.label}
@@ -78,24 +85,30 @@ export default function AdminNavbar() {
 
             <Link
               href="/"
-              className="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/20 hover:border-green-500/60 transition-all duration-200"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-2xl border border-green-500/40 bg-gradient-to-r from-green-500/10 to-green-600/10 px-5 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/20 hover:border-green-500/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
             >
               🏠 Siteye Dön
             </Link>
 
             <Link
               href="/account"
-              className="rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-2xl border border-white/30 bg-gradient-to-r from-white/5 to-white/10 px-5 py-3 text-sm font-semibold text-gray-200 hover:bg-white/20 hover:border-white/50 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
             >
               👤 Hesabım
             </Link>
 
             <button
-              onClick={handleLogout}
-              className="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-left text-sm font-semibold text-red-300 hover:bg-red-500/20 hover:border-red-500/60 transition-all duration-200"
+              onClick={() => {
+                handleLogout();
+                setMenuOpen(false);
+              }}
+              className="rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-500/10 to-red-600/10 px-5 py-3 text-left text-sm font-semibold text-red-300 hover:bg-red-500/20 hover:border-red-500/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
             >
               🚪 Çıkış Yap
             </button>
+          </div>
           </div>
         </div>
       )}
