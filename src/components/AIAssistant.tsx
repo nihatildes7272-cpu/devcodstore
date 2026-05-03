@@ -1,135 +1,136 @@
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/router";
 
 type Message = {
-  id: string;
   role: "user" | "assistant";
   content: string;
 };
 
-export default function AIAssistant() {
+export default function AIChat() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Merhaba! 👋 devcodstore'da sana nasıl yardımcı olabilirim? Ürünler, satıcı olmak veya destek hakkında sorular sorabilirsin.",
-    },
+    { role: "assistant", content: "Merhaba! devcodstore asistanına hoş geldin. Sana nasıl yardımcı olabilirim?" }
   ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Yeni mesaj geldiğinde otomatik olarak en alta kaydır
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (isOpen) {
-      scrollToBottom();
-    }
-  }, [messages, isTyping, isOpen]);
+    scrollToBottom();
+  }, [messages, loading]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const sendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    // Boş mesaj gönderilmesini engelle (sadece boşluk karakteri varsa göndermez)
+    if (!message.trim()) return;
 
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: input };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setInput("");
-    setIsTyping(true);
-
-    // API'ye göndermek için geçmiş mesajların formatını hazırlıyoruz
-    const history = messages.map(m => ({ role: m.role, content: m.content }));
+    const userMsg = message.trim();
+    setMessage(""); // Input'u temizle
+    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setLoading(true);
 
     try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, history })
+      const response = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg }),
       });
-      const data = await res.json();
 
-      setMessages((prev) => [...prev, { 
-        id: Date.now().toString(), 
-        role: "assistant", 
-        content: data.reply || "Bir hata oluştu." 
-      }]);
+      const data = await response.json();
+
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+
+      // API'den bir yönlendirme adresi geldiyse, kullanıcıyı ilgili sayfaya yönlendir
+      if (data.redirectUrl) {
+        setTimeout(() => {
+          router.push(data.redirectUrl);
+          setIsOpen(false); // Yönlendirme sonrası sohbet penceresini otomatik kapat
+        }, 2000); // Kullanıcının önce asistanın mesajını okuyabilmesi için 2 saniye beklet
+      }
     } catch (error) {
-      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "assistant", content: "Bağlantı hatası oluştu. Lütfen tekrar dene." }]);
+      console.error("Chat error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Üzgünüm, şu anda sistemsel bir yoğunluk var. Lütfen biraz sonra tekrar dene." },
+      ]);
     } finally {
-      setIsTyping(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
-      {/* Chat Window */}
+    <div className="fixed bottom-6 right-6 z-[100]">
+      {/* Sohbet Penceresi */}
       {isOpen && (
-        <div className="mb-4 flex h-[500px] max-h-[70vh] w-[350px] max-w-[90vw] flex-col overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-b from-slate-900/95 to-slate-800/95 shadow-2xl backdrop-blur-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-10">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 bg-white/5 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-sm shadow-lg">
-                🤖
-              </div>
-              <div>
-                <h3 className="font-bold text-white">devcodstore AI</h3>
-                <p className="text-[10px] uppercase tracking-widest text-green-400">Çevrimiçi</p>
-              </div>
-            </div>
+        <div className="mb-4 flex h-[450px] w-80 flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0B1020] shadow-2xl transition-all sm:w-96">
+          {/* Başlık */}
+          <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
+            <h3 className="font-bold text-white">devcodstore Asistan</h3>
             <button
               onClick={() => setIsOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-gray-400 transition hover:bg-white/10 hover:text-white"
+              className="text-white hover:text-gray-200"
             >
               ✕
             </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => (
+          {/* Mesajlar Alanı */}
+          <div className="flex-1 space-y-4 overflow-y-auto p-5">
+            {messages.map((msg, index) => (
               <div
-                key={msg.id}
+                key={index}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed shadow-md ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-blue-600 text-white rounded-br-sm"
-                      : "bg-white/10 text-gray-200 border border-white/10 rounded-bl-sm"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white/10 text-gray-200"
                   }`}
                 >
                   {msg.content}
                 </div>
               </div>
             ))}
-            {isTyping && (
+            
+            {/* Yükleniyor / Yazıyor Animasyonu */}
+            {loading && (
               <div className="flex justify-start">
-                <div className="bg-white/10 text-gray-400 border border-white/10 rounded-2xl rounded-bl-sm p-3 text-sm flex gap-1 items-center shadow-md">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+                <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm text-gray-400 flex items-center gap-2">
+                  <span>Yazıyor</span>
+                  <span className="flex gap-0.5">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]"></span>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400"></span>
+                  </span>
                 </div>
               </div>
             )}
+            
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
-          <form onSubmit={handleSend} className="border-t border-white/10 bg-black/20 p-3">
-            <div className="flex gap-2">
+          {/* Mesaj Gönderme Formu */}
+          <form onSubmit={sendMessage} className="border-t border-white/10 bg-white/5 p-4">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="Bir soru sor..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none focus:border-blue-500/50 transition-colors"
+                className="flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-blue-500/50"
               />
               <button
                 type="submit"
-                disabled={!input.trim() || isTyping}
-                className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                disabled={!message.trim() || loading}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition hover:bg-blue-500 disabled:opacity-50"
               >
                 ➤
               </button>
@@ -138,15 +139,13 @@ export default function AIAssistant() {
         </div>
       )}
 
-      {/* Floating Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="group flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-2xl shadow-xl shadow-blue-600/30 transition-all duration-300 hover:scale-110 active:scale-95 border border-white/20"
-        >
-          <span className="group-hover:animate-pulse">✨</span>
-        </button>
-      )}
+      {/* Açma/Kapatma Butonu */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-xl text-white shadow-lg shadow-blue-600/30 transition-transform hover:scale-110 hover:bg-blue-500"
+      >
+        {isOpen ? "✕" : "💬"}
+      </button>
     </div>
   );
 }

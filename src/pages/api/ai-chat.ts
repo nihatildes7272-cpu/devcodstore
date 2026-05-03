@@ -15,71 +15,63 @@ export default async function handler(
   }
 
   try {
-    // Google Gemini API anahtarını çevre değişkenlerinden alıyoruz
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(200).json({
-        reply: "Sistemde yapay zeka API anahtarı (GEMINI_API_KEY) bulunamadı. Lütfen .env.local dosyanı kontrol et.",
-      });
-    }
-
-    // Sistem talimatı (Yapay zekanın kimliği)
-    const systemPrompt = {
-      parts: [
-        {
-          text: "Sen devcodstore adlı dijital kod, hazır web sitesi ve proje pazarının resmi yapay zeka asistanısın. Kullanıcılara nazik, yardımsever ve profesyonel bir dille destek vereceksin. Ürün satın alma, satıcı olma, dosya indirme gibi konularda kısa ve net bir şekilde yol gösterebilirsin.",
-        },
-      ],
-    };
-
-    // Geçmiş mesajları Gemini'nin anlayacağı formata (user/model) çeviriyoruz
-    const formattedHistory = (history || []).map((msg: any) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
-    // Gemini API'si sohbetin her zaman 'user' ile başlamasını bekler. 
-    // Ön yüzdeki ilk "Merhaba" mesajı model'den geldiği için onu API'ye gönderirken filtreliyoruz.
-    if (formattedHistory.length > 0 && formattedHistory[0].role === "model") {
-      formattedHistory.shift();
-    }
-
-    // Yeni mesajı ekliyoruz
-    const contents = [
-      ...formattedHistory,
-      { role: "user", parts: [{ text: message }] },
-    ];
-
-    // Google Gemini API'sine (gemini-1.5-flash) istek atıyoruz
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents,
-          systemInstruction: systemPrompt,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error?.message || "Yapay zeka yanıt veremedi.");
-    }
-
-    // Gelen yanıtı döndürüyoruz
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Dış API'lere (Gemini, OpenAI vb.) bağlantı kaldırıldı.
+    // Tamamen yerel, kurallı (rule-based) asistan mantığı eklendi.
+    const lowerMessage = message.toLowerCase();
     
-    if (!reply) {
-      throw new Error("Boş yanıt alındı.");
+    // Hiçbir kural eşleşmediğinde verilecek rastgele yanıtlar
+    const fallbackMessages = [
+      "Üzgünüm, şu anda tam olarak ne demek istediğini anlayamıyorum. Sana ürünler veya site hakkında nasıl yardımcı olabilirim?",
+      "Bunu tam olarak anlayamadım. Lütfen ürünler, satıcı olma süreci veya indirmeler hakkında bir soru sorar mısın?",
+      "Bu konuda bilgim yok. Ancak devcodstore'daki dijital projeler ve kodlar hakkında seve seve yardımcı olabilirim."
+    ];
+    let reply = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+    let redirectUrl = null;
+
+    // Düzenli ifadeler (Regex) kullanılarak kelime dağarcığı genişletildi
+    if (lowerMessage.match(/(merhaba|selam|naber|günaydın|iyi günler|iyi akşamlar)/)) {
+      reply = "Merhaba! devcodstore asistanına hoş geldin. Sana nasıl yardımcı olabilirim?";
+    } else if (lowerMessage.match(/(hesap|profil|bilgilerim)/)) {
+      reply = "Hesap bilgilerini, siparişlerini ve ayarlarını Hesabım sayfasından yönetebilirsin. Seni oraya yönlendiriyorum...";
+      redirectUrl = "/account";
+    } else if (lowerMessage.match(/(giriş|kayıt|üye|oturum)/)) {
+      reply = "Sitemize giriş yapmak veya yeni bir hesap oluşturmak için giriş yapma sayfasını kullanabilirsin.";
+      redirectUrl = "/login";
+    } else if (lowerMessage.match(/(satıcı|satış|mağaza|dükkan)/)) {
+      reply = "Satıcı olmak ve kendi dijital ürünlerini satmaya başlamak için Satıcı Paneli'ne göz atabilirsin.";
+      redirectUrl = "/seller";
+    } else if (lowerMessage.match(/(sepet|satın|ödeme|almak istiyorum)/)) {
+      reply = "Beğendiğin ürünleri sepetine ekleyip güvenle satın alabilirsin. Sepetine yönlendiriyorum...";
+      redirectUrl = "/cart";
+    } else if (lowerMessage.match(/(indir|dosya|kütüphane|aldıklarım|satın aldığım)/)) {
+      reply = "Satın aldığın dosyalara 'Dosyalarım' sayfasından (Kütüphane) ulaşabilir ve istediğin zaman indirebilirsin.";
+      redirectUrl = "/library";
+    } else if (lowerMessage.match(/(iade|iptal|geri ödeme)/)) {
+      reply = "Dijital ürünlerde iade işlemleri satıcının iade politikasına ve dosyayı indirip indirmediğine bağlıdır. Destek sayfasından bir bilet (ticket) oluşturabilirsin.";
+      redirectUrl = "/support";
+    } else if (lowerMessage.match(/(destek|yardım|iletişim|sorun|hata)/)) {
+      reply = "Herhangi bir problemde veya sorunda destek sisteminden bizimle iletişime geçebilirsin. Destek sayfasına yönlendiriliyorsun...";
+      redirectUrl = "/support";
+    } else if (lowerMessage.match(/(kod|yazılım|proje|script|tema|şablon|ürün)/)) {
+      reply = "Sitemizde birçok farklı yazılım dili ve teknolojisinde projeler mevcut. Ürünleri Keşfet sayfasından tümünü inceleyebilirsin.";
+      redirectUrl = "/products";
+    } else if (lowerMessage.match(/(fiyat|ücret|kaç para|ne kadar)/)) {
+      reply = "Ürünlerimizin fiyatları satıcılar tarafından belirlenmektedir. İlgilendiğin ürünün detay sayfasından fiyatına ulaşabilirsin.";
+    } else if (lowerMessage.match(/(favori|istek listesi|beğendiklerim|kaydettiklerim)/)) {
+      reply = "Beğendiğin ve kaydettiğin ürünleri İstek Listesi sayfasında bulabilirsin. Seni oraya yönlendiriyorum...";
+      redirectUrl = "/favorites";
+    } else if (lowerMessage.match(/(ara|bul|nasıl bulurum)/)) {
+      reply = "İhtiyacın olan ürünleri bulmak için sayfanın üst kısmındaki arama çubuğunu kullanabilir veya kategorilere göz atabilirsin.";
+    } else if (lowerMessage.match(/(nedir|kimdir|hakkında)/)) {
+      reply = "devcodstore; yazılımcıların ve tasarımcıların kendi dijital ürünlerini (kod, tema, e-kitap vb.) güvenle satabileceği ve ihtiyaç duydukları projeleri satın alabileceği bir dijital pazaryeridir.";
+      redirectUrl = "/about";
+    } else if (lowerMessage.match(/(ödeme yöntemleri|kredi kartı|taksit|havale|banka kartı)/)) {
+      reply = "Sitemizde kredi kartı ve banka kartı ile güvenli bir şekilde (3D Secure destekli) ödeme yapabilirsin. Satın alım sonrası ürünler anında hesabına tanımlanır.";
+    } else if (lowerMessage.match(/(teşekkür|sağ ol|eyvallah)/)) {
+      reply = "Rica ederim! Başka bir sorunun olursa ben buralardayım.";
     }
 
-    res.status(200).json({ reply });
+    res.status(200).json({ reply, redirectUrl });
   } catch (error) {
     console.error("AI Chat Error:", error);
     res.status(500).json({
