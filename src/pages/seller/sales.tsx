@@ -13,6 +13,10 @@ type Order = {
   seller_id: string | null;
   status: string;
   created_at: string;
+  gross_amount?: number | null;
+  commission_rate?: number | null;
+  commission_amount?: number | null;
+  seller_net_amount?: number | null;
 };
 
 export default function SellerSalesPage() {
@@ -54,8 +58,14 @@ export default function SellerSalesPage() {
   }, []);
 
   function parsePrice(value: string) {
-    const numberText = value.replace(/[^\d]/g, "");
-    return Number(numberText || 0);
+    const clean = value.replace(/[^\d,.-]/g, "");
+    const normalized = clean.includes(",")
+      ? clean.replace(/\./g, "").replace(",", ".")
+      : /\.\d{1,2}$/.test(clean)
+        ? clean
+        : clean.replace(/\./g, "");
+    const numberValue = Number(normalized);
+    return Number.isFinite(numberValue) ? numberValue : 0;
   }
 
   function formatMoney(value: number) {
@@ -82,6 +92,20 @@ export default function SellerSalesPage() {
     return "rounded-full bg-yellow-500/20 px-3 py-1 text-xs text-yellow-300";
   }
 
+  function grossAmount(order: Order) {
+    return Number(order.gross_amount ?? parsePrice(order.price));
+  }
+
+  function commissionAmount(order: Order) {
+    if (typeof order.commission_amount === "number") return order.commission_amount;
+    return grossAmount(order) * (Number(order.commission_rate ?? 20) / 100);
+  }
+
+  function sellerNetAmount(order: Order) {
+    if (typeof order.seller_net_amount === "number") return order.seller_net_amount;
+    return grossAmount(order) - commissionAmount(order);
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#070A12] text-white">
@@ -91,7 +115,9 @@ export default function SellerSalesPage() {
   }
 
   const completedOrders = orders.filter((order) => order.status === "Tamamlandı");
-  const totalRevenue = completedOrders.reduce((sum, order) => sum + parsePrice(order.price), 0);
+  const grossRevenue = completedOrders.reduce((sum, order) => sum + grossAmount(order), 0);
+  const totalCommission = completedOrders.reduce((sum, order) => sum + commissionAmount(order), 0);
+  const totalRevenue = completedOrders.reduce((sum, order) => sum + sellerNetAmount(order), 0);
 
   return (
     <main className="min-h-screen bg-[#070A12] text-white">
@@ -124,17 +150,25 @@ export default function SellerSalesPage() {
           </div>
         )}
 
-        <section className="grid gap-6 md:grid-cols-3">
+        <section className="grid gap-6 md:grid-cols-4">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Toplam Satış</p>
             <h2 className="mt-3 text-4xl font-bold">{completedOrders.length}</h2>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-gray-400">Toplam Kazanç</p>
+            <p className="text-sm text-gray-400">Net Kazanç</p>
             <h2 className="mt-3 text-4xl font-bold text-green-300">
               {formatMoney(totalRevenue)}
             </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Platform Komisyonu</p>
+            <h2 className="mt-3 text-4xl font-bold text-blue-300">
+              {formatMoney(totalCommission)}
+            </h2>
+            <p className="mt-2 text-xs text-gray-500">Brüt: {formatMoney(grossRevenue)}</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -159,7 +193,12 @@ export default function SellerSalesPage() {
                 </div>
 
                 <div className="grid gap-3 md:text-right">
-                  <p className="text-3xl font-bold">{order.price}</p>
+                  <div>
+                    <p className="text-3xl font-bold">{formatMoney(sellerNetAmount(order))}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Brüt {formatMoney(grossAmount(order))} · Komisyon {formatMoney(commissionAmount(order))}
+                    </p>
+                  </div>
 
                   {order.product_id && (
                     <a

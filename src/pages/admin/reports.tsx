@@ -29,6 +29,10 @@ type Order = {
   seller: string;
   status: string;
   created_at: string;
+  gross_amount?: number | null;
+  commission_rate?: number | null;
+  commission_amount?: number | null;
+  seller_net_amount?: number | null;
 };
 
 export default function AdminReportsPage() {
@@ -85,8 +89,12 @@ export default function AdminReportsPage() {
   }, []);
 
   function parsePrice(price: string) {
-    const numberText = price.replace(/[^\d]/g, "");
-    return Number(numberText || 0);
+    const normalized = price
+      .replace(/[^\d,.-]/g, "")
+      .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+      .replace(",", ".");
+
+    return Number.parseFloat(normalized) || 0;
   }
 
   function formatMoney(value: number) {
@@ -99,11 +107,30 @@ export default function AdminReportsPage() {
 
   const validOrders = orders.filter((order) => order.status !== "İade Edildi");
 
-  const totalRevenue = validOrders.reduce((total, order) => {
-    return total + parsePrice(order.price);
-  }, 0);
+  function grossAmount(order: Order) {
+    return order.gross_amount ?? parsePrice(order.price);
+  }
 
-  const platformRevenue = Math.round(totalRevenue * 0.15);
+  function commissionAmount(order: Order) {
+    if (order.commission_amount !== null && order.commission_amount !== undefined) {
+      return order.commission_amount;
+    }
+
+    return grossAmount(order) * ((order.commission_rate ?? 20) / 100);
+  }
+
+  function sellerNetAmount(order: Order) {
+    if (order.seller_net_amount !== null && order.seller_net_amount !== undefined) {
+      return order.seller_net_amount;
+    }
+
+    return grossAmount(order) - commissionAmount(order);
+  }
+
+  const totalRevenue = validOrders.reduce((total, order) => total + grossAmount(order), 0);
+
+  const platformRevenue = validOrders.reduce((total, order) => total + commissionAmount(order), 0);
+  const sellerPayoutTotal = validOrders.reduce((total, order) => total + sellerNetAmount(order), 0);
 
   const liveProducts = products.filter((product) => product.status === "Yayında").length;
   const pendingProducts = products.filter((product) => product.status === "Onay Bekliyor").length;
@@ -128,7 +155,9 @@ export default function AdminReportsPage() {
     return acc;
   }, {});
 
-  const monthlyStats = orders.reduce<Record<string, { orders: number; revenue: number }>>(
+  const monthlyStats = orders.reduce<
+    Record<string, { orders: number; revenue: number; commission: number; sellerNet: number }>
+  >(
     (acc, order) => {
       const date = new Date(order.created_at);
       const key = date.toLocaleDateString("tr-TR", {
@@ -140,13 +169,17 @@ export default function AdminReportsPage() {
         acc[key] = {
           orders: 0,
           revenue: 0,
+          commission: 0,
+          sellerNet: 0,
         };
       }
 
       acc[key].orders += 1;
 
       if (order.status !== "İade Edildi") {
-        acc[key].revenue += parsePrice(order.price);
+        acc[key].revenue += grossAmount(order);
+        acc[key].commission += commissionAmount(order);
+        acc[key].sellerNet += sellerNetAmount(order);
       }
 
       return acc;
@@ -197,8 +230,8 @@ export default function AdminReportsPage() {
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
           {[
             { label: "Toplam Ciro", value: formatMoney(totalRevenue), color: "text-emerald-400" },
-            { label: "Platform Kazancı", value: formatMoney(platformRevenue), color: "text-blue-400", sub: "Demo oran: %15" },
-            { label: "Toplam Sipariş", value: orders.length, color: "text-white" },
+            { label: "Platform Kazancı", value: formatMoney(platformRevenue), color: "text-blue-400", sub: "Sipariş komisyonlarından" },
+            { label: "Satıcı Net Payı", value: formatMoney(sellerPayoutTotal), color: "text-cyan-300" },
             { label: "Toplam Kullanıcı", value: profiles.length, color: "text-white" },
           ].map((stat, i) => (
             <div key={i} className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-6 shadow-lg backdrop-blur-sm">
@@ -313,7 +346,7 @@ export default function AdminReportsPage() {
             {monthlyList.map(([month, data]) => (
               <div
                 key={month}
-                className="group grid gap-4 rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08] md:grid-cols-3 md:items-center"
+                className="group grid gap-4 rounded-3xl border border-white/5 bg-white/5 p-6 transition hover:bg-white/[0.08] md:grid-cols-4 md:items-center"
               >
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Dönem</p>
@@ -328,6 +361,12 @@ export default function AdminReportsPage() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Ciro</p>
                   <h3 className="mt-1 text-xl font-black text-emerald-400">{formatMoney(data.revenue)}</h3>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Komisyon / Net</p>
+                  <h3 className="mt-1 text-lg font-black text-blue-300">{formatMoney(data.commission)}</h3>
+                  <p className="mt-1 text-xs text-gray-500">Satıcı: {formatMoney(data.sellerNet)}</p>
                 </div>
               </div>
             ))}

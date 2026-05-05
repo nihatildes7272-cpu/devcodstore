@@ -12,6 +12,10 @@ type Order = {
   seller_id?: string | null;
   status: string;
   created_at: string;
+  gross_amount?: number | null;
+  commission_rate?: number | null;
+  commission_amount?: number | null;
+  seller_net_amount?: number | null;
 };
 
 type OrderTab = "Tümü" | "Tamamlandı" | "Beklemede" | "İade Edildi";
@@ -131,8 +135,14 @@ export default function AdminOrdersPage() {
   }, [page]);
 
   function parsePrice(price: string) {
-    const numberText = price.replace(/[^\d]/g, "");
-    return Number(numberText || 0);
+    const clean = price.replace(/[^\d,.-]/g, "");
+    const normalized = clean.includes(",")
+      ? clean.replace(/\./g, "").replace(",", ".")
+      : /\.\d{1,2}$/.test(clean)
+        ? clean
+        : clean.replace(/\./g, "");
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : 0;
   }
 
   function formatMoney(value: number) {
@@ -151,6 +161,20 @@ export default function AdminOrdersPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  }
+
+  function grossAmount(order: Order) {
+    return Number(order.gross_amount ?? parsePrice(order.price));
+  }
+
+  function commissionAmount(order: Order) {
+    if (typeof order.commission_amount === "number") return order.commission_amount;
+    return grossAmount(order) * (Number(order.commission_rate ?? 20) / 100);
+  }
+
+  function sellerNetAmount(order: Order) {
+    if (typeof order.seller_net_amount === "number") return order.seller_net_amount;
+    return grossAmount(order) - commissionAmount(order);
   }
 
   function statusClass(status: string) {
@@ -195,10 +219,20 @@ export default function AdminOrdersPage() {
 
   const totalRevenue = orders
     .filter((order) => order.status !== "İade Edildi")
-    .reduce((sum, order) => sum + parsePrice(order.price), 0);
+    .reduce((sum, order) => sum + grossAmount(order), 0);
 
   const completedRevenue = completedOrders.reduce(
-    (sum, order) => sum + parsePrice(order.price),
+    (sum, order) => sum + grossAmount(order),
+    0
+  );
+
+  const platformRevenue = completedOrders.reduce(
+    (sum, order) => sum + commissionAmount(order),
+    0
+  );
+
+  const sellerPayoutTotal = completedOrders.reduce(
+    (sum, order) => sum + sellerNetAmount(order),
     0
   );
 
@@ -304,11 +338,25 @@ export default function AdminOrdersPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-2">
+        <section className="mt-8 grid gap-6 md:grid-cols-4">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <p className="text-sm text-gray-400">Tamamlanan Sipariş Cirosu</p>
             <h2 className="mt-3 text-4xl font-bold text-green-300">
               {formatMoney(completedRevenue)}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Platform Komisyonu</p>
+            <h2 className="mt-3 text-4xl font-bold text-blue-300">
+              {formatMoney(platformRevenue)}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm text-gray-400">Satıcı Net Payı</p>
+            <h2 className="mt-3 text-4xl font-bold text-purple-300">
+              {formatMoney(sellerPayoutTotal)}
             </h2>
           </div>
 
@@ -387,6 +435,9 @@ export default function AdminOrdersPage() {
                       <div className="mt-3 grid gap-1 text-sm text-gray-400">
                         <p>Satıcı: {order.seller}</p>
                         <p>Tarih: {formatDate(order.created_at)}</p>
+                        <p>Brüt: {formatMoney(grossAmount(order))}</p>
+                        <p>Komisyon: {formatMoney(commissionAmount(order))} (%{Number(order.commission_rate ?? 20)})</p>
+                        <p>Satıcı net: {formatMoney(sellerNetAmount(order))}</p>
                         <p className="break-all">Sipariş No: {order.id}</p>
                         {order.product_id && (
                           <p className="break-all">Ürün ID: {order.product_id}</p>
@@ -452,7 +503,9 @@ export default function AdminOrdersPage() {
 
                       <div className="mt-5 rounded-2xl bg-black/30 p-4 text-sm text-gray-300">
                         <p>Mevcut durum: {order.status}</p>
-                        <p className="mt-1">Tutar: {order.price}</p>
+                        <p className="mt-1">Brüt tutar: {formatMoney(grossAmount(order))}</p>
+                        <p className="mt-1">Platform komisyonu: {formatMoney(commissionAmount(order))}</p>
+                        <p className="mt-1">Satıcı net kazancı: {formatMoney(sellerNetAmount(order))}</p>
                         <p className="mt-1">Ürün: {order.product_title}</p>
                       </div>
                     </section>
