@@ -689,8 +689,8 @@ export default function AdminProductsPage() {
 
               return (
                 <div key={product.id} className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                  <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex flex-col gap-4 md:flex-row">
                       {product.image_url && (
                         <img
@@ -761,6 +761,7 @@ export default function AdminProductsPage() {
                       </a>
 
                       <button
+                        type="button"
                         onClick={() => togglePanel(product.id, "security")}
                         className={
                           currentPanel === "security"
@@ -772,6 +773,7 @@ export default function AdminProductsPage() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => togglePanel(product.id, "manage")}
                         className={
                           currentPanel === "manage"
@@ -783,6 +785,7 @@ export default function AdminProductsPage() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => togglePanel(product.id, "report")}
                         className={
                           currentPanel === "report"
@@ -796,13 +799,14 @@ export default function AdminProductsPage() {
                   </div>
 
                   {currentPanel === "security" && (
-                    <section className="mt-8 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-purple-600/5 backdrop-blur-xl p-6 shadow-lg">
+                    <section className="relative z-20 mt-8 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-purple-600/5 p-6 shadow-lg backdrop-blur-xl">
                       <h4 className="text-xl font-bold text-purple-300 mb-6 flex items-center gap-2">
                         🛡️ Güvenlik İşlemleri
                       </h4>
 
                       <div className="grid gap-4 md:grid-cols-3 mb-6">
                         <button
+                          type="button"
                           onClick={() => scanProduct(product.id)}
                           disabled={scanningProductId === product.id}
                           className="rounded-2xl bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-3 text-sm font-semibold text-white hover:from-purple-500 hover:to-purple-600 disabled:opacity-60 shadow-lg transition-all duration-200 transform hover:scale-105"
@@ -811,6 +815,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => queueStrongScan(product.id)}
                           disabled={
                             queuingStrongScanProductId === product.id ||
@@ -835,6 +840,7 @@ export default function AdminProductsPage() {
 
                       <div className="grid gap-4 md:grid-cols-3 mb-6">
                         <button
+                          type="button"
                           onClick={() => updateSecurityStatus(product.id, "Güvenli")}
                           className="rounded-2xl border border-green-500/40 bg-gradient-to-r from-green-500/10 to-green-600/5 px-4 py-3 text-sm font-semibold text-green-300 hover:bg-green-500/20 hover:border-green-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
@@ -842,6 +848,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => updateSecurityStatus(product.id, "Manuel İnceleme")}
                           className="rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-500/10 to-blue-600/5 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
@@ -849,6 +856,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => updateSecurityStatus(product.id, "Riskli")}
                           className="rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-500/10 to-red-600/5 px-4 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/20 hover:border-red-500/60 transition-all duration-200 backdrop-blur-sm transform hover:scale-105"
                         >
@@ -876,11 +884,12 @@ export default function AdminProductsPage() {
                   )}
 
                   {currentPanel === "manage" && (
-                    <section className="mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
+                    <section className="relative z-20 mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
                       <h4 className="text-xl font-bold">Ürün Yönetimi</h4>
 
                       <div className="mt-5 grid gap-3 md:grid-cols-4">
                         <button
+                          type="button"
                           onClick={() => updateProductStatus(product.id, "Yayında")}
                           className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold hover:bg-green-500"
                         >
@@ -888,6 +897,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => updateProductStatus(product.id, "Onay Bekliyor")}
                           className="rounded-2xl border border-yellow-500/30 px-4 py-3 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/10"
                         >
@@ -895,6 +905,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => updateProductStatus(product.id, "Reddedildi")}
                           className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-500"
                         >
@@ -902,6 +913,7 @@ export default function AdminProductsPage() {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() =>
                             updateProductStatus(product.id, "Yayından Kaldırıldı")
                           }
@@ -942,7 +954,7 @@ export default function AdminProductsPage() {
                   )}
 
                   {currentPanel === "report" && (
-                    <section className="mt-6 rounded-3xl border border-indigo-500/20 bg-indigo-500/10 p-5">
+                    <section className="relative z-20 mt-6 rounded-3xl border border-indigo-500/20 bg-indigo-500/10 p-5">
                       <h4 className="text-xl font-bold">Tarama Raporu</h4>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-4">
