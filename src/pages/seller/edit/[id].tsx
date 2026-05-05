@@ -17,6 +17,8 @@ type Product = {
   seller: string;
   seller_id: string | null;
   status: string;
+  security_status?: string | null;
+  security_note?: string | null;
   description: string | null;
 
   file_path: string | null;
@@ -396,11 +398,11 @@ export default function SellerEditProductPage() {
 
         tags: parseTags(tagsInput),
 
-        status: zipFile ? "pending_scan" : "Onay Bekliyor",
-        security_status: zipFile ? "Taranıyor" : "Taranmadı",
+        status: zipFile ? "pending_scan" : product.status,
+        security_status: zipFile ? "Taranıyor" : product.security_status,
         security_note: zipFile
           ? "Yeni dosya karantinaya alındı. Güçlü güvenlik taraması bekleniyor."
-          : "Ürün satıcı tarafından güncellendi. Admin güvenlik incelemesi bekleniyor.",
+          : product.security_note,
       };
 
       if (zipFile) {
