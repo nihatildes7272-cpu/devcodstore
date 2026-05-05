@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import SellerPanelNav from "@/components/SellerPanelNav";
+import { ensureSellerProfile } from "@/lib/sellerAccess";
 
 type Product = {
   id: string;
@@ -53,18 +54,12 @@ export default function SellerDashboardPage() {
 
     setUser(userData.user);
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("storage_quota_bytes,account_type,seller_status")
-      .eq("id", userData.user.id)
-      .maybeSingle();
+    const { profile: profileData, error: sellerError } = await ensureSellerProfile(
+      userData.user.id
+    );
 
-    if (
-      profileData?.account_type !== "admin" &&
-      (profileData?.account_type !== "seller" || profileData?.seller_status !== "approved")
-    ) {
-      router.push("/seller/apply");
-      return;
+    if (sellerError) {
+      setMessage(sellerError);
     }
 
     setStorageQuotaBytes(profileData?.storage_quota_bytes || 2147483648);

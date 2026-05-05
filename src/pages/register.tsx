@@ -24,6 +24,7 @@ export default function RegisterPage() {
         data: {
           full_name: name,
           account_type: accountType,
+          seller_status: accountType === "seller" ? "approved" : "not_applied",
         },
       },
     });

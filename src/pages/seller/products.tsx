@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import SellerPanelNav from "@/components/SellerPanelNav";
+import { ensureSellerProfile } from "@/lib/sellerAccess";
 
 type Product = {
   id: string;
@@ -33,6 +34,12 @@ export default function SellerProductsPage() {
     if (!userData.user) {
       router.push("/login");
       return;
+    }
+
+    const { error: sellerError } = await ensureSellerProfile(userData.user.id);
+
+    if (sellerError) {
+      setMessage(sellerError);
     }
 
     const { data, error } = await supabase

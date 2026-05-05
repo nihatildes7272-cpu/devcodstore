@@ -342,14 +342,14 @@ export default function Home() {
                 Projelerini satışa çıkar, gelir elde etmeye başla.
               </h3>
               <p className="mt-3 max-w-2xl text-gray-300">
-                Başvurunu tamamla, ürünlerini yükle ve admin onayı sonrası binlerce geliştiriciye ulaş.
+                Hesabını aç, dosyanı yükle ve güvenlik taramasından sonra binlerce kullanıcıya ulaş.
               </p>
             </div>
             <a
-              href="/seller/apply"
+              href="/seller"
               className="rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 px-7 py-4 font-semibold text-white shadow-lg transition hover:scale-105 hover:from-blue-400 hover:to-indigo-500"
             >
-              Satıcı Başvurusu Yap
+              Satıcı Panelini Aç
             </a>
           </div>
         </section>

@@ -8,6 +8,7 @@ import { productCategories } from "@/lib/productCategories";
 import { productLicenses, getLicenseInfo } from "@/lib/productLicenses";
 import { productPreviewTypes, getPreviewInfo } from "@/lib/productPreviewTypes";
 import { parseTags } from "@/lib/tags";
+import { ensureSellerProfile } from "@/lib/sellerAccess";
 
 function safeFileName(fileName: string) {
   return fileName
@@ -96,6 +97,12 @@ export default function SellerNewProductPage() {
       if (!data.user) {
         router.push("/login");
         return;
+      }
+
+      const { error: sellerError } = await ensureSellerProfile(data.user.id);
+
+      if (sellerError) {
+        setMessage(sellerError);
       }
 
       setUser(data.user);
