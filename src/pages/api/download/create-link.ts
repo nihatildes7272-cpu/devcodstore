@@ -89,10 +89,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: order, error: orderError } = await adminClient
     .from("orders")
-    .select("id,user_id,product_id,status")
+    .select("id,user_id,product_id,status,download_limit")
     .eq("user_id", userId)
     .eq("product_id", productId)
-    .neq("status", "İade Edildi")
+    .eq("status", "Tamamlandı")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -105,9 +105,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!order) {
     return res.status(403).json({
-      error: "Bu ürüne erişimin yok. Önce ürünü satın almalısın.",
+      error: "Bu ürüne erişimin yok. İndirme için ödeme tamamlanmış olmalı.",
     });
   }
+
+  const downloadLimit =
+    typeof order.download_limit === "number" && order.download_limit > 0
+      ? order.download_limit
+      : PURCHASE_DOWNLOAD_LIMIT;
 
   const { data: product, error: productError } = await adminClient
     .from("products")
@@ -140,9 +145,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  if ((count || 0) >= PURCHASE_DOWNLOAD_LIMIT) {
+  if ((count || 0) >= downloadLimit) {
     return res.status(429).json({
-      error: `İndirme hakkın doldu. Satın alınan her ürün en fazla ${PURCHASE_DOWNLOAD_LIMIT} kez indirilebilir.`,
+      error: `İndirme hakkın doldu. Bu satın alma en fazla ${downloadLimit} kez indirilebilir.`,
     });
   }
 
@@ -169,7 +174,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     signedUrl: signedUrlData.signedUrl,
-    remainingDownloads: PURCHASE_DOWNLOAD_LIMIT - ((count || 0) + 1),
-    downloadLimit: PURCHASE_DOWNLOAD_LIMIT,
+    remainingDownloads: downloadLimit - ((count || 0) + 1),
+    usedDownloads: (count || 0) + 1,
+    downloadLimit,
   });
 }

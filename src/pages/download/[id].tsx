@@ -28,9 +28,10 @@ type Order = {
   seller: string;
   status: string;
   created_at: string;
+  download_limit?: number | null;
 };
 
-const DOWNLOAD_LIMIT = 5;
+const DEFAULT_DOWNLOAD_LIMIT = 5;
 
 function withTimeout<T>(
   promise: PromiseLike<T>,
@@ -57,6 +58,8 @@ export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
   const [message, setMessage] = useState("");
   const [remainingDownloads, setRemainingDownloads] = useState<number | null>(null);
+  const [usedDownloads, setUsedDownloads] = useState(0);
+  const [downloadLimit, setDownloadLimit] = useState(DEFAULT_DOWNLOAD_LIMIT);
 
   async function loadDownloadAccess(showLoading = true) {
     if (!router.isReady || !id) return;
@@ -77,6 +80,7 @@ export default function DownloadPage() {
       );
 
       const currentUser = sessionResult.data.session?.user;
+      const accessToken = sessionResult.data.session?.access_token;
 
       if (!currentUser) {
         setLoading(false);
@@ -88,10 +92,11 @@ export default function DownloadPage() {
       const orderResult = await withTimeout(
         supabase
           .from("orders")
-          .select("id,user_id,product_id,product_title,price,seller,status,created_at")
+          .select("id,user_id,product_id,product_title,price,seller,status,created_at,download_limit")
           .eq("user_id", currentUser.id)
           .eq("product_id", String(id))
-          .neq("status", "İade Edildi")
+          .eq("status", "Tamamlandı")
+          .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
         12000,
@@ -106,13 +111,41 @@ export default function DownloadPage() {
       }
 
       if (!orderResult.data) {
-        setMessage("Bu ürüne erişimin yok. Önce ürünü satın almalısın.");
+        setMessage("Bu ürüne erişimin yok. İndirme için ödeme tamamlanmış olmalı.");
         setOrder(null);
         setProduct(null);
         return;
       }
 
       setOrder(orderResult.data);
+      setDownloadLimit(orderResult.data.download_limit || DEFAULT_DOWNLOAD_LIMIT);
+
+      if (accessToken) {
+        const quotaResponse = await withTimeout(
+          fetch("/api/download/status", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              productId: String(id),
+            }),
+          }),
+          12000,
+          "İndirme kotası kontrol edilirken sunucu geç cevap verdi."
+        );
+
+        const quotaResult = await quotaResponse.json();
+
+        if (quotaResponse.ok) {
+          setDownloadLimit(quotaResult.downloadLimit || DEFAULT_DOWNLOAD_LIMIT);
+          setUsedDownloads(quotaResult.usedDownloads || 0);
+          setRemainingDownloads(quotaResult.remainingDownloads ?? null);
+        } else {
+          setMessage(quotaResult.error || "İndirme kotası kontrol edilemedi.");
+        }
+      }
 
       const productResult = await withTimeout(
         supabase
@@ -193,6 +226,14 @@ export default function DownloadPage() {
 
       if (typeof result.remainingDownloads === "number") {
         setRemainingDownloads(result.remainingDownloads);
+      }
+
+      if (typeof result.usedDownloads === "number") {
+        setUsedDownloads(result.usedDownloads);
+      }
+
+      if (typeof result.downloadLimit === "number") {
+        setDownloadLimit(result.downloadLimit);
       }
 
       window.location.href = result.signedUrl;
@@ -340,8 +381,15 @@ export default function DownloadPage() {
                 <span className="text-gray-400">İndirme hakkı</span>
                 <span className="text-right font-semibold text-blue-300">
                   {remainingDownloads === null
-                    ? `${DOWNLOAD_LIMIT} toplam hak`
+                    ? `${downloadLimit} toplam hak`
                     : `${remainingDownloads} hak kaldı`}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 p-4">
+                <span className="text-gray-400">Kullanılan hak</span>
+                <span className="text-right font-semibold">
+                  {usedDownloads} / {downloadLimit}
                 </span>
               </div>
 
@@ -360,14 +408,18 @@ export default function DownloadPage() {
 
           <button
             onClick={downloadZip}
-            disabled={downloading || !product.file_path}
+            disabled={downloading || !product.file_path || remainingDownloads === 0}
             className="mt-8 w-full rounded-2xl bg-blue-600 px-6 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
           >
-            {downloading ? "İndirme hazırlanıyor..." : "Dosyayı İndir"}
+            {remainingDownloads === 0
+              ? "İndirme Hakkı Doldu"
+              : downloading
+                ? "İndirme hazırlanıyor..."
+                : "Dosyayı İndir"}
           </button>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            İndirme bağlantısı kısa süreli oluşturulur. Her satın alma en fazla {DOWNLOAD_LIMIT} indirme hakkı verir.
+            İndirme bağlantısı kısa süreli oluşturulur. Bu satın alma en fazla {downloadLimit} indirme hakkı verir.
           </p>
 
           <div className="mt-6 flex justify-center gap-4">
