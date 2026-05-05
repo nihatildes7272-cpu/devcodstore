@@ -2,6 +2,7 @@ import "dotenv/config";
 import fs from "fs-extra";
 import path from "path";
 import os from "os";
+import http from "http";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import StreamZip from "node-stream-zip";
@@ -14,6 +15,7 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const WORKER_ID = process.env.SCANNER_WORKER_ID || `scanner-${os.hostname()}`;
 const SCAN_INTERVAL_MS = Number(process.env.SCAN_INTERVAL_MS || 15000);
 const WORKDIR = process.env.WORKDIR || "/tmp/devcodstore-scans";
+const PORT = process.env.PORT ? Number(process.env.PORT) : null;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error("NEXT_PUBLIC_SUPABASE_URL veya SUPABASE_SERVICE_ROLE_KEY eksik.");
@@ -21,6 +23,35 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+function startHealthServer() {
+  if (!PORT) return;
+
+  const server = http.createServer((req, res) => {
+    if (req.url === "/health" || req.url === "/") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          workerId: WORKER_ID,
+          uptime: Math.round(process.uptime())
+        })
+      );
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false }));
+  });
+
+  server.on("error", (error) => {
+    console.error("Health server başlatılamadı:", error?.message || error);
+  });
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Health server ${PORT} portunda dinliyor.`);
+  });
+}
 
 const dangerousExtensions = [
   ".exe",
@@ -1009,6 +1040,7 @@ async function tick() {
 }
 
 async function main() {
+  startHealthServer();
   await fs.ensureDir(WORKDIR);
 
   console.log("devcodstore Scanner Worker başladı");
