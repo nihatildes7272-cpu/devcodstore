@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 
@@ -48,7 +47,6 @@ export default function DownloadPage() {
   const router = useRouter();
   const { id } = router.query;
 
-  const [user, setUser] = useState<User | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
 
@@ -83,8 +81,6 @@ export default function DownloadPage() {
         router.replace("/login");
         return;
       }
-
-      setUser(currentUser);
 
       const orderResult = await withTimeout(
         supabase

@@ -1,4 +1,3 @@
-import AdminNavbar from "@/components/AdminNavbar";
 export default function RejectedPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#070A12] px-6 text-white">
@@ -10,7 +9,8 @@ export default function RejectedPage() {
         <h1 className="mt-6 text-4xl font-bold">Proje Reddedildi</h1>
 
         <p className="mt-4 text-gray-400">
-          Proje admin tarafından reddedildi. İleride burada satıcıya red sebebi ve düzeltme isteği gönderilecek.
+          Proje admin tarafından reddedildi. Satıcı ürününü düzenleyip tekrar
+          incelemeye gönderebilir.
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">

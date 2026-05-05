@@ -56,6 +56,7 @@ export default function AdminSystemHealthPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
+  const [nowTs, setNowTs] = useState(0);
 
   async function loadHealth(showLoading = true) {
     if (showLoading) {
@@ -170,6 +171,16 @@ export default function AdminSystemHealthPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    setNowTs(Date.now());
+
+    const interval = setInterval(() => {
+      setNowTs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   function formatDate(date: string | null) {
     if (!date) return "Yok";
 
@@ -184,12 +195,14 @@ export default function AdminSystemHealthPage() {
   }
 
   function secondsAgo(date: string) {
-    return Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (!nowTs) return 0;
+    return Math.floor((nowTs - new Date(date).getTime()) / 1000);
   }
 
   function minutesAgo(date: string | null) {
     if (!date) return 0;
-    return Math.floor((Date.now() - new Date(date).getTime()) / 60000);
+    if (!nowTs) return 0;
+    return Math.floor((nowTs - new Date(date).getTime()) / 60000);
   }
 
   function workerHealth(worker: WorkerHeartbeat) {

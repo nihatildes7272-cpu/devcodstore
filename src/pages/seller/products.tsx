@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 import SellerPanelNav from "@/components/SellerPanelNav";
@@ -21,7 +20,6 @@ type Product = {
 export default function SellerProductsPage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -36,8 +34,6 @@ export default function SellerProductsPage() {
       router.push("/login");
       return;
     }
-
-    setUser(userData.user);
 
     const { data, error } = await supabase
       .from("products")

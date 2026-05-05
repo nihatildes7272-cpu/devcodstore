@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import Head from "next/head";
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -126,6 +127,22 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
+      <Head>
+        <title>devcodstore | Dijital Kod Pazarı</title>
+        <meta
+          name="description"
+          content="devcodstore; web sitesi, uygulama arayüzü, admin panel ve proje dosyalarının güvenli şekilde listelenip satıldığı dijital kod pazarı."
+        />
+        <meta name="robots" content="index,follow" />
+        <meta property="og:title" content="devcodstore | Dijital Kod Pazarı" />
+        <meta
+          property="og:description"
+          content="devcodstore; web sitesi, uygulama arayüzü, admin panel ve proje dosyalarının güvenli şekilde listelenip satıldığı dijital kod pazarı."
+        />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
+
       <Component {...pageProps} />
       {!router.pathname.startsWith("/admin") && <SiteFooter />}
       {!router.pathname.startsWith("/admin") && <AIAssistant />}

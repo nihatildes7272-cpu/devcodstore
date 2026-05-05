@@ -17,8 +17,8 @@ export default function SellerSuccessPage() {
           <p className="text-sm text-gray-400">Durum</p>
           <h2 className="mt-2 text-2xl font-bold text-yellow-300">Onay Bekliyor</h2>
           <p className="mt-3 text-sm leading-6 text-gray-400">
-            İleride burada gerçek veritabanı ve dosya yükleme sistemi olacak.
-            Şimdilik akış tasarımını kuruyoruz.
+            Ürün dosyası ve ürün bilgileri kaydedildi. Admin incelemesi
+            tamamlandığında yayın durumu satıcı panelinde güncellenecek.
           </p>
         </div>
 

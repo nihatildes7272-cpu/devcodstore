@@ -20,6 +20,7 @@ const adminLinks = [
   { href: "/admin/scan-jobs", label: "Tarama Kuyruğu" },
   { href: "/admin/scan-repair", label: "Tarama Repair" },
   { href: "/admin/sellers", label: "Satıcılar" },
+  { href: "/admin/withdrawals", label: "Para Çekme Talepleri" },
   { href: "/notifications", label: "Bildirimler" },
 ];
 

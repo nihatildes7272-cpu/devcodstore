@@ -33,6 +33,7 @@ export default function CartCheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [iframeUrl, setIframeUrl] = useState("");
 
   function readLocalCart() {
     try {
@@ -167,24 +168,32 @@ export default function CartCheckoutPage() {
     setMessage("");
 
     try {
-      const orders = products.map((product) => ({
-        user_id: user.id,
-        product_id: product.id,
-        product_title: product.title,
-        price: product.price,
-        seller: product.seller,
-        seller_id: product.seller_id,
-        status: "Tamamlandı",
-      }));
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
 
-      const orderResult = await withTimeout(
-        supabase.from("orders").insert(orders),
-        20000,
-        "Sipariş oluşturulurken sunucu geç cevap verdi."
-      );
+      if (!accessToken) {
+        throw new Error("Oturum doğrulanamadı. Lütfen tekrar giriş yap.");
+      }
 
-      if (orderResult.error) {
-        setMessage("Sipariş oluşturulamadı: " + orderResult.error.message);
+      const response = await fetch("/api/payment/checkout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productIds: products.map((p) => p.id),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Ödeme işlemi başlatılamadı.");
+      }
+
+      if (data.paymentUrl) {
+        setIframeUrl(data.paymentUrl);
         setSaving(false);
         return;
       }
@@ -242,14 +251,15 @@ export default function CartCheckoutPage() {
             <p className="mt-3 text-gray-400">
               Ödeme yapmak için önce sepete ürün eklemelisin.
             </p>
-
-            <a
-              href="/products"
-              className="mt-8 inline-block rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500"
-            >
-              Ürünleri Keşfet
-            </a>
-          </section>
+        </section>
+      ) : iframeUrl ? (
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-4 text-center h-[650px] w-full">
+          <iframe
+            src={iframeUrl}
+            id="iyzicoiframe"
+            style={{ width: "100%", height: "100%", border: "none" }}
+          ></iframe>
+        </section>
         ) : (
           <section className="grid gap-8 lg:grid-cols-[1fr_380px]">
             <div className="grid gap-5">
@@ -298,17 +308,17 @@ export default function CartCheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                Şimdilik demo ödeme sistemi. PayTR onayından sonra gerçek ödeme buraya bağlanacak.
+          <div className="mt-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
+            iyzico Checkout Form ile güvenli 3D Secure ödeme altyapısı aktiftir.
               </div>
 
               <button
                 onClick={completeCartOrder}
                 disabled={saving}
-                className="mt-6 w-full rounded-2xl bg-blue-600 px-5 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
-              >
-                {saving ? "Sipariş oluşturuluyor..." : "Ödemeyi Tamamla"}
-              </button>
+              className="mt-6 w-full rounded-2xl bg-blue-600 px-5 py-4 font-semibold hover:bg-blue-500 disabled:opacity-60"
+            >
+              {saving ? "İşleniyor..." : "Ödemeyi Tamamla"}
+            </button>
 
               <a
                 href="/cart"

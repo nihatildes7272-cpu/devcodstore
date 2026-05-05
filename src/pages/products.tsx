@@ -160,7 +160,8 @@ export default function ProductsPage() {
       const total = rows.length > 0 ? Number(rows[0].total_count || 0) : 0;
 
       const productData = rows.map((row) => {
-        const { total_count, ...product } = row;
+        const product = { ...row };
+        delete product.total_count;
         return product;
       });
 
@@ -270,7 +271,7 @@ export default function ProductsPage() {
                 Kod paketleri, PDF dosyaları, slaytlar, şablonlar ve dijital ürünler.
               </p>
               <p className="mt-2 text-xs font-bold uppercase tracking-widest text-gray-500">
-                Durum: {debugText || "Hazırlanıyor..."}
+                Durum: {loading ? "Hazırlanıyor..." : "Hazır"}
               </p>
             </div>
 

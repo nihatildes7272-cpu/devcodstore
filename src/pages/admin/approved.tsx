@@ -10,7 +10,8 @@ export default function ApprovedPage() {
         <h1 className="mt-6 text-4xl font-bold">Proje Onaylandı</h1>
 
         <p className="mt-4 text-gray-400">
-          Satıcının gönderdiği proje başarıyla onaylandı. İleride bu işlem projeyi otomatik olarak ürünler sayfasında yayına alacak.
+          Satıcının gönderdiği proje başarıyla onaylandı ve ürünler sayfasında
+          yayınlanmaya hazır hale getirildi.
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">

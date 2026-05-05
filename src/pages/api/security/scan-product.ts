@@ -105,7 +105,7 @@ function scanTextContent(fileName: string, content: string): ScanIssue[] {
     },
     {
       level: "high",
-      regex: /STRIPE_SECRET_KEY|PAYTR_MERCHANT_KEY|OPENAI_API_KEY/i,
+      regex: /STRIPE_SECRET_KEY|PAYTR_MERCHANT_KEY|IYZICO_SECRET_KEY|OPENAI_API_KEY/i,
       message: "Ödeme veya API gizli anahtarı tespit edildi.",
     },
     {

@@ -1003,7 +1003,7 @@ export default function ProductDetailPage() {
             </div>
 
             <p className="mt-5 text-center text-xs leading-5 text-gray-500">
-              Gerçek ödeme entegrasyonu PayTR onayından sonra bağlanacak.
+              Ödeme iyzico Checkout Form üzerinden güvenli şekilde tamamlanır.
             </p>
           </aside>
         </section>

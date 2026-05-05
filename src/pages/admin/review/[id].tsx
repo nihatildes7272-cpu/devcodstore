@@ -1,5 +1,4 @@
 import { useRouter } from "next/router";
-import AdminNavbar from "@/components/AdminNavbar";
 
 const projects = [
   {
@@ -105,7 +104,8 @@ export default function AdminReviewPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
             <h3 className="text-2xl font-bold">Admin Kararı</h3>
             <p className="mt-2 text-sm text-gray-400">
-              Şimdilik tasarım akışı. İleride bu butonlar veritabanındaki proje durumunu değiştirecek.
+              Yayın kararını gerçek ürün yönetimi ekranındaki onay ve red
+              aksiyonlarıyla tamamla.
             </p>
 
             <div className="mt-6 grid gap-3">

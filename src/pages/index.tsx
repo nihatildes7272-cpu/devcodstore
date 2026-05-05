@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import SiteNavbar from "@/components/SiteNavbar";
 
@@ -27,7 +26,6 @@ type Order = {
 };
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -36,9 +34,6 @@ export default function Home() {
   useEffect(() => {
     async function loadHome() {
       setLoading(true);
-
-      const { data: userData } = await supabase.auth.getUser();
-      setUser(userData.user);
 
       const [productsResult, profilesResult, ordersResult] = await Promise.all([
         supabase
@@ -64,14 +59,6 @@ export default function Home() {
     }
 
     loadHome();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
   }, []);
 
   function parsePrice(price: string) {
@@ -97,11 +84,16 @@ export default function Home() {
   const featuredProducts = products.slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-[#070A12] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#070A12] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-28 top-10 h-80 w-80 rounded-full bg-blue-600/20 blur-3xl" />
+        <div className="absolute right-0 top-40 h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
+      </div>
       <section className="mx-auto max-w-7xl px-6 py-10">
         <SiteNavbar />
 
-        <section className="grid gap-10 py-16 md:grid-cols-2 md:items-center">
+        <section className="relative grid gap-10 py-16 md:grid-cols-2 md:items-center">
           <div>
             <p className="mb-4 w-fit rounded-full border border-white/10 px-4 py-2 text-sm text-gray-300">
               Geliştiriciler için yeni nesil kod pazarı
@@ -133,7 +125,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-8 shadow-2xl">
+          <div className="rounded-3xl border border-white/20 bg-gradient-to-r from-slate-900/80 to-slate-800/80 p-8 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-2xl bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center">
                 📊
@@ -141,7 +133,7 @@ export default function Home() {
               <div>
                 <h3 className="text-xl font-bold text-white">Canlı Platform Paneli</h3>
                 <p className="text-sm text-gray-400">
-                  Veriler Supabase'den gerçek zamanlı olarak çekilir
+                  Veriler Supabase&apos;den gerçek zamanlı olarak çekilir
                 </p>
               </div>
             </div>
@@ -179,7 +171,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mb-16 grid gap-6 md:grid-cols-4">
+        <section className="mb-16 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <div className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="relative">
@@ -233,7 +225,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section>
+        <section className="relative">
           <div className="text-center">
             <h3 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
               Öne Çıkan Ürünler
@@ -243,7 +235,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
+          <div className="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
             {featuredProducts.map((product) => (
               <div
                 key={product.id}
@@ -297,7 +289,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mt-20 rounded-3xl border border-white/10 bg-white/5 p-8">
+        <section className="mt-20 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-8">
           <div className="mb-8">
             <h3 className="text-3xl font-bold">devcodstore Nasıl Çalışır?</h3>
             <p className="mt-2 text-gray-400">
@@ -307,7 +299,7 @@ export default function Home() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-3xl bg-black/30 p-6">
+            <div className="rounded-3xl border border-blue-400/20 bg-black/30 p-6">
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 font-bold">
                 1
               </div>
@@ -318,7 +310,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-3xl bg-black/30 p-6">
+            <div className="rounded-3xl border border-blue-400/20 bg-black/30 p-6">
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 font-bold">
                 2
               </div>
@@ -328,7 +320,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-3xl bg-black/30 p-6">
+            <div className="rounded-3xl border border-blue-400/20 bg-black/30 p-6">
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 font-bold">
                 3
               </div>
@@ -337,6 +329,28 @@ export default function Home() {
                 Kullanıcı, aldığı projeye Dosyalarım ekranından erişir ve indirebilir.
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="mt-16 mb-8 rounded-3xl border border-blue-500/20 bg-gradient-to-r from-blue-600/15 via-indigo-500/10 to-fuchsia-500/10 px-8 py-10">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-blue-200">
+                Topluluğa Katıl
+              </p>
+              <h3 className="mt-3 text-3xl font-bold">
+                Projelerini satışa çıkar, gelir elde etmeye başla.
+              </h3>
+              <p className="mt-3 max-w-2xl text-gray-300">
+                Başvurunu tamamla, ürünlerini yükle ve admin onayı sonrası binlerce geliştiriciye ulaş.
+              </p>
+            </div>
+            <a
+              href="/seller/apply"
+              className="rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 px-7 py-4 font-semibold text-white shadow-lg transition hover:scale-105 hover:from-blue-400 hover:to-indigo-500"
+            >
+              Satıcı Başvurusu Yap
+            </a>
           </div>
         </section>
       </section>
