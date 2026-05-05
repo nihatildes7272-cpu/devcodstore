@@ -21,7 +21,14 @@ type Product = {
   security_status?: string | null;
   security_note?: string | null;
   security_checked_at?: string | null;
+  security_scanned_at?: string | null;
   security_scan_score?: number | null;
+  security_scan_report?: {
+    summary?: string;
+    tools?: Array<{ tool?: string; status?: string; issues?: number }>;
+    issues?: Array<{ tool?: string; level?: string; file?: string; message?: string }>;
+    scannedAt?: string;
+  } | null;
   demo_url?: string | null;
   tech_stack?: string | null;
   setup_notes?: string | null;
@@ -684,7 +691,10 @@ export default function ProductDetailPage() {
             {activeTab === "security" && (
               <section className="grid gap-8">
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-                  <h2 className="text-2xl font-bold">Admin Güvenlik İncelemesi</h2>
+                  <h2 className="text-2xl font-bold">Güvenlik Raporu</h2>
+                  <p className="mt-2 text-sm text-gray-400">
+                    Bu dosya devcodstore tarama hattından geçirilerek değerlendirilir.
+                  </p>
 
                   <div className="mt-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-black/30 p-5">
@@ -704,14 +714,58 @@ export default function ProductDetailPage() {
                     <div className="rounded-2xl bg-black/30 p-5">
                       <p className="text-sm text-gray-400">Kontrol Tarihi</p>
                       <p className="mt-2 font-bold">
-                        {formatDate(product.security_checked_at)}
+                        {formatDate(product.security_scanned_at || product.security_checked_at)}
                       </p>
                     </div>
                   </div>
 
                   <p className="mt-5 leading-7 text-gray-300">
-                    {product.security_note || "Bu ürün için henüz güvenlik notu eklenmemiş."}
+                    {product.security_scan_report?.summary ||
+                      product.security_note ||
+                      "Bu ürün için henüz güvenlik notu eklenmemiş."}
                   </p>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-2xl font-bold">Tarama Detayları</h2>
+
+                  {product.security_scan_report?.tools?.length ? (
+                    <div className="mt-6 grid gap-4 md:grid-cols-3">
+                      {product.security_scan_report.tools.map((tool, index) => (
+                        <div key={`${tool.tool || "tool"}-${index}`} className="rounded-2xl bg-black/30 p-5">
+                          <p className="text-sm text-gray-400">{tool.tool || "Tarama Aracı"}</p>
+                          <p className="mt-2 font-bold text-blue-300">{tool.status || "Tamamlandı"}</p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Bulgu: {tool.issues ?? 0}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-5 rounded-2xl bg-black/30 p-5 text-sm text-gray-400">
+                      Detaylı araç çıktısı henüz bulunmuyor.
+                    </p>
+                  )}
+
+                  {product.security_scan_report?.issues?.length ? (
+                    <div className="mt-6 grid gap-3">
+                      {product.security_scan_report.issues.slice(0, 5).map((issue, index) => (
+                        <div key={`${issue.file || "issue"}-${index}`} className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+                          <p className="text-sm font-bold text-yellow-200">
+                            {(issue.level || "info").toUpperCase()} · {issue.tool || "scan"}
+                          </p>
+                          <p className="mt-2 break-all text-sm text-yellow-100">
+                            {issue.message || "Tarama bulgusu"}
+                          </p>
+                          {issue.file && (
+                            <p className="mt-1 break-all text-xs text-yellow-200/70">
+                              {issue.file}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-8">

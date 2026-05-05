@@ -30,6 +30,8 @@ type Order = {
   created_at: string;
 };
 
+const DOWNLOAD_LIMIT = 5;
+
 function withTimeout<T>(
   promise: PromiseLike<T>,
   ms = 12000,
@@ -54,6 +56,7 @@ export default function DownloadPage() {
   const [checking, setChecking] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [message, setMessage] = useState("");
+  const [remainingDownloads, setRemainingDownloads] = useState<number | null>(null);
 
   async function loadDownloadAccess(showLoading = true) {
     if (!router.isReady || !id) return;
@@ -186,6 +189,10 @@ export default function DownloadPage() {
       if (!response.ok) {
         setMessage(result.error || "İndirme bağlantısı oluşturulamadı.");
         return;
+      }
+
+      if (typeof result.remainingDownloads === "number") {
+        setRemainingDownloads(result.remainingDownloads);
       }
 
       window.location.href = result.signedUrl;
@@ -329,6 +336,15 @@ export default function DownloadPage() {
                 <span className="font-semibold text-green-300">Onaylandı</span>
               </div>
 
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 p-4">
+                <span className="text-gray-400">İndirme hakkı</span>
+                <span className="text-right font-semibold text-blue-300">
+                  {remainingDownloads === null
+                    ? `${DOWNLOAD_LIMIT} toplam hak`
+                    : `${remainingDownloads} hak kaldı`}
+                </span>
+              </div>
+
               <div className="rounded-2xl border border-white/10 p-4">
                 <p className="text-sm text-gray-400">Lisans</p>
                 <p className="mt-2 font-semibold text-blue-300">
@@ -351,7 +367,7 @@ export default function DownloadPage() {
           </button>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            İndirme bağlantısı güvenlik için kısa süreli oluşturulur.
+            İndirme bağlantısı kısa süreli oluşturulur. Her satın alma en fazla {DOWNLOAD_LIMIT} indirme hakkı verir.
           </p>
 
           <div className="mt-6 flex justify-center gap-4">

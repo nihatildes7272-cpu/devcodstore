@@ -8,13 +8,7 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const DAILY_DOWNLOAD_LIMIT = 20;
-
-function startOfTodayIso() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date.toISOString();
-}
+const PURCHASE_DOWNLOAD_LIMIT = 5;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -138,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("product_id", productId)
-    .gte("created_at", startOfTodayIso());
+    .eq("order_id", order.id);
 
   if (countError) {
     return res.status(500).json({
@@ -146,9 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  if ((count || 0) >= DAILY_DOWNLOAD_LIMIT) {
+  if ((count || 0) >= PURCHASE_DOWNLOAD_LIMIT) {
     return res.status(429).json({
-      error: `Günlük indirme limiti doldu. Bu ürünü günde en fazla ${DAILY_DOWNLOAD_LIMIT} kez indirebilirsin.`,
+      error: `İndirme hakkın doldu. Satın alınan her ürün en fazla ${PURCHASE_DOWNLOAD_LIMIT} kez indirilebilir.`,
     });
   }
 
@@ -175,6 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     signedUrl: signedUrlData.signedUrl,
-    remainingToday: DAILY_DOWNLOAD_LIMIT - ((count || 0) + 1),
+    remainingDownloads: PURCHASE_DOWNLOAD_LIMIT - ((count || 0) + 1),
+    downloadLimit: PURCHASE_DOWNLOAD_LIMIT,
   });
 }

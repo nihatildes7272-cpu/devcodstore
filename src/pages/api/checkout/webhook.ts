@@ -23,6 +23,15 @@ type SoldOrder = {
   user_id: string;
 };
 
+function commissionRate() {
+  const rawRate = Number(process.env.PLATFORM_COMMISSION_RATE || 20);
+
+  if (!Number.isFinite(rawRate) || rawRate < 0) return 20;
+  if (rawRate > 100) return 100;
+
+  return rawRate;
+}
+
 function parsePrice(price: string) {
   const clean = price.replace(/[^\d,.-]/g, "");
   const normalized = clean.includes(",")
@@ -225,7 +234,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).send("Internal Server Error");
       }
 
-      const newBalance = (Number(sellerProfile.balance) || 0) + parsePrice(order.price);
+      const grossAmount = parsePrice(order.price);
+      const netAmount = grossAmount * (1 - commissionRate() / 100);
+      const newBalance = (Number(sellerProfile.balance) || 0) + netAmount;
       const { error: balanceUpdateError } = await supabaseAdmin
         .from("profiles")
         .update({ balance: newBalance })

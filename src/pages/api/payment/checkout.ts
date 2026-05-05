@@ -30,6 +30,15 @@ function formatAmount(value: number) {
   return value.toFixed(2);
 }
 
+function commissionRate() {
+  const rawRate = Number(process.env.PLATFORM_COMMISSION_RATE || 20);
+
+  if (!Number.isFinite(rawRate) || rawRate < 0) return 20;
+  if (rawRate > 100) return 100;
+
+  return rawRate;
+}
+
 function splitName(fullName: unknown, email: string) {
   const cleanName = typeof fullName === "string" ? fullName.trim() : "";
   const fallback = email.split("@")[0] || "devcodstore";
@@ -118,20 +127,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { name, surname } = splitName(user.user_metadata?.full_name, email);
     const ip = getClientIp(req);
 
-    const ordersToInsert = products.map((product) => ({
-      user_id: user.id,
-      product_id: product.id,
-      product_title: product.title,
-      price: product.price,
-      seller: product.seller,
-      seller_id: product.seller_id,
-      status: "Ödeme Bekleniyor",
-      transaction_id: orderId,
-    }));
+    const ordersToInsert = products.map((product) => {
+      const grossAmount = parsePrice(product.price);
+      const rate = commissionRate();
+      const commissionAmount = grossAmount * (rate / 100);
 
-    const { error: orderError } = await supabaseAdmin
+      return {
+        user_id: user.id,
+        product_id: product.id,
+        product_title: product.title,
+        price: product.price,
+        gross_amount: grossAmount,
+        commission_rate: rate,
+        commission_amount: commissionAmount,
+        seller_net_amount: grossAmount - commissionAmount,
+        download_limit: 5,
+        seller: product.seller,
+        seller_id: product.seller_id,
+        status: "Ödeme Bekleniyor",
+        transaction_id: orderId,
+      };
+    });
+
+    let { error: orderError } = await supabaseAdmin
       .from("orders")
       .insert(ordersToInsert);
+
+    if (orderError && /gross_amount|commission_rate|commission_amount|seller_net_amount|download_limit/i.test(orderError.message)) {
+      const compatibleOrders = ordersToInsert.map((order) => {
+        const compatibleOrder: Record<string, unknown> = { ...order };
+        delete compatibleOrder.gross_amount;
+        delete compatibleOrder.commission_rate;
+        delete compatibleOrder.commission_amount;
+        delete compatibleOrder.seller_net_amount;
+        delete compatibleOrder.download_limit;
+        return compatibleOrder;
+      });
+      const fallbackResult = await supabaseAdmin.from("orders").insert(compatibleOrders);
+      orderError = fallbackResult.error;
+    }
 
     if (orderError) {
       throw new Error(
