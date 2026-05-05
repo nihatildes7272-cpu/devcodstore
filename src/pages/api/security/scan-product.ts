@@ -2,6 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import JSZip from "jszip";
 import { createClient } from "@supabase/supabase-js";
 import { checkServerRateLimit, getClientIp } from "@/lib/serverRateLimit";
+import {
+  getFileRiskPolicy,
+  policyIssueFor,
+  summaryForScanResult,
+} from "@/lib/fileRiskPolicy";
 
 type ScanIssue = {
   level: "low" | "medium" | "high" | "critical";
@@ -14,6 +19,8 @@ type ScanReport = {
   scannedTextFiles: number;
   issues: ScanIssue[];
   summary: string;
+  riskPolicy?: ReturnType<typeof getFileRiskPolicy>;
+  publishDecision?: string;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -321,51 +328,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (downloadError || !fileBlob) {
     return res.status(500).json({
-      error: "ZIP dosyası indirilemedi: " + (downloadError?.message || ""),
+      error: "Dosya indirilemedi: " + (downloadError?.message || ""),
     });
   }
 
   const arrayBuffer = await fileBlob.arrayBuffer();
   const lowerFileName = String(product.file_name || sourceFilePath || "").toLowerCase();
   const isZipFile = lowerFileName.endsWith(".zip");
+  const riskPolicy = getFileRiskPolicy(lowerFileName);
 
   if (!isZipFile) {
     const issues: ScanIssue[] = [];
+    const policyIssue = policyIssueFor(lowerFileName);
+    const shouldScanText = hasExtension(lowerFileName, textExtensions) && arrayBuffer.byteLength <= 500_000;
 
-    const blockedExtensions = [
-      ".exe",
-      ".dll",
-      ".bat",
-      ".cmd",
-      ".ps1",
-      ".vbs",
-      ".scr",
-      ".msi",
-      ".apk",
-      ".dmg",
-      ".pkg",
-      ".jar"
-    ];
+    if (policyIssue) {
+      issues.push(policyIssue);
+    }
 
-    if (blockedExtensions.some((extension) => lowerFileName.endsWith(extension))) {
-      issues.push({
-        level: "critical",
-        file: lowerFileName,
-        message: "Çalıştırılabilir veya yüksek riskli dosya türü tespit edildi.",
-      });
+    if (shouldScanText) {
+      const content = Buffer.from(arrayBuffer).toString("utf8");
+      issues.push(...scanTextContent(lowerFileName, content));
     }
 
     const score = calculateScore(issues);
     const securityStatus = decideSecurityStatus(score, issues);
+    const publishDecision =
+      securityStatus === "Güvenli"
+        ? "Güvenli bulunduğu için otomatik yayınlanabilir."
+        : "Admin incelemesi tamamlanmadan yayına alınmaz.";
 
     const report: ScanReport = {
       checkedFiles: 1,
-      scannedTextFiles: 0,
+      scannedTextFiles: shouldScanText ? 1 : 0,
       issues,
-      summary:
-        securityStatus === "Güvenli"
-          ? "ZIP olmayan dijital dosyada yasaklı dosya türü tespit edilmedi."
-          : "Dosya türü riskli görünüyor. Manuel inceleme gerekiyor.",
+      riskPolicy,
+      publishDecision,
+      summary: summaryForScanResult(securityStatus, riskPolicy),
     };
 
     const updatePayload: Record<string, unknown> = {
@@ -377,8 +376,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       security_checked_by: userData.user.id,
     };
 
-    if (securityStatus === "Riskli" && product.status === "Yayında") {
-      updatePayload.status = "Yayından Kaldırıldı";
+    if (securityStatus === "Güvenli") {
+      updatePayload.status = "Yayında";
+
+      if (product.quarantine_file_path) {
+        const approvedFilePath = product.quarantine_file_path;
+        const { error: uploadApprovedError } = await adminClient.storage
+          .from("product-files")
+          .upload(approvedFilePath, Buffer.from(arrayBuffer), {
+            upsert: true,
+            contentType: fileBlob.type || "application/octet-stream",
+          });
+
+        if (uploadApprovedError) {
+          return res.status(500).json({
+            error: "Temiz dosya onaylı alana taşınamadı: " + uploadApprovedError.message,
+          });
+        }
+
+        await adminClient.storage.from("product-quarantine").remove([product.quarantine_file_path]);
+
+        updatePayload.file_path = approvedFilePath;
+        updatePayload.approved_file_path = approvedFilePath;
+        updatePayload.approved_bucket = "product-files";
+        updatePayload.quarantine_file_path = null;
+      }
+    } else if (securityStatus === "Manuel İnceleme") {
+      updatePayload.status = "Karantina";
+    } else {
+      updatePayload.status = "Reddedildi";
     }
 
     const { error: updateError } = await adminClient
@@ -413,8 +439,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const zip = await JSZip.loadAsync(Buffer.from(arrayBuffer));
 
   const issues: ScanIssue[] = [];
+  const policyIssue = policyIssueFor(lowerFileName);
   let checkedFiles = 0;
   let scannedTextFiles = 0;
+
+  if (policyIssue) {
+    issues.push(policyIssue);
+  }
 
   const entries = Object.values(zip.files);
 
@@ -472,17 +503,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const score = calculateScore(issues);
   const securityStatus = decideSecurityStatus(score, issues);
+  const publishDecision =
+    securityStatus === "Güvenli"
+      ? "Güvenli bulunduğu için otomatik yayınlanabilir."
+      : "Admin incelemesi tamamlanmadan yayına alınmaz.";
 
   const report: ScanReport = {
     checkedFiles,
     scannedTextFiles,
     issues,
-    summary:
-      securityStatus === "Güvenli"
-        ? "Otomatik taramada kritik risk bulunmadı."
-        : securityStatus === "Manuel İnceleme"
-        ? "Otomatik taramada şüpheli bulgular bulundu. Manuel inceleme önerilir."
-        : "Otomatik taramada yüksek riskli bulgular bulundu.",
+    riskPolicy,
+    publishDecision,
+    summary: summaryForScanResult(securityStatus, riskPolicy),
   };
 
   const updatePayload: Record<string, unknown> = {
@@ -494,8 +526,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     security_checked_by: userData.user.id,
   };
 
-  if (securityStatus === "Riskli" && product.status === "Yayında") {
-    updatePayload.status = "Yayından Kaldırıldı";
+    if (securityStatus === "Güvenli") {
+      updatePayload.status = "Yayında";
+
+      if (product.quarantine_file_path) {
+        const approvedFilePath = product.quarantine_file_path;
+        const { error: uploadApprovedError } = await adminClient.storage
+          .from("product-files")
+          .upload(approvedFilePath, Buffer.from(arrayBuffer), {
+            upsert: true,
+            contentType: fileBlob.type || "application/octet-stream",
+          });
+
+        if (uploadApprovedError) {
+          return res.status(500).json({
+            error: "Temiz dosya onaylı alana taşınamadı: " + uploadApprovedError.message,
+          });
+        }
+
+        await adminClient.storage.from("product-quarantine").remove([product.quarantine_file_path]);
+
+        updatePayload.file_path = approvedFilePath;
+        updatePayload.approved_file_path = approvedFilePath;
+        updatePayload.approved_bucket = "product-files";
+        updatePayload.quarantine_file_path = null;
+      }
+    } else if (securityStatus === "Manuel İnceleme") {
+      updatePayload.status = "Karantina";
+    } else {
+    updatePayload.status = "Reddedildi";
   }
 
   const { error: updateError } = await adminClient

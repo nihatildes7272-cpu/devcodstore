@@ -41,6 +41,9 @@ function detectFileType(fileName: string) {
   const lower = fileName.toLowerCase();
 
   if (lower.endsWith(".zip")) return "ZIP Proje Dosyası";
+  if (lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz")) {
+    return "Arşiv Dosyası";
+  }
   if (lower.endsWith(".pdf")) return "PDF Doküman";
   if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "Ders Slaytı / Sunum";
   if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word Dokümanı";
@@ -51,6 +54,9 @@ function detectFileType(fileName: string) {
     return "Görsel Dosyası";
   }
   if (lower.endsWith(".json")) return "JSON Dosyası";
+  if ([".exe", ".dll", ".bat", ".cmd", ".ps1", ".apk", ".jar"].some((ext) => lower.endsWith(ext))) {
+    return "Yüksek Riskli Dosya";
+  }
 
   return "Dijital Dosya";
 }
@@ -299,7 +305,7 @@ export default function SellerNewProductPage() {
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8">
           <h1 className="text-4xl font-bold">Yeni Ürün Yükle</h1>
           <p className="mt-3 text-gray-400">
-            Ürün bilgilerini adım adım ekle. Ürün admin onayından sonra yayına alınır.
+            Ürün bilgilerini adım adım ekle. Güvenli dosyalar taramadan sonra otomatik yayına alınır.
           </p>
         </section>
 
@@ -391,7 +397,7 @@ export default function SellerNewProductPage() {
               <div>
                 <h2 className="text-2xl font-bold">Dosyalar</h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  Kapak görseli ve satılacak ürün dosyasını seç.
+                  Kapak görseli ve satılacak ürün dosyasını seç. Tüm dosya türleri kabul edilir; yüksek riskli dosyalar admin incelemesine düşer.
                 </p>
               </div>
 
@@ -415,7 +421,6 @@ export default function SellerNewProductPage() {
                 <p className="mb-2 text-sm text-gray-400">Ürün dosyası</p>
                 <input
                   type="file"
-                  accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
                   onChange={(event) => setProductFile(event.target.files?.[0] || null)}
                   required
                   className="w-full text-sm text-gray-300"

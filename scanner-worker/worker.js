@@ -65,7 +65,37 @@ const dangerousExtensions = [
   ".apk",
   ".dmg",
   ".pkg",
-  ".jar"
+  ".jar",
+  ".com",
+  ".reg",
+  ".hta",
+  ".iso"
+];
+
+const codeOrArchiveExtensions = [
+  ".zip",
+  ".rar",
+  ".7z",
+  ".tar",
+  ".gz",
+  ".js",
+  ".jsx",
+  ".ts",
+  ".tsx",
+  ".json",
+  ".html",
+  ".css",
+  ".py",
+  ".php",
+  ".rb",
+  ".go",
+  ".java",
+  ".cs",
+  ".sh",
+  ".sql",
+  ".xml",
+  ".yml",
+  ".yaml"
 ];
 
 const textExtensions = [
@@ -127,6 +157,62 @@ async function sendHeartbeat(status = "idle", currentJobId = null) {
 function hasExtension(fileName, extensions) {
   const lower = fileName.toLowerCase();
   return extensions.some((ext) => lower.endsWith(ext));
+}
+
+function getFileRiskPolicy(fileName) {
+  if (hasExtension(fileName, dangerousExtensions)) {
+    return {
+      level: "high_risk",
+      label: "Yüksek Riskli Dosya",
+      summary: "Çalıştırılabilir veya sistem seviyesinde risk taşıyan dosya türü.",
+      recommendation: "Admin incelemesi olmadan yayına alınmamalı.",
+      requiresManualReview: true
+    };
+  }
+
+  if (hasExtension(fileName, codeOrArchiveExtensions)) {
+    return {
+      level: "code_or_archive",
+      label: "Kod / Arşiv Dosyası",
+      summary: "Kod, proje veya arşiv içeriği taşıyabilir; içerik taraması gerekir.",
+      recommendation: "Otomatik tarama temizse yayına alınabilir, bulgu varsa admin inceler.",
+      requiresManualReview: false
+    };
+  }
+
+  return {
+    level: "safe_candidate",
+    label: "Düşük Riskli Dijital Dosya",
+    summary: "Belge, görsel veya genel dijital dosya adayı.",
+    recommendation: "Otomatik tarama temizse yayına alınabilir.",
+    requiresManualReview: false
+  };
+}
+
+function addPolicyIssue(issues, fileName) {
+  const policy = getFileRiskPolicy(fileName);
+
+  if (policy.level !== "high_risk") return;
+
+  addIssue(
+    issues,
+    "policy",
+    "critical",
+    fileName,
+    `${policy.label}: ${policy.recommendation}`
+  );
+}
+
+function summaryForScanResult(status, policy) {
+  if (status === "Güvenli") {
+    return `${policy.label}: otomatik taramada yayın engeli bulunmadı. ${policy.recommendation}`;
+  }
+
+  if (status === "Manuel İnceleme") {
+    return `${policy.label}: otomatik taramada şüpheli bulgular bulundu. Admin incelemesi gerekiyor.`;
+  }
+
+  return `${policy.label}: yüksek riskli bulgular bulundu. Dosya yayına alınmadı.`;
 }
 
 function isPathTraversal(fileName) {
@@ -297,19 +383,11 @@ async function inspectZip(zipPath, extractDir, originalFileName = "product-file"
   const issues = [];
   const lowerName = originalFileName.toLowerCase();
 
+  addPolicyIssue(issues, originalFileName);
+
   if (!lowerName.endsWith(".zip")) {
     const targetPath = path.join(extractDir, path.basename(originalFileName));
     await fs.copy(zipPath, targetPath);
-
-    if (hasExtension(originalFileName, dangerousExtensions)) {
-      addIssue(
-        issues,
-        "file",
-        "high",
-        originalFileName,
-        "Riskli çalıştırılabilir dosya uzantısı tespit edildi."
-      );
-    }
 
     return {
       checkedFiles: 1,
@@ -766,6 +844,7 @@ async function processJob(job) {
 
   const sourceBucket = product.quarantine_file_path ? "product-quarantine" : "product-files";
   const originalFileName = product.file_name || path.basename(sourceFilePath);
+  const riskPolicy = getFileRiskPolicy(originalFileName);
 
   await downloadZip(sourceFilePath, zipPath, sourceBucket);
 
@@ -806,38 +885,28 @@ async function processJob(job) {
     workerId: WORKER_ID,
     productId: product.id,
     productTitle: product.title,
+    fileName: originalFileName,
+    riskPolicy,
     checkedFiles: zipInspection.checkedFiles,
     scannedTextFiles: customScan.scannedTextFiles,
     tools,
     issues: allIssues,
     sourceBucket,
     sourceFilePath,
-    summary:
+    publishDecision:
       resultStatus === "Güvenli"
-        ? "Güçlü taramada kritik risk bulunmadı. Dosya onaylı alana taşındı."
-        : resultStatus === "Manuel İnceleme"
-        ? "Güçlü taramada şüpheli bulgular bulundu. Dosya karantinada manuel inceleme bekliyor."
-        : "Güçlü taramada yüksek riskli bulgular bulundu. Dosya karantinada tutuluyor.",
+        ? "Güvenli bulunduğu için otomatik yayına alınır."
+        : "Admin incelemesi tamamlanmadan yayına alınmaz.",
+    summary: summaryForScanResult(resultStatus, riskPolicy),
     scannedAt: nowIso()
   };
 
-  const { data: sellerProfile } = await supabase
-    .from("profiles")
-    .select("id,seller_trust_score,seller_clean_product_count,seller_risky_product_count,auto_publish_enabled")
-    .eq("id", product.seller_id)
-    .maybeSingle();
-
-  const canAutoPublish =
-    resultStatus === "Güvenli" &&
-    sellerProfile?.auto_publish_enabled === true &&
-    Number(sellerProfile?.seller_trust_score || 0) >= 80 &&
-    Number(sellerProfile?.seller_clean_product_count || 0) >= 10 &&
-    Number(sellerProfile?.seller_risky_product_count || 0) === 0;
+  const canAutoPublish = resultStatus === "Güvenli";
 
   const autoPublishReason = canAutoPublish
-    ? "Satıcı güvenilir seviyede olduğu için güvenli ürün otomatik yayına alındı."
+    ? "Güçlü tarama temiz olduğu için ürün otomatik yayına alındı."
     : resultStatus === "Güvenli"
-    ? "Ürün güvenli bulundu fakat satıcı otomatik yayın eşiğinde değil. Admin onayı bekliyor."
+    ? "Ürün güvenli bulundu."
     : resultStatus === "Manuel İnceleme"
     ? "Ürün şüpheli bulgular nedeniyle karantinaya alındı."
     : "Ürün riskli bulgular nedeniyle reddedildi.";

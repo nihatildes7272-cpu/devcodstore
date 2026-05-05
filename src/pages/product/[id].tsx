@@ -25,7 +25,16 @@ type Product = {
   security_scan_score?: number | null;
   security_scan_report?: {
     summary?: string;
-    tools?: Array<{ tool?: string; status?: string; issues?: number }>;
+    tools?:
+      | Array<{ tool?: string; status?: string; issues?: number }>
+      | Record<string, { available?: boolean; issues?: number }>;
+    riskPolicy?: {
+      level?: string;
+      label?: string;
+      summary?: string;
+      recommendation?: string;
+    };
+    publishDecision?: string;
     issues?: Array<{ tool?: string; level?: string; file?: string; message?: string }>;
     scannedAt?: string;
   } | null;
@@ -322,6 +331,19 @@ export default function ProductDetailPage() {
   function fileName(path: string | null) {
     if (!path) return "Dosya yok";
     return path.split("/").pop() || "proje-dosyasi.zip";
+  }
+
+  function scanTools() {
+    const tools = product?.security_scan_report?.tools;
+
+    if (!tools) return [];
+    if (Array.isArray(tools)) return tools;
+
+    return Object.entries(tools).map(([tool, value]) => ({
+      tool,
+      status: value.available === false ? "Kullanılamadı" : "Tamamlandı",
+      issues: value.issues || 0,
+    }));
   }
 
   function statusClass(status: string) {
@@ -724,14 +746,35 @@ export default function ProductDetailPage() {
                       product.security_note ||
                       "Bu ürün için henüz güvenlik notu eklenmemiş."}
                   </p>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Dosya Risk Sınıfı</p>
+                      <p className="mt-2 font-bold text-blue-300">
+                        {product.security_scan_report?.riskPolicy?.label || "Belirlenmedi"}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-gray-500">
+                        {product.security_scan_report?.riskPolicy?.summary ||
+                          "Dosya türü politikası henüz rapora eklenmemiş."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 p-5">
+                      <p className="text-sm text-gray-400">Yayın Kararı</p>
+                      <p className="mt-2 font-bold text-green-300">
+                        {product.security_scan_report?.publishDecision ||
+                          "Tarama tamamlandığında yayın kararı burada görünür."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
                   <h2 className="text-2xl font-bold">Tarama Detayları</h2>
 
-                  {product.security_scan_report?.tools?.length ? (
+                  {scanTools().length ? (
                     <div className="mt-6 grid gap-4 md:grid-cols-3">
-                      {product.security_scan_report.tools.map((tool, index) => (
+                      {scanTools().map((tool, index) => (
                         <div key={`${tool.tool || "tool"}-${index}`} className="rounded-2xl bg-black/30 p-5">
                           <p className="text-sm text-gray-400">{tool.tool || "Tarama Aracı"}</p>
                           <p className="mt-2 font-bold text-blue-300">{tool.status || "Tamamlandı"}</p>

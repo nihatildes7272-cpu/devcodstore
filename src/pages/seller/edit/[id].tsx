@@ -72,6 +72,9 @@ function detectFileType(fileName: string) {
   const lower = fileName.toLowerCase();
 
   if (lower.endsWith(".zip")) return "ZIP Proje Dosyası";
+  if (lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz")) {
+    return "Arşiv Dosyası";
+  }
   if (lower.endsWith(".pdf")) return "PDF Doküman";
   if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "Ders Slaytı / Sunum";
   if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word Dokümanı";
@@ -87,6 +90,9 @@ function detectFileType(fileName: string) {
     return "Görsel Dosyası";
   }
   if (lower.endsWith(".json")) return "JSON Dosyası";
+  if ([".exe", ".dll", ".bat", ".cmd", ".ps1", ".apk", ".jar"].some((ext) => lower.endsWith(ext))) {
+    return "Yüksek Riskli Dosya";
+  }
 
   return "Dijital Dosya";
 }
@@ -277,13 +283,14 @@ export default function SellerEditProductPage() {
     let newFileType = product.file_type;
     let newFileSize = product.file_size;
     let newImageUrl = product.image_url;
+    let newQuarantineFilePath: string | null = null;
 
     try {
       if (zipFile) {
         const filePath = `${user.id}/${product.id}/${Date.now()}-${safeFileName(zipFile.name)}`;
 
         const { error: uploadError } = await supabase.storage
-          .from("product-files")
+          .from("product-quarantine")
           .upload(filePath, zipFile, {
             cacheControl: "3600",
             upsert: false,
@@ -295,7 +302,8 @@ export default function SellerEditProductPage() {
           return;
         }
 
-        newFilePath = filePath;
+        newFilePath = null;
+        newQuarantineFilePath = filePath;
         newFileName = zipFile.name;
         newFileType = detectFileType(zipFile.name);
         newFileSize = zipFile.size;
@@ -338,48 +346,81 @@ export default function SellerEditProductPage() {
 
       const selectedLicense = getLicenseInfo(licenseType);
       const selectedPreview = getPreviewInfo(previewType);
+      const productUpdate: Record<string, unknown> = {
+        title,
+        category,
+        price,
+        description,
+
+        file_path: newFilePath,
+        file_name: newFileName,
+        file_type: newFileType,
+        file_size: newFileSize,
+
+        image_url: newImageUrl,
+
+        license_type: selectedLicense.type,
+        license_summary: selectedLicense.summary,
+        license_allows_commercial: selectedLicense.allowsCommercial,
+        license_allows_resale: selectedLicense.allowsResale,
+
+        demo_url: demoUrl.trim() || null,
+        tech_stack: techStack.trim() || null,
+        setup_notes: setupNotes.trim() || null,
+        requirements: requirements.trim() || null,
+
+        preview_type: previewType,
+        preview_note: previewNote.trim() || selectedPreview.description,
+
+        tags: parseTags(tagsInput),
+
+        status: zipFile ? "pending_scan" : "Onay Bekliyor",
+        security_status: zipFile ? "Taranıyor" : "Taranmadı",
+        security_note: zipFile
+          ? "Yeni dosya karantinaya alındı. Güçlü güvenlik taraması bekleniyor."
+          : "Ürün satıcı tarafından güncellendi. Admin güvenlik incelemesi bekleniyor.",
+      };
+
+      if (zipFile) {
+        productUpdate.quarantine_file_path = newQuarantineFilePath;
+        productUpdate.quarantine_bucket = "product-quarantine";
+        productUpdate.approved_file_path = null;
+        productUpdate.approved_bucket = "product-files";
+        productUpdate.strong_scan_status = "queued";
+      }
 
       const { error } = await supabase
         .from("products")
-        .update({
-          title,
-          category,
-          price,
-          description,
-
-          file_path: newFilePath,
-          file_name: newFileName,
-          file_type: newFileType,
-          file_size: newFileSize,
-
-          image_url: newImageUrl,
-
-          license_type: selectedLicense.type,
-          license_summary: selectedLicense.summary,
-          license_allows_commercial: selectedLicense.allowsCommercial,
-          license_allows_resale: selectedLicense.allowsResale,
-
-          demo_url: demoUrl.trim() || null,
-          tech_stack: techStack.trim() || null,
-          setup_notes: setupNotes.trim() || null,
-          requirements: requirements.trim() || null,
-
-          preview_type: previewType,
-          preview_note: previewNote.trim() || selectedPreview.description,
-
-          tags: parseTags(tagsInput),
-
-          status: "Onay Bekliyor",
-          security_status: "Taranmadı",
-          security_note:
-            "Ürün satıcı tarafından güncellendi. Admin güvenlik incelemesi bekleniyor.",
-        })
+        .update(productUpdate)
         .eq("id", product.id);
 
       if (error) {
         setSaving(false);
         setMessage("Ürün güncellenirken hata oluştu: " + error.message);
         return;
+      }
+
+      if (zipFile) {
+        const { error: scanJobError } = await supabase.from("security_scan_jobs").insert({
+          product_id: product.id,
+          requested_by: user.id,
+          status: "queued",
+          scan_type: "full",
+          priority: 5,
+          retry_count: 0,
+          max_retries: 3,
+          next_retry_at: null,
+          last_error: null,
+          report: {
+            message: "Güncellenen ürün dosyası product-quarantine bucket içine alındı. Güçlü tarama bekleniyor.",
+          },
+        });
+
+        if (scanJobError) {
+          setSaving(false);
+          setMessage("Ürün güncellendi fakat tarama kuyruğu oluşturulamadı: " + scanJobError.message);
+          return;
+        }
       }
 
       if (galleryFiles.length > 0) {
@@ -575,7 +616,7 @@ export default function SellerEditProductPage() {
               <div>
                 <h2 className="text-2xl font-bold">Dosyalar ve Kapak</h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  Mevcut dosyaları gör veya yeni ürün dosyası / kapak görseli seç.
+                  Mevcut dosyaları gör veya yeni ürün dosyası / kapak görseli seç. Tüm dosya türleri tarama hattından geçer.
                 </p>
               </div>
 
@@ -620,7 +661,6 @@ export default function SellerEditProductPage() {
                 <p className="mb-2 text-sm text-gray-400">Yeni ürün dosyası seç</p>
                 <input
                   type="file"
-                  accept=".zip,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.json,application/zip,application/x-zip-compressed,application/pdf"
                   onChange={(event) => setZipFile(event.target.files?.[0] || null)}
                   className="w-full text-sm text-gray-300"
                 />

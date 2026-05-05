@@ -15,6 +15,12 @@ type ScanReport = {
   issues?: ScanIssue[];
   summary?: string;
   tools?: Record<string, unknown>;
+  riskPolicy?: {
+    label?: string;
+    summary?: string;
+    recommendation?: string;
+  };
+  publishDecision?: string;
 };
 
 type Product = {
@@ -925,6 +931,28 @@ export default function AdminProductsPage() {
                         <p className="mt-2 leading-7 text-gray-300">
                           {report.summary || product.security_note || "Tarama raporu yok."}
                         </p>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Dosya Risk Sınıfı</p>
+                          <p className="mt-2 font-bold text-blue-300">
+                            {report.riskPolicy?.label || "Belirlenmedi"}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-gray-500">
+                            {report.riskPolicy?.recommendation ||
+                              "Risk politikası bilgisi rapora eklenmemiş."}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-black/30 p-4">
+                          <p className="text-sm text-gray-400">Yayın Kararı</p>
+                          <p className="mt-2 font-bold text-green-300">
+                            {report.publishDecision ||
+                              product.auto_publish_reason ||
+                              "Tarama tamamlandığında karar oluşur."}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="mt-5">
