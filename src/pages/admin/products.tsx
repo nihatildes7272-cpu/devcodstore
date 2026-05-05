@@ -55,6 +55,10 @@ type Product = {
   license_summary?: string | null;
   license_allows_commercial?: boolean | null;
   license_allows_resale?: boolean | null;
+  rights_owner_type?: string | null;
+  rights_declaration?: string | null;
+  official_content_risk?: string | null;
+  official_content_note?: string | null;
 
   preview_type?: string | null;
   preview_note?: string | null;
@@ -477,6 +481,13 @@ export default function AdminProductsPage() {
     if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 
     return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  function officialRiskLabel(value?: string | null) {
+    if (value === "high") return "Yüksek";
+    if (value === "medium") return "Orta";
+    if (value === "low") return "Düşük";
+    return "Yok";
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / adminProductsPageSize));
@@ -902,6 +913,15 @@ export default function AdminProductsPage() {
 
                       <div className="mt-5 rounded-2xl bg-black/30 p-4 text-sm text-gray-300">
                         <p>Lisans: {product.license_type || "Kişisel Kullanım"}</p>
+                        <p className="mt-1">
+                          Satış hakkı: {product.rights_owner_type || "own_work"}
+                        </p>
+                        <p className="mt-1">
+                          Resmi/telifli içerik riski: {officialRiskLabel(product.official_content_risk)}
+                        </p>
+                        {product.official_content_note && (
+                          <p className="mt-1">Hak/risk notu: {product.official_content_note}</p>
+                        )}
                         <p className="mt-1">
                           Ticari kullanım:{" "}
                           {product.license_allows_commercial ? "İzinli" : "İzinli değil"}

@@ -215,6 +215,33 @@ function summaryForScanResult(status, policy) {
   return `${policy.label}: yüksek riskli bulgular bulundu. Dosya yayına alınmadı.`;
 }
 
+function addLegalIssue(issues, product) {
+  const risk = product.official_content_risk || "none";
+  const ownerType = product.rights_owner_type || "own_work";
+  const note = product.official_content_note ? ` Not: ${product.official_content_note}` : "";
+
+  if (risk === "high") {
+    addIssue(
+      issues,
+      "legal",
+      "high",
+      "satış-hakkı-beyanı",
+      "Satıcı yüksek resmi/telifli içerik riski beyan etti. Admin incelemesi gerekir." + note
+    );
+    return;
+  }
+
+  if (risk === "medium" || ownerType === "third_party") {
+    addIssue(
+      issues,
+      "legal",
+      "medium",
+      "satış-hakkı-beyanı",
+      "Satıcı üçüncü taraf, marka, kurum veya telifli içerik riski beyan etti." + note
+    );
+  }
+}
+
 function isPathTraversal(fileName) {
   return (
     fileName.includes("../") ||
@@ -853,6 +880,7 @@ async function processJob(job) {
 
   const zipInspection = await inspectZip(zipPath, extractDir, originalFileName);
   allIssues.push(...zipInspection.issues);
+  addLegalIssue(allIssues, product);
 
   const customScan = await scanCustomRules(extractDir);
   allIssues.push(...customScan.issues);

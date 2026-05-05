@@ -46,6 +46,10 @@ type Product = {
   license_summary?: string | null;
   license_allows_commercial?: boolean | null;
   license_allows_resale?: boolean | null;
+  rights_owner_type?: string | null;
+  rights_declaration?: string | null;
+  official_content_risk?: string | null;
+  official_content_note?: string | null;
   preview_type?: string | null;
   preview_note?: string | null;
   tags?: string[] | null;
@@ -360,6 +364,20 @@ export default function ProductDetailPage() {
     }
 
     return "rounded-full bg-gray-500/20 px-4 py-2 text-sm text-gray-300";
+  }
+
+  function rightsOwnerLabel(value?: string | null) {
+    if (value === "licensed") return "Satış/dağıtım lisansı beyan edildi";
+    if (value === "public_domain") return "Kamu malı / açık lisans";
+    if (value === "third_party") return "Üçüncü taraf içerik içeriyor";
+    return "Satıcı kendi üretimi olduğunu beyan etti";
+  }
+
+  function officialRiskLabel(value?: string | null) {
+    if (value === "high") return "Yüksek";
+    if (value === "medium") return "Orta";
+    if (value === "low") return "Düşük";
+    return "Yok";
   }
 
   function securityClass(status?: string | null) {
@@ -883,6 +901,40 @@ export default function ProductDetailPage() {
                   {product.license_summary ||
                     "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
                 </p>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl bg-black/30 p-5">
+                    <p className="text-sm text-gray-400">Satış Hakkı Beyanı</p>
+                    <p className="mt-2 font-bold text-blue-300">
+                      {rightsOwnerLabel(product.rights_owner_type)}
+                    </p>
+                    {product.rights_declaration && (
+                      <p className="mt-2 text-sm leading-6 text-gray-500">
+                        {product.rights_declaration}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl bg-black/30 p-5">
+                    <p className="text-sm text-gray-400">Resmi/Telifli İçerik Riski</p>
+                    <p
+                      className={
+                        product.official_content_risk === "high"
+                          ? "mt-2 font-bold text-red-300"
+                          : product.official_content_risk === "medium"
+                            ? "mt-2 font-bold text-yellow-300"
+                            : "mt-2 font-bold text-green-300"
+                      }
+                    >
+                      {officialRiskLabel(product.official_content_risk)}
+                    </p>
+                    {product.official_content_note && (
+                      <p className="mt-2 text-sm leading-6 text-gray-500">
+                        {product.official_content_note}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </section>
             )}
 

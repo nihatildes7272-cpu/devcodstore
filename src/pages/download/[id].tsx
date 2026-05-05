@@ -17,6 +17,8 @@ type Product = {
   license_summary?: string | null;
   license_allows_commercial?: boolean | null;
   license_allows_resale?: boolean | null;
+  rights_owner_type?: string | null;
+  official_content_risk?: string | null;
 };
 
 type Order = {
@@ -150,7 +152,7 @@ export default function DownloadPage() {
       const productResult = await withTimeout(
         supabase
           .from("products")
-          .select("id,title,price,seller,category,file_path,file_name,file_type,file_size,license_type,license_summary,license_allows_commercial,license_allows_resale")
+          .select("*")
           .eq("id", String(id))
           .maybeSingle(),
         12000,
@@ -261,6 +263,13 @@ export default function DownloadPage() {
   function shownFileName(path: string | null) {
     if (!path) return "Dosya yok";
     return path.split("/").pop() || "proje-dosyasi.zip";
+  }
+
+  function officialRiskLabel(value?: string | null) {
+    if (value === "high") return "Yüksek";
+    if (value === "medium") return "Orta";
+    if (value === "low") return "Düşük";
+    return "Yok";
   }
 
   if (loading) {
@@ -401,6 +410,9 @@ export default function DownloadPage() {
                 <p className="mt-2 text-sm leading-6 text-gray-400">
                   {product.license_summary ||
                     "Bu ürün satın alan kullanıcı tarafından kullanılabilir. Yeniden satış hakkı vermez."}
+                </p>
+                <p className="mt-3 text-xs text-gray-500">
+                  Satış hakkı beyanı: {product.rights_owner_type || "own_work"} · Resmi/telifli içerik riski: {officialRiskLabel(product.official_content_risk)}
                 </p>
               </div>
             </div>

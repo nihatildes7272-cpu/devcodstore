@@ -30,6 +30,10 @@ type Product = {
   license_summary: string | null;
   license_allows_commercial: boolean | null;
   license_allows_resale: boolean | null;
+  rights_owner_type?: string | null;
+  rights_declaration?: string | null;
+  official_content_risk?: string | null;
+  official_content_note?: string | null;
 
   demo_url: string | null;
   tech_stack: string | null;
@@ -141,6 +145,10 @@ export default function SellerEditProductPage() {
   const [licenseType, setLicenseType] = useState("Kişisel Kullanım");
   const [previewType, setPreviewType] = useState("Kapak + Galeri");
   const [previewNote, setPreviewNote] = useState("");
+  const [rightsOwnerType, setRightsOwnerType] = useState("own_work");
+  const [officialContentRisk, setOfficialContentRisk] = useState("none");
+  const [rightsDeclaration, setRightsDeclaration] = useState("");
+  const [rightsConfirmed, setRightsConfirmed] = useState(true);
 
   const [demoUrl, setDemoUrl] = useState("");
   const [techStack, setTechStack] = useState("");
@@ -204,6 +212,10 @@ export default function SellerEditProductPage() {
     setLicenseType(data.license_type || "Kişisel Kullanım");
     setPreviewType(data.preview_type || "Kapak + Galeri");
     setPreviewNote(data.preview_note || "");
+    setRightsOwnerType(data.rights_owner_type || "own_work");
+    setOfficialContentRisk(data.official_content_risk || "none");
+    setRightsDeclaration(data.rights_declaration || data.official_content_note || "");
+    setRightsConfirmed(Boolean(data.rights_confirmed_at || data.license_type));
 
     setDemoUrl(data.demo_url || "");
     setTechStack(data.tech_stack || "");
@@ -248,6 +260,11 @@ export default function SellerEditProductPage() {
     if (!title.trim()) return "Ürün adı boş olamaz.";
     if (!price.trim()) return "Fiyat alanı boş olamaz.";
     if (!description.trim()) return "Açıklama alanı boş olamaz.";
+    if (!rightsConfirmed) return "Satış hakkı beyanını onaylamalısın.";
+
+    if (officialContentRisk !== "none" && !rightsDeclaration.trim()) {
+      return "Resmi/telifli içerik riski varsa kısa açıklama eklemelisin.";
+    }
 
     if (zipFile && zipFile.size > maxProductFileSize) {
       return "Ürün dosyası en fazla 200 MB olabilir.";
@@ -363,6 +380,11 @@ export default function SellerEditProductPage() {
         license_summary: selectedLicense.summary,
         license_allows_commercial: selectedLicense.allowsCommercial,
         license_allows_resale: selectedLicense.allowsResale,
+        rights_owner_type: rightsOwnerType,
+        rights_declaration: rightsDeclaration.trim() || null,
+        official_content_risk: officialContentRisk,
+        official_content_note: rightsDeclaration.trim() || null,
+        rights_confirmed_at: new Date().toISOString(),
 
         demo_url: demoUrl.trim() || null,
         tech_stack: techStack.trim() || null,
@@ -389,10 +411,37 @@ export default function SellerEditProductPage() {
         productUpdate.strong_scan_status = "queued";
       }
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from("products")
         .update(productUpdate)
         .eq("id", product.id);
+
+      if (
+        error &&
+        /rights_owner_type|rights_declaration|official_content_risk|official_content_note|rights_confirmed_at/i.test(
+          error.message
+        )
+      ) {
+        const compatibleUpdate = Object.fromEntries(
+          Object.entries(productUpdate).filter(
+            ([key]) =>
+              ![
+                "rights_owner_type",
+                "rights_declaration",
+                "official_content_risk",
+                "official_content_note",
+                "rights_confirmed_at",
+              ].includes(key)
+          )
+        );
+
+        const compatibleResult = await supabase
+          .from("products")
+          .update(compatibleUpdate)
+          .eq("id", product.id);
+
+        error = compatibleResult.error;
+      }
 
       if (error) {
         setSaving(false);
@@ -780,6 +829,53 @@ export default function SellerEditProductPage() {
                 placeholder="Önizleme açıklaması"
                 className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
               />
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Satış hakkı beyanı</p>
+                <select
+                  value={rightsOwnerType}
+                  onChange={(event) => setRightsOwnerType(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  <option value="own_work">Dosya bana ait / ben ürettim</option>
+                  <option value="licensed">Satış veya dağıtım lisansım var</option>
+                  <option value="public_domain">Kamu malı / açık lisanslı kaynak</option>
+                  <option value="third_party">Üçüncü taraf içerik içeriyor</option>
+                </select>
+              </label>
+
+              <label className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
+                <p className="mb-2 text-sm text-gray-400">Resmi/telifli içerik riski</p>
+                <select
+                  value={officialContentRisk}
+                  onChange={(event) => setOfficialContentRisk(event.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                >
+                  <option value="none">Yok</option>
+                  <option value="low">Düşük: açık kaynak / izinli materyal</option>
+                  <option value="medium">Orta: marka, logo, kurum adı veya üçüncü taraf içerik var</option>
+                  <option value="high">Yüksek: resmi belge, lisanssız içerik veya yeniden satış riski var</option>
+                </select>
+              </label>
+
+              <textarea
+                value={rightsDeclaration}
+                onChange={(event) => setRightsDeclaration(event.target.value)}
+                placeholder="Satış hakkı, lisans kaynağı veya resmi/telifli içerik notu"
+                className="min-h-28 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+              />
+
+              <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={rightsConfirmed}
+                  onChange={(event) => setRightsConfirmed(event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Bu dosyayı satma hakkım olduğunu, telif/resmi içerik riskini doğru beyan ettiğimi kabul ediyorum.
+                </span>
+              </label>
             </section>
           )}
 

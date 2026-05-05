@@ -209,6 +209,34 @@ function decideSecurityStatus(score: number, issues: ScanIssue[]) {
   return "Güvenli";
 }
 
+function legalIssueFor(
+  officialContentRisk?: string | null,
+  rightsOwnerType?: string | null,
+  note?: string | null
+): ScanIssue | null {
+  if (officialContentRisk === "high") {
+    return {
+      level: "high",
+      file: "satış-hakkı-beyanı",
+      message:
+        "Satıcı yüksek resmi/telifli içerik riski beyan etti. Admin incelemesi gerekir." +
+        (note ? ` Not: ${note}` : ""),
+    };
+  }
+
+  if (officialContentRisk === "medium" || rightsOwnerType === "third_party") {
+    return {
+      level: "medium",
+      file: "satış-hakkı-beyanı",
+      message:
+        "Satıcı üçüncü taraf, marka, kurum veya telifli içerik riski beyan etti." +
+        (note ? ` Not: ${note}` : ""),
+    };
+  }
+
+  return null;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -303,7 +331,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: product, error: productError } = await adminClient
     .from("products")
-    .select("id,title,file_path,quarantine_file_path,file_name,file_type,file_size,status")
+    .select("*")
     .eq("id", productId)
     .maybeSingle();
 
@@ -344,6 +372,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (policyIssue) {
       issues.push(policyIssue);
+    }
+
+    const legalIssue = legalIssueFor(
+      product.official_content_risk,
+      product.rights_owner_type,
+      product.official_content_note
+    );
+
+    if (legalIssue) {
+      issues.push(legalIssue);
     }
 
     if (shouldScanText) {
@@ -445,6 +483,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (policyIssue) {
     issues.push(policyIssue);
+  }
+
+  const legalIssue = legalIssueFor(
+    product.official_content_risk,
+    product.rights_owner_type,
+    product.official_content_note
+  );
+
+  if (legalIssue) {
+    issues.push(legalIssue);
   }
 
   const entries = Object.values(zip.files);
