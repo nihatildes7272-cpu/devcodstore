@@ -209,8 +209,11 @@ export default function AdminPage() {
     return "w-fit rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-300";
   }
 
-  const pendingProducts = products.filter(
-    (product) => product.status === "Onay Bekliyor"
+  const manualReviewProducts = products.filter(
+    (product) =>
+      product.status === "Karantina" ||
+      product.security_status === "Manuel İnceleme" ||
+      product.security_status === "Riskli"
   );
 
   const liveProducts = products.filter((product) => product.status === "Yayında");
@@ -232,10 +235,10 @@ export default function AdminPage() {
 
   const adminCards = [
     {
-      title: "Ürün Yönetimi",
-      description: "Ürünleri onayla, reddet, yayına al veya güvenlik kontrolü yap.",
-      href: "/admin/products",
-      meta: `${pendingProducts.length} onay bekliyor`,
+      title: "Manuel İnceleme",
+      description: "Karantina ve riskli tarama sonuçlarını incele, yayına al veya reddet.",
+      href: "/admin/products?tab=Karantina",
+      meta: `${manualReviewProducts.length} kontrol bekliyor`,
     },
     {
       title: "Siparişler",
@@ -395,9 +398,9 @@ export default function AdminPage() {
           </div>
 
           <div className="min-h-[128px] rounded-3xl border border-white/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm">
-            <p className="text-sm font-medium text-yellow-300">⏳ Onay Bekleyen</p>
+            <p className="text-sm font-medium text-yellow-300">⏳ Manuel İnceleme</p>
             <h2 className="mt-3 text-4xl font-bold text-yellow-400">
-              {pendingProducts.length}
+              {manualReviewProducts.length}
             </h2>
           </div>
 
@@ -442,29 +445,34 @@ export default function AdminPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">Onay Bekleyen Ürünler</h2>
+                <h2 className="text-xl font-bold">İnceleme Kuyruğu</h2>
                 <p className="mt-1 text-sm text-gray-400">
-                  Son gönderilen ürünler
+                  Admin aksiyonu bekleyen dosyalar
                 </p>
               </div>
 
-              <Link href="/admin/products" className="text-sm text-blue-300 hover:text-blue-200">
+              <Link href="/admin/products?tab=Karantina" className="text-sm text-blue-300 hover:text-blue-200">
                 Aç
               </Link>
             </div>
 
             <div className="mt-6 grid gap-4">
-              {pendingProducts.slice(0, 4).map((product) => (
+              {manualReviewProducts.slice(0, 4).map((product) => (
                 <div key={product.id} className="rounded-2xl bg-black/30 p-4">
                   <h3 className="font-semibold">{product.title}</h3>
                   <p className="mt-1 text-sm text-gray-400">{product.seller}</p>
-                  <p className="mt-1 text-sm text-gray-500">{product.price}</p>
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-500">{product.price}</p>
+                    <span className={statusClass(product.security_status || product.status)}>
+                      {product.security_status || product.status}
+                    </span>
+                  </div>
                 </div>
               ))}
 
-              {pendingProducts.length === 0 && (
+              {manualReviewProducts.length === 0 && (
                 <div className="rounded-2xl bg-black/30 p-6 text-center text-gray-400">
-                  Onay bekleyen ürün yok.
+                  İnceleme bekleyen ürün yok.
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 import AdminNavbar from "@/components/AdminNavbar";
 
@@ -115,6 +116,7 @@ function withTimeout<T>(
 }
 
 export default function AdminProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -131,6 +133,19 @@ export default function AdminProductsPage() {
   const [scanningProductId, setScanningProductId] = useState<string | null>(null);
   const [queuingStrongScanProductId, setQueuingStrongScanProductId] =
     useState<string | null>(null);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const requestedTab = Array.isArray(router.query.tab)
+      ? router.query.tab[0]
+      : router.query.tab;
+    const matchedTab = tabs.find((tab) => tab.key === requestedTab);
+
+    if (matchedTab) {
+      setActiveTab(matchedTab.key);
+    }
+  }, [router.isReady, router.query.tab]);
 
   async function loadProducts(showLoading = true, targetPage = page) {
     if (showLoading) {
@@ -468,7 +483,11 @@ export default function AdminProductsPage() {
 
   const totalProducts = totalCount;
   const liveProducts = products.filter((product) => product.status === "Yayında").length;
-  const pendingProducts = products.filter((product) => product.status === "Onay Bekliyor").length;
+  const manualReviewProducts = products.filter(
+    (product) =>
+      product.status === "Karantina" ||
+      product.security_status === "Manuel İnceleme"
+  ).length;
   const rejectedProducts = products.filter((product) => product.status === "Reddedildi").length;
   const unpublishedProducts = products.filter(
     (product) => product.status === "Yayından Kaldırıldı"
@@ -553,9 +572,9 @@ export default function AdminProductsPage() {
           <div className="relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:shadow-xl">
             <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/5"></div>
             <div className="relative">
-              <p className="text-sm text-yellow-300 font-medium">Onay Bekleyen</p>
+              <p className="text-sm text-yellow-300 font-medium">Manuel İnceleme</p>
               <h2 className="mt-3 text-4xl font-bold text-yellow-300">
-                {pendingProducts}
+                {manualReviewProducts}
               </h2>
             </div>
           </div>
@@ -602,7 +621,17 @@ export default function AdminProductsPage() {
               return (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    void router.replace(
+                      {
+                        pathname: router.pathname,
+                        query: { ...router.query, tab: tab.key },
+                      },
+                      undefined,
+                      { shallow: true }
+                    );
+                  }}
                   className={
                     activeTab === tab.key
                       ? "rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transform scale-105 border border-blue-500/50 transition-all duration-200"
